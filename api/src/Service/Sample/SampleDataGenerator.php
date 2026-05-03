@@ -53,7 +53,9 @@ final class SampleDataGenerator
         $clientIds = [];
         $czId = (int) $pdo->query("SELECT id FROM countries WHERE iso2 = 'CZ'")->fetchColumn();
         foreach ($clients as [$company, $ic, $dic, $street, $zip, $city, $iso2, $email, $rc, $lang, $currencyId, $currencyCode]) {
-            $countryId = (int) $pdo->query("SELECT id FROM countries WHERE iso2 = " . $pdo->quote($iso2))->fetchColumn() ?: $czId;
+            $stmtCountry = $pdo->prepare('SELECT id FROM countries WHERE iso2 = ?');
+            $stmtCountry->execute([$iso2]);
+            $countryId = (int) $stmtCountry->fetchColumn() ?: $czId;
             $stmt = $pdo->prepare(
                 'INSERT INTO clients (supplier_id, company_name, ic, dic, street, city, zip, country_id, main_email,
                                       language, currency_default_id, reverse_charge)

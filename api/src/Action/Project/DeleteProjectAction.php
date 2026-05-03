@@ -35,9 +35,9 @@ final class DeleteProjectAction
             return Json::error($response, 'not_found', 'Zakázka nenalezena.', 404);
         }
 
-        $count = (int) $this->db->pdo()
-            ->query('SELECT COUNT(*) FROM invoices WHERE project_id = ' . $id)
-            ->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM invoices WHERE project_id = ?');
+        $stmt->execute([$id]);
+        $count = (int) $stmt->fetchColumn();
         if ($count > 0) {
             return Json::error(
                 $response,

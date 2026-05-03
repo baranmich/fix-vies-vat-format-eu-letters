@@ -35,12 +35,12 @@ final class DeleteClientAction
             return Json::error($response, 'not_found', 'Klient nenalezen.', 404);
         }
 
-        $invoices = (int) $this->db->pdo()
-            ->query('SELECT COUNT(*) FROM invoices WHERE client_id = ' . $id)
-            ->fetchColumn();
-        $projects = (int) $this->db->pdo()
-            ->query('SELECT COUNT(*) FROM projects WHERE client_id = ' . $id)
-            ->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM invoices WHERE client_id = ?');
+        $stmt->execute([$id]);
+        $invoices = (int) $stmt->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM projects WHERE client_id = ?');
+        $stmt->execute([$id]);
+        $projects = (int) $stmt->fetchColumn();
         if ($invoices > 0 || $projects > 0) {
             return Json::error(
                 $response,

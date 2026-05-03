@@ -94,7 +94,9 @@ final class SettingsAction
 
         // Country (default CZ)
         $countryIso = strtoupper((string) ($b['country_iso2'] ?? 'CZ'));
-        $countryId = (int) $pdo->query("SELECT id FROM countries WHERE iso2 = " . $pdo->quote($countryIso))->fetchColumn();
+        $stmtCountry = $pdo->prepare('SELECT id FROM countries WHERE iso2 = ?');
+        $stmtCountry->execute([$countryIso]);
+        $countryId = (int) $stmtCountry->fetchColumn();
         if ($countryId === 0) $countryId = (int) $pdo->query("SELECT id FROM countries WHERE iso2 = 'CZ'")->fetchColumn();
 
         $defaultVatId = (int) $pdo->query("SELECT id FROM vat_rates WHERE is_default = 1 ORDER BY id LIMIT 1")->fetchColumn()
@@ -466,9 +468,9 @@ final class SettingsAction
     {
         if (!$this->guard($request, $response, $err)) return $err;
         $id = (int) ($args['id'] ?? 0);
-        $count = (int) $this->db->pdo()
-            ->query("SELECT COUNT(*) FROM invoice_items WHERE vat_rate_id = $id")
-            ->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM invoice_items WHERE vat_rate_id = ?');
+        $stmt->execute([$id]);
+        $count = (int) $stmt->fetchColumn();
         if ($count > 0) {
             return Json::error($response, 'has_dependencies',
                 "Sazbu nelze smazat — používá ji $count položek faktur. Nastav jí konec platnosti (valid_to).", 409);
@@ -555,8 +557,12 @@ final class SettingsAction
     {
         if (!$this->guard($request, $response, $err)) return $err;
         $id = (int) ($args['id'] ?? 0);
-        $clients = (int) $this->db->pdo()->query("SELECT COUNT(*) FROM clients WHERE country_id = $id")->fetchColumn();
-        $supplier = (int) $this->db->pdo()->query("SELECT COUNT(*) FROM supplier WHERE country_id = $id")->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM clients WHERE country_id = ?');
+        $stmt->execute([$id]);
+        $clients = (int) $stmt->fetchColumn();
+        $stmt = $this->db->pdo()->prepare('SELECT COUNT(*) FROM supplier WHERE country_id = ?');
+        $stmt->execute([$id]);
+        $supplier = (int) $stmt->fetchColumn();
         if ($clients > 0 || $supplier > 0) {
             return Json::error($response, 'has_dependencies',
                 "Zemi nelze smazat — používá ji $clients klientů + supplier=$supplier.", 409);

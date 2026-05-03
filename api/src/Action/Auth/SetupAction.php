@@ -119,7 +119,9 @@ final class SetupAction
     {
         // Najdi country_id z iso2
         $iso2 = strtoupper((string) ($supplier['country_iso2'] ?? 'CZ'));
-        $countryId = (int) ($pdo->query("SELECT id FROM countries WHERE iso2 = " . $pdo->quote($iso2))->fetchColumn() ?: 0);
+        $stmtCountry = $pdo->prepare('SELECT id FROM countries WHERE iso2 = ?');
+        $stmtCountry->execute([$iso2]);
+        $countryId = (int) ($stmtCountry->fetchColumn() ?: 0);
         if ($countryId === 0) {
             $countryId = (int) $pdo->query("SELECT id FROM countries WHERE iso2 = 'CZ'")->fetchColumn();
         }
@@ -192,7 +194,9 @@ final class SetupAction
 
         if ($defaultCurrencyId === 0) {
             // Fallback: prvni currency
-            $defaultCurrencyId = (int) $pdo->query("SELECT id FROM currencies WHERE supplier_id = $supplierId LIMIT 1")->fetchColumn();
+            $stmtCur = $pdo->prepare('SELECT id FROM currencies WHERE supplier_id = ? LIMIT 1');
+            $stmtCur->execute([$supplierId]);
+            $defaultCurrencyId = (int) $stmtCur->fetchColumn();
         }
 
         // Doplň supplier.default_currency_id, obnov FK
