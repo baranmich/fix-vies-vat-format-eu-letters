@@ -101,27 +101,52 @@ foreach ($pending as $file) {
 echo "Hotovo.\n";
 
 /**
- * Rozdělí SQL na jednotlivé statementy podle ';'.
- * Respektuje single-quoted stringy a komentáře `-- ...` a `/* ... *\/`.
+ * Rozdělí SQL na jednotlivé statementy podle aktuálního delimiteru.
+ * Default delimiter `;` lze přepnout direktivou `DELIMITER xxx` (klient-side, na vlastním řádku),
+ * což je nutné pro CREATE PROCEDURE / TRIGGER s `;` uvnitř těla.
  *
- * Pro bootstrap stačí — pro DELIMITER/triggery by bylo potřeba parser.
+ * Respektuje single-quoted stringy a komentáře `-- ...` a `/* ... *\/`.
  */
 function splitSqlStatements(string $sql): array
 {
     $stmts = [];
     $current = '';
+    $delim = ';';
     $len = strlen($sql);
     $inSingle = false;
     $inLineComment = false;
     $inBlockComment = false;
+    $atLineStart = true;
 
     for ($i = 0; $i < $len; $i++) {
-        $ch  = substr($sql, $i, 1);
-        $nxt = ($i + 1 < $len) ? substr($sql, $i + 1, 1) : '';
+        // DELIMITER directive — pouze na začátku řádku, mimo string/komentář
+        if ($atLineStart && !$inSingle && !$inLineComment && !$inBlockComment) {
+            $j = $i;
+            while ($j < $len && ($sql[$j] === ' ' || $sql[$j] === "\t")) $j++;
+            if ($j + 10 <= $len && strcasecmp(substr($sql, $j, 10), 'DELIMITER ') === 0) {
+                $eol = strpos($sql, "\n", $j + 10);
+                if ($eol === false) $eol = $len;
+                $newDelim = trim(substr($sql, $j + 10, $eol - ($j + 10)));
+                if ($newDelim !== '') {
+                    if (trim($current) !== '') {
+                        $stmts[] = $current;
+                        $current = '';
+                    }
+                    $delim = $newDelim;
+                }
+                $i = $eol; // hlavní cyklus posune na další řádek
+                $atLineStart = true;
+                continue;
+            }
+        }
+        $atLineStart = false;
+
+        $ch  = $sql[$i];
+        $nxt = ($i + 1 < $len) ? $sql[$i + 1] : '';
 
         if ($inLineComment) {
             $current .= $ch;
-            if ($ch === "\n") $inLineComment = false;
+            if ($ch === "\n") { $inLineComment = false; $atLineStart = true; }
             continue;
         }
         if ($inBlockComment) {
@@ -161,9 +186,18 @@ function splitSqlStatements(string $sql): array
             $current .= $ch;
             continue;
         }
-        if ($ch === ';') {
+        if ($ch === "\n") {
+            $current .= $ch;
+            $atLineStart = true;
+            continue;
+        }
+
+        // Match aktuální delimiter (může být multi-char, např. `//`)
+        $dlen = strlen($delim);
+        if ($dlen > 0 && substr_compare($sql, $delim, $i, $dlen) === 0) {
             if (trim($current) !== '') $stmts[] = $current;
             $current = '';
+            $i += $dlen - 1;
             continue;
         }
         $current .= $ch;
