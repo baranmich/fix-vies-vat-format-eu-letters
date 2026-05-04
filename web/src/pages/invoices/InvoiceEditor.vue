@@ -225,10 +225,15 @@ async function applyClientDefaults(clientId: number) {
     form.value.due_date = addDays(form.value.issue_date, c.payment_due_default)
   }
   // Klientská sazba — fallback pro faktury bez zakázky (project rate přepíše později).
-  if (!form.value.project_id && c.hourly_rate && c.hourly_rate > 0
-      && form.value.items.length === 1 && form.value.items[0].unit_price_without_vat === 0) {
-    form.value.items[0].unit_price_without_vat = c.hourly_rate
-    form.value.items[0].unit = 'h'
+  // „Prázdná položka" = prázdný popis; rate mohl naplnit předchozí klient/projekt, přesto chceme refresh.
+  if (!form.value.project_id && c.hourly_rate && c.hourly_rate > 0) {
+    if (form.value.items.length === 1 && (form.value.items[0].description || '').trim() === '') {
+      form.value.items[0].unit_price_without_vat = c.hourly_rate
+      form.value.items[0].unit = 'h'
+    }
+    if (wrItems.value.length === 1 && (wrItems.value[0].description || '').trim() === '') {
+      wrItems.value[0].rate = c.hourly_rate
+    }
   }
 }
 
@@ -268,10 +273,13 @@ async function applyProjectDefaults(projectId: number) {
   form.value.currency_id = p.currency_id
   form.value.currency = p.currency
   form.value.due_date = addDays(form.value.issue_date, p.payment_due_days)
-  // Pokud nemá žádné položky se sazbou, předvyplň sazbu
-  if (form.value.items.length === 1 && form.value.items[0].unit_price_without_vat === 0) {
+  // Pokud má jen jednu prázdnou položku (bez popisu), refresh sazby z projektu.
+  if (form.value.items.length === 1 && (form.value.items[0].description || '').trim() === '') {
     form.value.items[0].unit_price_without_vat = p.hourly_rate
     form.value.items[0].unit = 'h'
+  }
+  if (wrItems.value.length === 1 && (wrItems.value[0].description || '').trim() === '') {
+    wrItems.value[0].rate = p.hourly_rate
   }
 }
 
