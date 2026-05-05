@@ -22,10 +22,18 @@ final class IsdocParser
      */
     public function parse(string $xml): array
     {
+        // XXE / billion-laughs hardening: odmítni DOCTYPE před libxml parsováním.
+        // V PHP 8 / libxml ≥ 2.9 jsou external entities default-off, ale interní
+        // entity expansion může pořád způsobit DoS — proto blokujeme DOCTYPE rovnou.
+        if (preg_match('/<!DOCTYPE/i', $xml)) {
+            throw new \RuntimeException('ISDOC XML obsahuje DOCTYPE, což není povoleno.');
+        }
+
         $dom = new \DOMDocument();
         $dom->preserveWhiteSpace = false;
         $prev = libxml_use_internal_errors(true);
-        $loaded = $dom->loadXML($xml);
+        // LIBXML_NONET zakáže jakékoliv načítání ze sítě; nepoužíváme NOENT.
+        $loaded = $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         libxml_clear_errors();
         libxml_use_internal_errors($prev);
         if (!$loaded || $dom->documentElement === null) {

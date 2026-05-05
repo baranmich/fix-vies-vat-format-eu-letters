@@ -55,6 +55,9 @@ final class BulkReissueAction
         if (empty($ids)) {
             return Json::error($response, 'no_invoices', 'Není vybrána žádná faktura.', 400);
         }
+        if (count($ids) > 200) {
+            return Json::error($response, 'too_many', 'Najednou lze klonovat maximálně 200 faktur.', 422);
+        }
 
         $user = (array) $request->getAttribute(AuthMiddleware::ATTR_USER, []);
         $userId = (int) ($user['id'] ?? 0);

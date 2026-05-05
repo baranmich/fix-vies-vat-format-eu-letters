@@ -109,21 +109,21 @@ function goPage(delta: number) {
           </tr>
         </thead>
         <tbody class="divide-y divide-neutral-100">
-          <tr v-for="e in entries" :key="e.id" class="hover:bg-neutral-50">
+          <tr v-for="e in entries" :key="e.id" class="hover:bg-neutral-50 align-top">
             <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ fmtTime(e.created_at) }}</td>
-            <td class="px-3 py-2 text-xs">
+            <td class="px-3 py-2 text-xs break-words">
               <span v-if="e.user_email">{{ e.user_name || e.user_email }}</span>
               <span v-else class="text-neutral-400">—</span>
             </td>
             <td class="px-3 py-2">
               <span class="text-xs px-2 py-0.5 rounded font-medium" :class="actionBadgeClass(e.action)">{{ e.action }}</span>
             </td>
-            <td class="px-3 py-2 text-xs">
+            <td class="px-3 py-2 text-xs whitespace-nowrap">
               <span v-if="e.entity_type">{{ e.entity_type }} #{{ e.entity_id }}</span>
               <span v-else class="text-neutral-400">—</span>
             </td>
-            <td class="px-3 py-2 text-xs text-neutral-600 truncate max-w-md">{{ fmtPayload(e.payload) }}</td>
-            <td class="px-3 py-2 font-mono text-xs text-neutral-500">{{ e.ip || '—' }}</td>
+            <td class="px-3 py-2 text-xs text-neutral-600 break-all whitespace-pre-wrap leading-snug">{{ fmtPayload(e.payload) }}</td>
+            <td class="px-3 py-2 font-mono text-xs text-neutral-500 break-all">{{ e.ip || '—' }}</td>
           </tr>
         </tbody>
       </table>
@@ -143,8 +143,8 @@ function goPage(delta: number) {
             </span>
             <span class="font-mono whitespace-nowrap">{{ fmtTime(e.created_at) }}</span>
           </div>
-          <div v-if="fmtPayload(e.payload)" class="text-xs text-neutral-600 truncate">{{ fmtPayload(e.payload) }}</div>
-          <div v-if="e.ip" class="text-xs font-mono text-neutral-400">{{ e.ip }}</div>
+          <div v-if="fmtPayload(e.payload)" class="text-xs text-neutral-600 break-all whitespace-pre-wrap leading-snug">{{ fmtPayload(e.payload) }}</div>
+          <div v-if="e.ip" class="text-xs font-mono text-neutral-400 break-all">{{ e.ip }}</div>
         </div>
       </div>
 

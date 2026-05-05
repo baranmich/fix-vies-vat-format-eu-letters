@@ -29,6 +29,11 @@ use Psr\Http\Message\UploadedFileInterface;
  */
 final class ImportAction
 {
+    /** Limity proti DoS (souhrnně k limitům v InvoiceImportService::unzip()). */
+    private const MAX_FILES        = 50;
+    private const MAX_PER_FILE     = 20 * 1024 * 1024;  // 20 MiB (ZIP nebo XML)
+    private const MAX_TOTAL_UPLOAD = 50 * 1024 * 1024;  // 50 MiB
+
     public function __construct(
         private readonly InvoiceImportService $importer,
         private readonly ActivityLogger $logger,
@@ -48,7 +53,11 @@ final class ImportAction
         }
 
         $uploads = $request->getUploadedFiles();
-        $files = $this->collectFiles($uploads);
+        try {
+            $files = $this->collectFiles($uploads);
+        } catch (\RuntimeException $e) {
+            return Json::error($response, 'upload_too_large', $e->getMessage(), 413);
+        }
         if (empty($files)) {
             return Json::error($response, 'no_files', 'Nahrajte alespoň jeden soubor.', 400);
         }
@@ -75,9 +84,21 @@ final class ImportAction
     private function collectFiles(array $uploads): array
     {
         $out = [];
-        $walk = function ($node) use (&$walk, &$out): void {
+        $totalBytes = 0;
+        $walk = function ($node) use (&$walk, &$out, &$totalBytes): void {
             if ($node instanceof UploadedFileInterface) {
                 if ($node->getError() !== UPLOAD_ERR_OK) return;
+                if (count($out) >= self::MAX_FILES) {
+                    throw new \RuntimeException('Příliš mnoho souborů (max ' . self::MAX_FILES . ').');
+                }
+                $size = (int) ($node->getSize() ?? 0);
+                if ($size > self::MAX_PER_FILE) {
+                    throw new \RuntimeException('Soubor "' . ($node->getClientFilename() ?? 'upload') . '" je příliš velký (max ' . self::MAX_PER_FILE . ' B).');
+                }
+                $totalBytes += $size;
+                if ($totalBytes > self::MAX_TOTAL_UPLOAD) {
+                    throw new \RuntimeException('Celková velikost uploadu překračuje povolený limit (max ' . self::MAX_TOTAL_UPLOAD . ' B).');
+                }
                 $out[] = [
                     'name'    => $node->getClientFilename() ?? 'upload',
                     'content' => (string) $node->getStream()->getContents(),

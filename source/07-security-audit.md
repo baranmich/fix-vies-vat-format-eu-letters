@@ -332,3 +332,96 @@
 11. - [x] **`api/public/index.php:51`** — generický error, detail jen do logu.
 12. - [x] **`InvoiceRepository` / `ClientRepository` / `ProjectRepository`** — escape `%` a `_` v `LIKE` (`addcslashes($q, '%_\\')`).
 13. - [x] **`cfg.app.pepper` deploy guard** — pokud `env=production` a `pepper === ''`, refuse boot.
+
+---
+
+# Follow-up audit (2026-05-05) — features přidané po multi-supplier auditu
+
+> Audit nových funkcí v1.4–v1.9.1 + post-v1.9.1 (PDF history, invoice import,
+> exchange rate fetch, public approval flow, bulk reissue, final from proforma).
+> Cíl: chytit nové vstupní body (XML upload, public endpoints, file downloads).
+
+## P1 — Vysoká
+
+### FA-P1-1 — Invoice import: chybí XXE / billion-laughs hardening v XML parserech  ✅ *(fixed)*
+- **Soubory:** `api/src/Service/Import/IsdocParser.php`, `PohodaXmlParser.php`
+- **Problém:** `$dom->loadXML($xml)` byl volán bez `LIBXML_NONET` a bez kontroly DOCTYPE.
+  V PHP 8 / libxml ≥ 2.9 jsou external entities default-off, ale **internal entity
+  expansion (billion-laughs)** je pořád možná. `<!DOCTYPE>` mohlo způsobit DoS přes
+  rekurzivní entity expansion.
+- **Útok:** Authenticated admin/accountant uploadne 1 KB XML s nested entities
+  rozbalitelnými na GB → memory exhaustion / OOM.
+- **Fix:** Pre-parse regex `<!DOCTYPE` reject + `LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING`.
+  Pokrytí PHPUnit testy (`IsdocParserTest::testRejectsBillionLaughsViaDoctype`,
+  `PohodaXmlParserTest::testRejectsDoctype`).
+
+### FA-P1-2 — Invoice import: chybí limity proti zip-bomb a velkým souborům  ✅ *(fixed)*
+- **Soubory:** `api/src/Service/Import/InvoiceImportService.php`, `api/src/Action/Admin/ImportAction.php`
+- **Problém:** `unzip()` ani `collectFiles()` nelimitovaly počet entries, total uncompressed
+  size, ani per-file size. Authenticated uživatel mohl uploadnout zip-bomb (1 KB → GB)
+  nebo 1 GB XML → OOM.
+- **Fix v `InvoiceImportService::unzip()`:** `MAX_ZIP_ENTRIES=500`,
+  `MAX_TOTAL_UNCOMPRESSED_BYTES=50 MiB`, `MAX_SINGLE_ENTRY_BYTES=10 MiB` (z `statIndex`
+  čteme `size` PŘED extrakcí — žádný getFromIndex bombu nerozbalí).
+  Také odmítáme entry names s `..`, absolutní cestou nebo Win drive prefixem
+  (defense-in-depth, i když jen čteme do paměti).
+- **Fix v `ImportAction::collectFiles()`:** `MAX_FILES=50`, `MAX_PER_FILE=20 MiB`,
+  `MAX_TOTAL_UPLOAD=50 MiB`, vrací `413 upload_too_large` při překročení.
+
+## P2 — Střední
+
+### FA-P2-1 — Public approval decide leakuje interní error message  ✅ *(fixed)*
+- **Soubor:** `api/src/Action/Approval/PublicApprovalDecideAction.php:114-124`
+- **Problém:** Když `AutoIssueAndSendService::run()` selhal, response obsahovala
+  `'auto_send_error' => $e->getMessage()`. Veřejný (bez auth) endpoint mohl odhalit
+  DB error, mailer error, filesystem cestu, SMTP credential leak (rare ale possible).
+- **Fix:** Detail jen do `activity_log` (`invoice.approval_auto_send_failed`),
+  klientovi vrátit jen generický „Faktura bude obratem zaslána".
+
+### FA-P2-2 — Header injection v `Content-Disposition` archive download  ✅ *(fixed, defense-in-depth)*
+- **Soubor:** `api/src/Action/Invoice/DownloadArchivedPdfAction.php:54`
+- **Problém:** `Content-Disposition: attachment; filename="{$filename}"` — `$filename`
+  pochází z `basename(path)` z DB. Ačkoliv filename generuje server (formát
+  `Ymd-His-{sha8}-{orig}`), defense-in-depth říká escape CR/LF/" v případě, že by se
+  schema někdy změnilo. Header splitting → set-cookie injection.
+- **Fix:** `preg_replace('/[\r\n"\\\\]/', '_', $filename)` před vložením do hlavičky.
+
+### FA-P2-3 — Bulk reissue bez limit počtu invoices  ✅ *(fixed)*
+- **Soubor:** `api/src/Action/Invoice/BulkReissueAction.php`
+- **Problém:** Body `invoice_ids` array bez velikostního limitu. 100k IDs → 100k
+  individual `find()` queries + 100k inserts.
+- **Fix:** Hard limit 200 IDs per call (`422 too_many`).
+
+## P3 — Nízká / bez fixu
+
+- **FA-P3-1** *(no fix needed)* — `CnbExchangeRateClient`: URL je hardcoded, pouze
+  date param je user-controlled (pochází z `issue_date` faktury, validovaný DATE typ
+  v DB). Timeout 5 s, status check 200/404. Žádný SSRF / nekontrolovaný response size.
+  Parser je čistý helper, robustní na malformed input.
+- **FA-P3-2** *(no fix needed)* — `PdfArchiveService::pathFor()`: filename pochází
+  z DB, kde byl generován serverem přes `basename($sourcePath)` po stripu `.new`
+  suffixu — nelze do něj injectnout `..`. Path concatenation safe.
+- **FA-P3-3** *(no fix needed)* — `PublicApprovalGetAction`: vrací jen omezenou
+  whitelist polí faktury (varsymbol, currency, totals, klient.company_name,
+  project.name) — žádné citlivé údaje. Token formát pre-validovaný.
+- **FA-P3-4** *(no fix needed)* — `FinalFromProformaCreator`: idempotentní lookup
+  přes `parent_invoice_id` před INSERT, transaction-safe (detekce
+  `inTransaction()`), advance ≥ 0 validation. Caller ověřuje supplier ownership.
+
+## Implementace fixů (2026-05-05) — souhrn
+
+- [x] **FA-P1-1** — XXE/billion-laughs reject v `IsdocParser` + `PohodaXmlParser`.
+- [x] **FA-P1-2** — Zip-bomb / file-size limity v `InvoiceImportService::unzip()`
+  + `ImportAction::collectFiles()`.
+- [x] **FA-P2-1** — `PublicApprovalDecideAction` neleakuje internal error.
+- [x] **FA-P2-2** — Header escape v `DownloadArchivedPdfAction`.
+- [x] **FA-P2-3** — Bulk reissue hard limit 200 IDs.
+
+## Nové PHPUnit testy
+
+- `IsdocParserTest` — 8 testů (happy path, DOCTYPE reject, billion-laughs,
+  proforma/credit_note/reverse_charge, malformed XML).
+- `PohodaXmlParserTest` — 7 testů (happy path, type mapping, DOCTYPE reject,
+  malformed XML, foreign currency).
+
+**Test:** 147 PHPUnit testů (290 assertions), všechny zelené (+15 nových).

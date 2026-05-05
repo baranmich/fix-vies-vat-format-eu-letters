@@ -116,10 +116,15 @@ final class PublicApprovalDecideAction
         } catch (\Throwable $e) {
             // Schválení proběhlo ale auto-send selhal — admin se o tom dozví z activity logu.
             // Klientovi vrátíme úspěch — ze strany klienta je vše OK.
+            // Důležité: NELEAKUJEME message ($e->getMessage()) ven — public endpoint může
+            // odhalit interní detaily (DB error, filesystem path, mailer error).
+            $this->logger->log('invoice.approval_auto_send_failed', null, 'invoice', $invoiceId, [
+                'error' => $e->getMessage(),
+                'by'    => 'public',
+            ], $ip, $ua);
             return Json::ok($response, [
-                'decision'        => 'approved',
-                'message'         => 'Výkaz byl schválen. Faktura bude obratem zaslána.',
-                'auto_send_error' => $e->getMessage(),
+                'decision' => 'approved',
+                'message'  => 'Výkaz byl schválen. Faktura bude obratem zaslána.',
             ]);
         }
 

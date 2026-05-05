@@ -38,10 +38,15 @@ final class PohodaXmlParser
      */
     public function parse(string $xml): array
     {
+        // XXE / billion-laughs hardening — viz IsdocParser.
+        if (preg_match('/<!DOCTYPE/i', $xml)) {
+            throw new \RuntimeException('Pohoda XML obsahuje DOCTYPE, což není povoleno.');
+        }
+
         $dom = new \DOMDocument();
         $dom->preserveWhiteSpace = false;
         $prev = libxml_use_internal_errors(true);
-        $loaded = $dom->loadXML($xml);
+        $loaded = $dom->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         libxml_clear_errors();
         libxml_use_internal_errors($prev);
         if (!$loaded || $dom->documentElement === null) {

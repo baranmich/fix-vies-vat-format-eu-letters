@@ -51,7 +51,10 @@ final class DownloadArchivedPdfAction
 
         $download = !empty($request->getQueryParams()['download']);
         $filename = basename($path);
-        $disposition = $download ? "attachment; filename=\"{$filename}\"" : "inline; filename=\"{$filename}\"";
+        // Defense-in-depth: filename pochází z DB (kontrolovaný formát), ale escapuj
+        // CR/LF/" pro jistotu (header injection / Content-Disposition split).
+        $safeFilename = preg_replace('/[\r\n"\\\\]/', '_', $filename);
+        $disposition = $download ? "attachment; filename=\"{$safeFilename}\"" : "inline; filename=\"{$safeFilename}\"";
 
         $user = (array) $request->getAttribute(AuthMiddleware::ATTR_USER, []);
         $ip = $this->ipMatcher->clientIpFromRequest($request->getServerParams());

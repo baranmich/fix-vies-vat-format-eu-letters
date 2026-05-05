@@ -29,6 +29,11 @@ use ZipArchive;
  */
 final class InvoiceImportService
 {
+    /** Bezpečnostní limity proti zip-bomb / DoS. */
+    private const MAX_ZIP_ENTRIES = 500;
+    private const MAX_TOTAL_UNCOMPRESSED_BYTES = 50 * 1024 * 1024; // 50 MiB
+    private const MAX_SINGLE_ENTRY_BYTES = 10 * 1024 * 1024;       // 10 MiB
+
     public function __construct(
         private readonly Connection $db,
         private readonly InvoiceRepository $invoices,
@@ -418,18 +423,43 @@ final class InvoiceImportService
             @unlink($tmp);
             throw new \RuntimeException('Nelze otevřít ZIP.');
         }
+        if ($zip->numFiles > self::MAX_ZIP_ENTRIES) {
+            $zip->close();
+            @unlink($tmp);
+            throw new \RuntimeException('ZIP obsahuje příliš mnoho souborů (max ' . self::MAX_ZIP_ENTRIES . ').');
+        }
+
         $out = [];
+        $totalBytes = 0;
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $stat = $zip->statIndex($i);
             if (!$stat) continue;
             $name = $stat['name'];
+            // Defense in depth — odmítni absolutní cesty / traversal v entry name
+            if ($name === '' || str_contains($name, '..') || str_starts_with($name, '/') || preg_match('/^[a-zA-Z]:/', $name)) {
+                continue;
+            }
             // Skip složky a non-XML/ISDOC
             if (str_ends_with($name, '/')) continue;
             $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
             if (!in_array($ext, ['xml', 'isdoc'], true)) continue;
+
+            $entrySize = (int) ($stat['size'] ?? 0);
+            if ($entrySize > self::MAX_SINGLE_ENTRY_BYTES) {
+                $zip->close();
+                @unlink($tmp);
+                throw new \RuntimeException("Položka {$name} v ZIP je příliš velká (max " . self::MAX_SINGLE_ENTRY_BYTES . " B).");
+            }
+            $totalBytes += $entrySize;
+            if ($totalBytes > self::MAX_TOTAL_UNCOMPRESSED_BYTES) {
+                $zip->close();
+                @unlink($tmp);
+                throw new \RuntimeException('Celková velikost ZIP po rozbalení překračuje povolený limit (zip-bomb ochrana).');
+            }
+
             $data = $zip->getFromIndex($i);
             if ($data !== false) {
-                $out[] = ['name' => $name, 'content' => $data];
+                $out[] = ['name' => basename($name), 'content' => $data];
             }
         }
         $zip->close();
