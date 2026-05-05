@@ -1,10 +1,10 @@
-# 8. Faktury — seznam a hromadné akce
+# 9. Faktury — seznam a hromadné akce
 
 Faktury jsou srdce systému. Tato kapitola popisuje **seznam faktur** a **hromadné
-akce**. Editaci jednotlivé faktury popisuje [9. Editor faktury](09_Faktura_editor.md),
-PDF a odeslání e-mailem [10. Faktura PDF](10_Faktura_PDF.md).
+akce**. Editaci jednotlivé faktury popisuje [10. Editor faktury](10_Faktura_editor.md),
+PDF a odeslání e-mailem [11. Faktura PDF](11_Faktura_PDF.md).
 
-## 8.1 Seznam faktur
+## 9.1 Seznam faktur
 
 V hlavním menu **Faktury**.
 
@@ -22,10 +22,10 @@ V každé skupině jsou faktury seřazené podle data vystavení (nejnovější 
 | Vystaveno | Datum vystavení |
 | Splatnost | Datum splatnosti — červeně pokud po dni a faktura není zaplacená |
 | Částka | Celková částka v měně faktury |
-| Stav | Barevný badge — viz § 8.2 |
+| Stav | Barevný badge — viz § 9.2 |
 | Akce | PDF, Detail, … |
 
-### 8.1.1 Filtry (vlevo)
+### 9.1.1 Filtry (vlevo)
 
 | Filtr | Hodnoty |
 |---|---|
@@ -37,7 +37,7 @@ V každé skupině jsou faktury seřazené podle data vystavení (nejnovější 
 | Období | Tento měsíc / minulý měsíc / tento rok / minulý rok / vlastní rozsah |
 | Hledat | Volný text — varsymbol, popis položky, jméno klienta |
 
-## 8.2 Stavy faktur
+## 9.2 Stavy faktur
 
 | Stav | Význam | Co lze udělat |
 |---|---|---|
@@ -53,7 +53,7 @@ V každé skupině jsou faktury seřazené podle data vystavení (nejnovější 
 > klienta a banky — pro změnu je třeba storno + nová faktura, nebo dobropis.
 > Admin má v krajní nouzi možnost editace s `?force=1` (s audit logem).
 
-## 8.3 Hromadné akce
+## 9.3 Hromadné akce
 
 Zaškrtni více faktur (checkbox). Nahoře se objeví lišta s akcemi:
 
@@ -71,7 +71,7 @@ Zaškrtni více faktur (checkbox). Nahoře se objeví lišta s akcemi:
 > klony do `issued`. Tím tě chrání před omylem; po klonování si v každé nové
 > projdi a klikni „Vystavit" ručně.
 
-### 8.3.1 Workflow měsíční retainer
+### 9.3.1 Workflow měsíční retainer
 
 Typický měsíc:
 
@@ -85,7 +85,7 @@ Typický měsíc:
 5. **Označím všechny → Odeslat klientovi**.
 6. **Hotovo** za 5 minut.
 
-## 8.4 Ikony stavu (legenda)
+## 9.4 Ikony stavu (legenda)
 
 V horní liště nad seznamem jsou ikony — klik přepne filtr na daný stav:
 
@@ -95,7 +95,7 @@ V horní liště nad seznamem jsou ikony — klik přepne filtr na daný stav:
 - 🔴 počet po splatnosti
 - 🟠 počet upomínkovaných
 
-## 8.5 Vyhledávání
+## 9.5 Vyhledávání
 
 Pole **Hledat** vlevo nahoře. Hledá v:
 
@@ -106,14 +106,14 @@ Pole **Hledat** vlevo nahoře. Hledá v:
 
 Funguje fulltext česky i anglicky.
 
-## 8.6 Tipy
+## 9.6 Tipy
 
 - **Nepoužívej hromadné odesílání bez review** — pokud máš v koncepcích
   drobné chyby (špatná částka, chybějící popis), pošlou se klientovi všechny
   najednou.
 - **„Označit zaplacené" je manuální fallback** — primárně se faktury označují
-  zaplacenými automaticky při importu bankovního výpisu (viz [11. Banka](11_Banka.md)).
+  zaplacenými automaticky při importu bankovního výpisu (viz [12. Banka](12_Banka.md)).
 - **Filtr „Po splatnosti"** je nejrychlejší způsob, jak zjistit, kdo dluží —
   klik na řádek a hned máš tlačítko **Upomínka**.
-- **Klik na číslo faktury** otevře [Detail faktury](10_Faktura_PDF.md).
+- **Klik na číslo faktury** otevře [Detail faktury](11_Faktura_PDF.md).
 - **Klik na ikonu PDF** stáhne přímo PDF (bez otvírání detailu).

@@ -1,4 +1,4 @@
-# 14. Více dodavatelů z jedné instalace
+# 16. Více dodavatelů z jedné instalace
 
 MyInvoice umožňuje fakturovat za **libovolný počet dodavatelů (firem / IČ)**
 z jedné instalace. Typické scénáře:
@@ -13,7 +13,7 @@ Data jsou **plně izolovaná** — klienti jednoho dodavatele nejsou viditelní
 pro druhého, faktury mají vlastní řadu varsymbolů, číselné cykly,
 e-mailové šablony atd.
 
-## 14.1 Jak to vidět v UI
+## 16.1 Jak to vidět v UI
 
 Po přihlášení se v horní liště zobrazí **přepínač dodavatele**:
 
@@ -28,7 +28,7 @@ Při přepnutí:
 - Pokud jsi byl na detailu / editoru entity, přesměruje na seznam (entita
   patří jinému dodavateli, neviděl bys ji)
 
-## 14.2 Přidání nového dodavatele
+## 16.2 Přidání nového dodavatele
 
 V hlavním menu **Systém → Dodavatelé**.
 
@@ -48,7 +48,7 @@ Tabulka:
 
 Tlačítko **+ Nový dodavatel** vpravo nahoře.
 
-### 14.2.1 Modal nového dodavatele
+### 16.2.1 Modal nového dodavatele
 
 ![Nový dodavatel — ARES](img/14_dodavatel_novy.webp)
 
@@ -63,7 +63,7 @@ Tlačítko **+ Nový dodavatel** vpravo nahoře.
 
 Po **Vytvořit** je dodavatel okamžitě v dropdownu, můžeš na něj přepnout.
 
-## 14.3 Co je per-dodavatel (izolované)
+## 16.3 Co je per-dodavatel (izolované)
 
 Každý dodavatel má vlastní:
 
@@ -77,7 +77,7 @@ Každý dodavatel má vlastní:
 - **From: jméno + Reply-To** v odchozích e-mailech
 - **Statistiky** (dashboard ukazuje data jen aktuálního dodavatele)
 
-## 14.4 Co je sdílené (cross-supplier)
+## 16.4 Co je sdílené (cross-supplier)
 
 - **Uživatelé + role** — uživatel vidí všechny dodavatele
 - **Číselníky** (DPH sazby, země) — společné systémové
@@ -86,25 +86,25 @@ Každý dodavatel má vlastní:
 - **SMTP konfigurace** — globální (`From:` jméno se ale řídí per-dodavatel)
 - **Cron skripty** — projedou všechny dodavatele
 
-## 14.5 Editace dodavatele
+## 16.5 Editace dodavatele
 
 **Systém → Dodavatelé → klik na řádek → Editovat**.
 
 Záložky:
 
-### 14.5.1 Základní údaje
+### 16.5.1 Základní údaje
 
 Stejné jako při založení (IČ, název, adresa, kontakt). Změna se projeví na
 NOVÝCH fakturách. Vystavené mají vlastní snapshot.
 
-### 14.5.2 E-mail branding
+### 16.5.2 E-mail branding
 
 | Pole | Význam |
 |---|---|
 | From: jméno | Jak se zobrazí odesílatel u příjemce („Faktury MyWebdesign" místo „myinvoice@server") |
 | Reply-To | Adresa pro odpověď klienta („fakturace@mywebdesign.cz") |
 
-### 14.5.3 Pohoda kódy
+### 16.5.3 Pohoda kódy
 
 | Pole | Význam | Příklad |
 |---|---|---|
@@ -113,15 +113,15 @@ NOVÝCH fakturách. Vystavené mají vlastní snapshot.
 | Činnost | `pohoda_activity_code` | `100` |
 | Předkontace | `pohoda_classification_code` | `300` |
 
-Viz [13. Exporty → § 13.4.2](13_Exporty.md).
+Viz [14. Exporty → § 13.4.2](14_Exporty.md).
 
-## 14.6 Smazání dodavatele
+## 16.6 Smazání dodavatele
 
 Zatím **není v UI** — vyžaduje SQL zásah z důvodu integrity (faktury,
 klienti, zakázky). Pokud potřebuješ, kontaktuj IT — `php api/bin/reset.php
 --supplier=N` (TODO).
 
-## 14.7 X-Supplier-Id v API
+## 16.7 X-Supplier-Id v API
 
 Aktuální dodavatel se posílá v každém API requestu jako header
 `X-Supplier-Id: N`. UI ho posílá z localStorage (`myinvoice.current_supplier_id`).
@@ -131,7 +131,7 @@ dodavatel = ten z setup wizardu.
 
 Pro programátory: viz `source/04-api.md` v repu.
 
-## 14.8 Tipy
+## 16.8 Tipy
 
 - **Při založení dodavatele použij ARES** — ušetří 5 minut opisování.
 - **Nevynechej Pohoda kódy** pokud plánuješ používat Pohoda XML export.

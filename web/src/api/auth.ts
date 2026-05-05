@@ -12,6 +12,7 @@ export interface SupplierBrief {
   id: number
   company_name: string
   ic: string | null
+  is_vat_payer: boolean
 }
 
 export interface SetupStatus {

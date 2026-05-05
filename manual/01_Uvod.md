@@ -42,4 +42,4 @@ externí cloud, tvoje data jsou jen u tebe.
 - Vývojářskou dokumentaci API → viz `source/04-api.md` v repu projektu
 - Detaily databázového schématu → viz `source/02-database.md`
 - Specifikace jednotlivých formátů (ISDOC, Pohoda XML) → odkaz v
-  [13. Exporty](13_Exporty.md)
+  [14. Exporty](14_Exporty.md)

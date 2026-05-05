@@ -66,7 +66,7 @@ zachytí.)
   - `> 💡 Tip: ...` — užitečný tip
   - `> 🛈 Pozn: ...` — poznámka (info)
   - `> ⚠️ Pozor: ...` — varování / důležité
-- **Cross-reference**: `[Detail klienta](06_Klienti.md)` — generátor přepíše na
+- **Cross-reference**: `[Detail klienta](07_Klienti.md)` — generátor přepíše na
   `?ch=06_Klienti`
 
 ## Servírování

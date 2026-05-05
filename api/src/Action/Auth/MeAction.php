@@ -24,10 +24,11 @@ final class MeAction
         $currentSupplierId = (int) $request->getAttribute(SupplierScopeMiddleware::ATTR_CURRENT_ID, 0);
 
         $suppliers = $this->db->pdo()->query(
-            'SELECT id, company_name, ic FROM supplier ORDER BY id'
+            'SELECT id, company_name, ic, is_vat_payer FROM supplier ORDER BY id'
         )->fetchAll(\PDO::FETCH_ASSOC);
         foreach ($suppliers as &$s) {
-            $s['id'] = (int) $s['id'];
+            $s['id']           = (int) $s['id'];
+            $s['is_vat_payer'] = (bool) $s['is_vat_payer'];
         }
 
         return Json::ok($response, [

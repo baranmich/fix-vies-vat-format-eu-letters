@@ -1,4 +1,4 @@
-# 14. Importy (Pohoda XML, ISDOC)
+# 15. Importy (Pohoda XML, ISDOC)
 
 Pokud máš historické vystavené faktury v jiném systému (Pohoda, jiný fakturační
 software podporující ISDOC), můžeš je do MyInvoice **naimportovat** — nemusíš
@@ -8,7 +8,7 @@ je opisovat ručně.
 > jiné firmy). Dodavatel ve vstupním souboru se musí shodovat s aktuálně
 > zvoleným dodavatelem v aplikaci.
 
-## 14.1 Obrazovka importů
+## 15.1 Obrazovka importů
 
 V hlavním menu **Systém → Importy**.
 
@@ -20,7 +20,7 @@ Formulář:
   - `.zip` s libovolným počtem `.xml` / `.isdoc` uvnitř
 - **Importovat** — odešle a vrátí report (kolik vytvořeno / přeskočeno / chyba).
 
-## 14.2 Co se založí
+## 15.2 Co se založí
 
 Pro každou fakturu v souboru:
 
@@ -30,7 +30,7 @@ Pro každou fakturu v souboru:
 | **Zakázka** | Když má faktura `číslo zakázky` (ISDOC `OrderReference/ID`, Pohoda `numberOrder`), přiřadí se k zakázce s tím číslem (vytvoří se, pokud chybí). Pokud nemá číslo zakázky, ale klient má v importovaném balíku **více různých e-mailů**, vytvoří se per-email zakázka s názvem `{Firma} – {email}`. Jinak `bez zakázky`. |
 | **Faktura** | Přepíše se do `invoices` se zachovaným původním varsymbolem. Položky, sazby DPH, kurz, měna se převezmou. Snapshoty (klient/dodavatel/banka) se zafixují z aktuálních dat. |
 
-## 14.3 Stav (paid vs issued) — pravidlo 30 dní
+## 15.3 Stav (paid vs issued) — pravidlo 30 dní
 
 Aby ses nemusel po importu zabývat starými fakturami:
 
@@ -41,14 +41,14 @@ Aby ses nemusel po importu zabývat starými fakturami:
   uloží jako **Vystavená**. Můžeš platbu spárovat standardním flow přes
   bankovní výpis nebo ručně označit jako zaplacenou.
 
-## 14.4 Co se přeskočí
+## 15.4 Co se přeskočí
 
 - **Cizí dodavatel** — celý soubor se přeskočí, pokud IČ dodavatele v souboru
   neodpovídá aktuálnímu dodavateli v aplikaci. (Hláška v reportu.)
 - **Duplicita** — pokud faktura s daným varsymbolem u tohoto dodavatele už
   existuje, přeskočí se. V reportu se zobrazí důvod a id existující faktury.
 
-## 14.5 Report
+## 15.5 Report
 
 Po importu vidíš tabulku:
 
@@ -59,14 +59,14 @@ Po importu vidíš tabulku:
 | Var. symbol | Z faktury |
 | Detail | Link na vytvořenou fakturu, badge `paid`/`issued`, štítky `+ klient` / `+ zakázka` (pokud něco vzniklo). U přeskočených/chybných: důvod. |
 
-## 14.6 Tipy
+## 15.6 Tipy
 
 - **Před importem nahraj klienty z ARES** — ne nutné, ale pokud máš čas, můžeš
   je založit ručně se správnou výchozí měnou a paušálem; import pak jen použije
   existující ID a nebude tahat ARES.
 - **Pohoda → MyInvoice** — exportuj v Pohodě data balíček (XML), nahraj sem.
   Pohoda neukládá `číslo zakázky` per fakturu, takže se importují bez zakázky
-  (pokud klient nemá více emailů — viz § 14.2).
+  (pokud klient nemá více emailů — viz § 15.2).
 - **Multi-supplier** — přepni v aplikaci na cílového dodavatele předtím, než
   spustíš import. IČ z XML se ověří proti tomuto kontextu.
 - **Co dělat, když import vyhodí chybu** — soubor zkontroluj v textovém

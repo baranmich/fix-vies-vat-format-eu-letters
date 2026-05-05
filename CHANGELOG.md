@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] — 2026-05-05
+
+### Added
+
+- **Neplátce DPH — adaptivní UI a PDF.** Když je dodavatel neplátce
+  (`Nastavení → Dodavatel → není plátce DPH`), editor faktury, detail i PDF
+  vykreslují fakturu **bez DPH sloupců, bez RC checkboxu a bez sumace DPH**:
+  - Editor: skrytý sloupec „DPH %" v tabulce položek (desktop i mobile),
+    skrytá sumace DPH, skrytý RC checkbox; nové položky se interně ukládají
+    s 0% sazbou (`CZ-0` Osvobozeno).
+  - Detail: stejné gating — místo „S DPH" sloupce se ukáže „Celkem".
+  - PDF: tabulka položek má 5 sloupců (Popis, Mn., Jed., Cena/j, Celkem)
+    místo 7; sumace zobrazí jen `Celkem` bez rozpisu sazeb.
+  - Live totals i serverový výpočet vynucují 0 % VAT pro neplátce.
+- **Manuál — kapitola „Fakturujeme — daňový průvodce"** ([§ 6](manual/06_Fakturujeme.md)).
+  Praktický průvodce: plátce vs. neplátce DPH, sazby (`CZ-21/12/0/RC`),
+  reverse charge (kdy + jak), zahraniční fakturace + OSS limitace
+  (workaround pro SK 23 %), explicit hranice scope aplikace, doporučení
+  konzultace s účetní.
+- **`tools/renumberManual.php`** — skript pro přečíslování `manual/*.md`.
+  Sekvenčně přejmenuje soubory, přepíše H1/H2/§-refy v textu, cross-linky
+  (path + label + anchor) a aktualizuje `INDEX.md`, `manual/README.md`
+  a root `README.md`. Default dry-run, `--apply` pro commit.
+
+### Changed
+
+- **VIES parser CZ/SK adres** — drop trailing country line („Slovensko",
+  „Česká republika" …), podpora SK PSČ formátu `82108` (5 číslic bez mezery),
+  strip suffixu „— mestská časť …" z města. Self-repair starších cached
+  záznamů s `parsed:null`.
+- **VIES doplnění klienta** — když parser adresy selže, vyplní se aspoň
+  jméno firmy a země z VIES (dříve gate `result.parsed` blokoval i tato pole).
+- **Editor faktury — Reverse Charge default sazba.** Při zaškrtnutí RC
+  checkboxu (nebo při výběru klienta s RC) se všem položkám nastaví sazba
+  `CZ-RC` (0 % Reverse charge) místo `CZ-21`. Edit-mode loaded faktur
+  zůstává nedotčen.
+- **RC checkbox visibility** — viditelný jen když má vybraný klient v profilu
+  `reverse_charge: true` (nebo když není ještě zvolený klient).
+- **Manuál přečíslován** — kapitola „Fakturujeme" jako 6, ostatní posunuté
+  (`07_Klienti`, …, `18_Bezpecnost`, FAQ zůstává `99`); sjednocená řada bez
+  vsuvek `5a_` a `13a_`.
+- **`/auth/me`** — vrací `is_vat_payer` v seznamu suppliers (frontend store
+  potřebuje pro UI gating).
+
+### Fixed
+
+- **Manuál § 18.2 (2FA) — odstraněna nepravdivá pasáž** o 8 záložních
+  jednorázových kódech. Recovery codes nejsou implementované; postup při
+  ztrátě telefonu je SQL `UPDATE users SET totp_enabled=0, totp_secret=NULL`.
+  Zmíněný `api/bin/2fa-disable.php` script také neexistuje, FAQ § 99.1
+  upraveno odpovídajícím způsobem.
+
 ## [1.8.0] — 2026-05-04
 
 ### Added

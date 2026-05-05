@@ -17,6 +17,11 @@ Vyvíjí **[MyWebdesign.cz s.r.o.](https://mywebdesign.cz/)**
 
 📖 **Online dokumentace: [MyInvoice.cz/manual](https://myinvoice.cz/manual/)**
 
+> ⚠️ **Než začneš fakturovat — přečti si [Fakturujeme — daňový průvodce](manual/06_Fakturujeme.md).**
+> Vysvětluje, jak aplikace pracuje s plátci/neplátci DPH, sazbami, reverse charge,
+> kde má aplikace limitace (OSS, SK 23 %) a jak je obejít. **Správnost faktury
+> je vždy na uživateli — pro nestandardní situace konzultuj účetní.**
+
 ![Přehled (dashboard)](manual/img/01_dashboard.webp)
 
 ---

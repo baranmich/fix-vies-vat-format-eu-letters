@@ -1,10 +1,10 @@
-# 10. Faktura — PDF, QR platba, odeslání e-mailem
+# 11. Faktura — PDF, QR platba, odeslání e-mailem
 
 Vystavená faktura má **immutable PDF** — vygeneruje se v okamžiku vystavení a
 od té chvíle se nemění (snapshot dodavatele, klienta, banky). Tím se zajišťuje
 neměnnost dokladu i kdybyste si v Nastavení změnil adresu nebo bankovní účet.
 
-## 10.1 Detail faktury
+## 11.1 Detail faktury
 
 Klik na číslo faktury v seznamu otevře detail.
 
@@ -18,7 +18,7 @@ Detail ukazuje:
 - **Activity log** — kdo a kdy fakturu vytvořil / vystavil / odeslal / označil
   zaplacenou
 
-### 10.1.1 Akční tlačítka (vpravo nahoře)
+### 11.1.1 Akční tlačítka (vpravo nahoře)
 
 Závisí na stavu faktury:
 
@@ -32,7 +32,7 @@ Závisí na stavu faktury:
 > 💡 **Test odeslání / Test upomínky** — pošle e-mail jen na **tvůj** e-mail
 > (ne klientovi). Užitečné pro vyzkoušení šablony nebo SMTP konfigurace.
 
-## 10.2 PDF struktura
+## 11.2 PDF struktura
 
 Vygenerované PDF obsahuje:
 
@@ -48,7 +48,7 @@ Vygenerované PDF obsahuje:
 10. **Patičku** — text z Nastavení dodavatele (volitelný)
 11. **(volitelně) 2. strana** — Výkaz víceprací
 
-### 10.2.1 Přepočet do CZK (faktury v cizí měně)
+### 11.2.1 Přepočet do CZK (faktury v cizí měně)
 
 Pokud je faktura v jiné měně než CZK, PDF obsahuje navíc:
 
@@ -60,9 +60,9 @@ Kurz se ukládá na fakturu v okamžiku **prvního uložení** a nemění se ani
 vystavení, ani po editaci items (pokud se nezmění `issue_date` nebo měna).
 Pokud je faktura starší a nemá zafixovaný kurz (legacy data), MyInvoice ho
 **doplní automaticky** při příštím otevření detailu nebo PDF (cache → ČNB →
-poslední známý). Detail viz [§ 9.4.2 Faktura v cizí měně](09_Faktura_editor.md#942-faktura-v-cizí-měně-eur--usd---přepočet-do-czk).
+poslední známý). Detail viz [§ 10.4.2 Faktura v cizí měně](10_Faktura_editor.md#1042-faktura-v-cizí-měně-eur--usd---přepočet-do-czk).
 
-## 10.3 QR platba
+## 11.3 QR platba
 
 ![QR platba na PDF](img/10_qr_platba.webp)
 
@@ -91,9 +91,9 @@ QR obsahuje:
 > **EUR/SEPA koncepty mají QR i bez VS** — užitečné pro náhled klientovi
 > před vystavením.
 
-## 10.4 Odeslání e-mailem
+## 11.4 Odeslání e-mailem
 
-### 10.4.1 Manuální odeslání
+### 11.4.1 Manuální odeslání
 
 Tlačítko **Odeslat e-mailem** (na detailu faktury). E-mail jde na:
 
@@ -101,19 +101,19 @@ Tlačítko **Odeslat e-mailem** (na detailu faktury). E-mail jde na:
 - `+ zakazka.fakturacni_emaily[]` (až 3 dodatečné adresy)
 
 Předmět + tělo e-mailu se vezme ze šablony `invoice_new` (CZ / EN podle jazyka
-klienta) — viz [15. Nastavení → § 15.5](15_Nastaveni.md).
+klienta) — viz [17. Nastavení → § 15.5](17_Nastaveni.md).
 
 Po odeslání:
 
 - Status faktury → `sent`
 - V activity logu záznam `invoice.sent` s adresami příjemců
 
-### 10.4.2 Hromadné odeslání
+### 11.4.2 Hromadné odeslání
 
-Z [Seznamu faktur](08_Faktury.md) vybereš více faktur a klikneš **Odeslat
+Z [Seznamu faktur](09_Faktury.md) vybereš více faktur a klikneš **Odeslat
 klientovi (N)** — bulk action.
 
-### 10.4.3 Odesílatel a Reply-To
+### 11.4.3 Odesílatel a Reply-To
 
 Per dodavatel lze nastavit:
 
@@ -123,7 +123,7 @@ Per dodavatel lze nastavit:
 
 Nastavuje se v **Systém → Dodavatelé → [tvůj dodavatel] → Editovat**.
 
-## 10.5 Editace vystavené faktury (admin only)
+## 11.5 Editace vystavené faktury (admin only)
 
 V krajní nouzi (admin udělal v vystavené faktuře překlep, klient ji ještě
 nedostal):
@@ -137,7 +137,7 @@ nedostal):
 > mohou být rozpor s tím, co klient dostal e-mailem. Preferuj **storno + nová
 > faktura** nebo **dobropis**.
 
-## 10.6 Změna bankovního účtu po vystavení
+## 11.6 Změna bankovního účtu po vystavení
 
 Pokud změníš bankovní účet v **Systém → Číselníky → Měny**, automaticky se
 **invalidují PDF všech faktur**, které renderují bank info live (drafty +
@@ -147,7 +147,7 @@ už dostal).
 
 V activity logu uvidíš `currency.updated` s počtem invalidovaných PDF.
 
-## 10.7 Tipy
+## 11.7 Tipy
 
 - **PDF náhled v iframe na detailu** se neobnoví automaticky po editaci —
   refreshni stránku (F5).

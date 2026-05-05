@@ -1,10 +1,10 @@
-# 9. Faktura — editor a výkaz víceprací
+# 10. Faktura — editor a výkaz víceprací
 
 Editor faktury slouží k tvorbě nového konceptu nebo úpravě existujícího.
 Otevře se přes **+ Nová faktura** (z dashboardu), **Faktury → Nová faktura**,
 nebo z detailu klienta / zakázky.
 
-## 9.1 Editor — celkový přehled
+## 10.1 Editor — celkový přehled
 
 ![Editor faktury](img/09_editor.webp)
 
@@ -14,9 +14,9 @@ Editor je rozdělený na tři bloky:
 2. **Položky** (střed) — řádky faktury
 3. **Sumář a akce** (vpravo nahoře + dole) — částky, sleva, tlačítka
 
-## 9.2 Hlavička
+## 10.2 Hlavička
 
-### 9.2.1 Typ dokladu
+### 10.2.1 Typ dokladu
 
 | Typ | Popis | Variabilní symbol |
 |---|---|---|
@@ -25,7 +25,7 @@ Editor je rozdělený na tři bloky:
 | **Dobropis (opravný daňový doklad)** | Záporné částky, stornuje původní fakturu | `7` + YYMMNNN — `72605001` |
 | **Storno (interní)** | Pouze interní označení, nevystavuje se klientovi | (bez prefixu) |
 
-### 9.2.2 Klient + Zakázka
+### 10.2.2 Klient + Zakázka
 
 - **Klient** (povinný) — vyber z dropdownu, vyhledávání podle jména / IČ.
 - **Zakázka** (volitelná) — pokud klient má zakázky, dropdown nabídne jen jeho
@@ -34,7 +34,7 @@ Editor je rozdělený na tři bloky:
 > ⚠️ Pokud změníš klienta uprostřed editace, zakázka se vyresetuje (původní
 > patřila jinému klientovi).
 
-### 9.2.3 Data
+### 10.2.3 Data
 
 | Pole | Význam |
 |---|---|
@@ -43,13 +43,13 @@ Editor je rozdělený na tři bloky:
 | Splatnost | Datum splatnosti — automaticky vypočítáno z `vystaveno + splatnost zakázky` (nebo klienta nebo systému) |
 | Datum úhrady | Vyplní se automaticky při zaplacení (přes banku nebo manuálně) |
 
-### 9.2.4 Měna a DPH
+### 10.2.4 Měna a DPH
 
 - **Měna** — předvyplní se z klienta (nebo zakázky), lze přepsat.
 - **Reverse charge** — checkbox; pokud zatržené, faktura bude bez DPH s textem
   „Daň přiznává odběratel". Předvyplní se z klienta.
 
-## 9.3 Položky
+## 10.3 Položky
 
 Tabulka řádků faktury. Tlačítko **+ Přidat položku** přidá nový řádek.
 
@@ -62,17 +62,17 @@ Tabulka řádků faktury. Tlačítko **+ Přidat položku** přidá nový řáde
 | DPH | Sazba — `21 %`, `12 %`, `0 %` (osvobozeno), `RC` (reverse charge) |
 | Celkem | Auto-počítáno (množství × cena/jed.) |
 
-### 9.3.1 Drag & drop pořadí
+### 10.3.1 Drag & drop pořadí
 
 Levým úchytem (☰) přetáhni položky pro změnu pořadí. Pořadí se zachová
 v PDF.
 
-### 9.3.2 Smazání položky
+### 10.3.2 Smazání položky
 
-Křížek vpravo. Pokud položka je propojená s výkazem víceprací (viz § 9.6),
+Křížek vpravo. Pokud položka je propojená s výkazem víceprací (viz § 10.6),
 smazání se zeptá, jestli i smazat výkaz.
 
-## 9.4 Sumář (vpravo)
+## 10.4 Sumář (vpravo)
 
 Automaticky se přepočítává:
 
@@ -86,7 +86,7 @@ Automaticky se přepočítává:
 > `0 % (RC)` znamená reverse charge (přenesená daňová povinnost). Sazby mají
 > stejné procento, ale jiný legislativní význam — vybírej dle situace.
 
-### 9.4.1 Sleva
+### 10.4.1 Sleva
 
 Pole **Sleva** podporuje:
 
@@ -94,7 +94,7 @@ Pole **Sleva** podporuje:
 - `1500` → absolutní sleva v měně faktury
 - `1500 Kč` → totéž
 
-### 9.4.2 Faktura v cizí měně (EUR / USD / …) — přepočet do CZK
+### 10.4.2 Faktura v cizí měně (EUR / USD / …) — přepočet do CZK
 
 Pokud je faktura v jiné měně než CZK, MyInvoice po **uložení** automaticky
 stáhne denní devizový kurz **z ČNB** a uloží ho na fakturu. Kurz se použije
@@ -127,7 +127,7 @@ Zaokrouhlování CZK přepočtu: **HALF_UP, 2 desetinná místa, zvlášť per s
   podbarvení), plus drobná řádka „Kurz ČNB: X CZK / 1 EUR (datum)"
 - **Editor (re-edit)** — informativní řádka pod totály s použitým kurzem
 
-## 9.5 Tlačítka
+## 10.5 Tlačítka
 
 | Tlačítko | Funkce |
 |---|---|
@@ -138,14 +138,14 @@ Zaokrouhlování CZK přepočtu: **HALF_UP, 2 desetinná místa, zvlášť per s
 | **Smazat koncept** | Jen pro `draft` — nelze smazat vystavenou |
 | **Klonovat** | Vytvoří nový koncept jako kopii (kapitola 8 „Vystavit znovu") |
 
-## 9.6 Výkaz víceprací (work report)
+## 10.6 Výkaz víceprací (work report)
 
 Pokud fakturuješ za **hodiny**, můžeš ke každé hodinové položce přidat detailní
 výkaz, který se vytiskne na **2. stranu PDF**.
 
 ![Výkaz víceprací](img/09_vykaz_vicepraci.webp)
 
-### 9.6.1 Aktivace
+### 10.6.1 Aktivace
 
 V editoru klikni na šedou ikonu „Přidat výkaz víceprací" v řádku položky.
 Zobrazí se modal/sekce:
@@ -161,7 +161,7 @@ Zobrazí se modal/sekce:
 Přidej řádky → tlačítko **Uložit výkaz**. Suma hodin × sazba se přenese do
 hlavní položky faktury (pole „Množství" + „Cena/jed.").
 
-### 9.6.2 PDF výstup
+### 10.6.2 PDF výstup
 
 Druhá strana PDF má formát:
 
@@ -179,15 +179,15 @@ Druhá strana PDF má formát:
 +--------------------------------------------------+
 ```
 
-### 9.6.3 Smazání výkazu
+### 10.6.3 Smazání výkazu
 
 V editoru klik na ikonu odpojit (řetěz). Položka faktury zůstane, ale ztratí
 detailní rozpis.
 
-## 9.7 Schvalování výkazu zákazníkem
+## 10.7 Schvalování výkazu zákazníkem
 
 Pokud má zakázka zapnuté **„Vyžaduje schválení výkazu práce zákazníkem"** (viz
-[§ 7.6](07_Zakazky.md)) a faktura obsahuje výkaz víceprací, faktura **nepůjde
+[§ 8.6](08_Zakazky.md)) a faktura obsahuje výkaz víceprací, faktura **nepůjde
 vystavit**, dokud zákazník výkaz neschválí přes e-mailový odkaz. Po schválení
 se faktura **automaticky vystaví a odešle**.
 
@@ -203,7 +203,7 @@ V detailu faktury se objeví:
 - Tlačítko **„Změnit stav"** (jen admin) — manuální override pro případy
   schválení mimo systém (telefonem, mailem mimo aplikaci)
 
-### 9.7.1 Workflow
+### 10.7.1 Workflow
 
 1. Vytvoříš **draft fakturu** s výkazem víceprací na zakázce, která vyžaduje
    schválení.
@@ -231,13 +231,13 @@ V detailu faktury se objeví:
    - Faktura zůstává jako draft — můžeš výkaz upravit a poslat znovu
      ke schválení (vygeneruje se nový token, předchozí ztrácí platnost)
 
-### 9.7.2 Test schválení
+### 10.7.2 Test schválení
 
 Pro náhled e-mailu před produkčním odesláním klikni **„Test schválení"** v
 sekci Další akce — e-mail půjde **na adresu aktuálního dodavatele**, link
 v něm vede na placeholder, který nic neudělá. Slouží jen ke kontrole vzhledu.
 
-### 9.7.3 Manuální změna stavu (admin)
+### 10.7.3 Manuální změna stavu (admin)
 
 Pokud zákazník schválil mimo systém (telefonem, e-mailem), admin může v sekci
 „Schválení výkazu zákazníkem" kliknout **„Změnit stav"** a vybrat:
@@ -251,7 +251,7 @@ Pokud zákazník schválil mimo systém (telefonem, e-mailem), admin může v se
 > ⚠️ Stav „Vyžádán" v dropdownu chybí — k němu vede jen tlačítko „Odeslat ke
 > schválení", které generuje token a posílá e-mail. Ručně se nedá nastavit.
 
-### 9.7.4 Bezpečnost
+### 10.7.4 Bezpečnost
 
 - **Token je jednorázový** — po schválení/zamítnutí přestane platit. Druhý
   klik na e-mailový odkaz vrátí „Tento odkaz byl již použit nebo není platný".
@@ -264,7 +264,7 @@ Pokud zákazník schválil mimo systém (telefonem, e-mailem), admin může v se
   `approval_rejected`, `approval_reset`) se zapíše do activity logu faktury
   včetně IP a user-agenta.
 
-## 9.8 Zálohová faktura → daňový doklad
+## 10.8 Zálohová faktura → daňový doklad
 
 Workflow:
 
@@ -275,7 +275,7 @@ Workflow:
 4. Vytvoří se **daňový doklad** typu „Faktura" s automatickým **odečtem
    zaplacené zálohy** (záporná položka „Odpočet zálohy 92605001").
 
-## 9.9 Storno vs. dobropis
+## 10.9 Storno vs. dobropis
 
 Pokud zjistíš, že vystavená faktura je špatně:
 
@@ -286,7 +286,7 @@ Pokud zjistíš, že vystavená faktura je špatně:
   položkami, který klientovi pošleš jako oficiální opravu. Účetně správné, ale
   vyžaduje, abys měl s klientem komunikaci o tom, co a proč.
 
-## 9.10 Tipy
+## 10.10 Tipy
 
 - **Vždy uložené jako koncept** — Ctrl+S kdykoli uloží rozpracovanou fakturu.
 - **Klonování zachová položky i výkaz víceprací** — datum se aktualizuje na

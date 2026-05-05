@@ -1,4 +1,4 @@
-# 16. Bezpečnost (2FA, IP allowlist, role, activity log)
+# 18. Bezpečnost (2FA, IP allowlist, role, activity log)
 
 Bezpečnost MyInvoice stojí na 4 vrstvách:
 
@@ -8,7 +8,7 @@ Bezpečnost MyInvoice stojí na 4 vrstvách:
 4. **Autorizace** — role-based access (admin / accountant / readonly)
 5. **Audit** — activity log všech mutací
 
-## 16.1 Hesla
+## 18.1 Hesla
 
 | Vrstva | Detail |
 |---|---|
@@ -22,11 +22,11 @@ Bezpečnost MyInvoice stojí na 4 vrstvách:
 > 💡 **Passphrase je bezpečnější než krátké složité heslo.** „korelace medvědí
 > dýně přístav 2026" má 49 znaků a je odolnější vůči brute-force než „Hu1@n!22".
 
-## 16.2 Dvoufaktorové ověření (TOTP)
+## 18.2 Dvoufaktorové ověření (TOTP)
 
 TOTP = time-based one-time password (RFC 6238). Nejznámější standard pro 2FA.
 
-### 16.2.1 Aktivace
+### 18.2.1 Aktivace
 
 **Můj profil → 2FA → Aktivovat**.
 
@@ -37,35 +37,38 @@ TOTP = time-based one-time password (RFC 6238). Nejznámější standard pro 2FA
    Authenticator, 1Password, Bitwarden) → Přidat účet → Sken QR kódu.
 3. Aplikace začne generovat 6-cifrené kódy každých 30 sekund.
 4. Zadej aktuální kód do MyInvoice → **Potvrdit aktivaci**.
-5. Aplikace zobrazí **8 záložních kódů** — **ULOŽ JE** (password manager).
-   Slouží pro přihlášení, kdyby telefon ztratíš.
 
-### 16.2.2 Přihlášení s 2FA
+> ⚠️ MyInvoice **nepoužívá záložní jednorázové kódy** (recovery codes).
+> Při ztrátě autentikátoru se 2FA musí deaktivovat ručně v databázi —
+> viz [§ 18.2.3](#1823-ztrata-telefonu--deaktivace).
+
+### 18.2.2 Přihlášení s 2FA
 
 Po zadání e-mailu + hesla aplikace vyzve k 6-cifernému kódu z autentikátoru.
 
 ![2FA výzva](img/04_2fa.webp)
 
-Alternativně **Použít záložní kód** — odkaz pod inputem. Zadej jeden ze 8
-zálohovaných kódů. Po použití je **nepoužitelný** (jednorázové).
+Pokud autentikátor nemáš po ruce, nezbývá než provést deaktivaci v DB
+(následující sekce).
 
-### 16.2.3 Deaktivace
+### 18.2.3 Ztráta telefonu / deaktivace
 
-**Můj profil → 2FA → Deaktivovat** — vyžaduje aktuální heslo + aktuální TOTP
-kód. Po deaktivaci se mažou jak secret, tak záložní kódy.
+Aplikace nemá UI pro deaktivaci 2FA — uděláš to přímo v databázi:
 
-### 16.2.4 Ztráta telefonu
+```sql
+UPDATE users
+SET totp_enabled = 0, totp_secret = NULL
+WHERE email = 'tvuj@email.cz';
+```
 
-Pokud nemáš ani autentikátor, ani záložní kódy:
+Po tomto SQL se přihlásíš jen s heslem a 2FA si můžeš znovu aktivovat na
+novém telefonu (Můj profil → 2FA → Aktivovat).
 
-1. Požádej admina, aby ti deaktivoval 2FA z CLI: `php api/bin/2fa-disable.php tvuj@email.cz`.
-2. Pak normálně přihlásíš s heslem.
-3. Aktivuj 2FA znovu na novém telefonu.
+> ⚠️ Pro produkční nasazení doporučujeme mít k DB přístup přes admin
+> (phpMyAdmin / Adminer / mysql CLI) připravený předem. Při ztrátě telefonu
+> by jinak nikdo nešel do aplikace.
 
-> ⚠️ Záložní kódy si vytiskni nebo si je dej do password manageru.
-> Jinak při ztrátě telefonu se musí řešit přes admina.
-
-## 16.3 Brute-force ochrana
+## 18.3 Brute-force ochrana
 
 | Pokusy během | Akce |
 |---|---|
@@ -75,7 +78,7 @@ Pokud nemáš ani autentikátor, ani záložní kódy:
 
 Implementace: **Redis** pokud běží, jinak **MariaDB MEMORY engine** fallback.
 
-## 16.4 IP allowlist (volitelné)
+## 18.4 IP allowlist (volitelné)
 
 V `cfg.php → ip_allowlist.allow` můžeš omezit přístup jen na vybrané IP /
 CIDR rozsahy.
@@ -102,7 +105,7 @@ Doporučení v produkci:
 > deploy. Není v UI **schválně** — v případě omylu by ses zablokoval
 > a nemohl si ho přes UI sundat.
 
-## 16.5 RBAC (role-based access)
+## 18.5 RBAC (role-based access)
 
 Tři role:
 
@@ -115,7 +118,7 @@ Tři role:
 Per endpoint je v API kódu definovaná minimální role. UI se podle aktuální
 role uživatele schovává tlačítka, na která nemá nárok.
 
-## 16.6 CSRF + Origin check
+## 18.6 CSRF + Origin check
 
 Každý mutating request (POST / PUT / PATCH / DELETE) musí mít:
 
@@ -125,7 +128,7 @@ Každý mutating request (POST / PUT / PATCH / DELETE) musí mít:
 Bez nich → 403 `csrf_failed` / `origin_mismatch`. UI to obsluhuje
 automaticky (token v Pinia store, header v axios interceptoru).
 
-## 16.7 Activity log
+## 18.7 Activity log
 
 Každá mutace (vytvoření / změna / vystavení / smazání) se loguje. Záznamy
 obsahují:
@@ -140,15 +143,15 @@ obsahují:
   u `client.updated`)
 - Datum + čas
 
-Viz [15. Nastavení → § 15.6](15_Nastaveni.md) pro UI.
+Viz [17. Nastavení → § 15.6](17_Nastaveni.md) pro UI.
 
-### 16.7.1 Co log NEUKLÁDÁ
+### 18.7.1 Co log NEUKLÁDÁ
 
 - **Hesla** — ani staré, ani nové
 - **PII klientů** mimo to, co bylo změněno (jen fields seznam, ne hodnoty)
 - **Bankovní transakce** — log obsahuje jen ID importovaného výpisu
 
-## 16.8 DKIM podpis e-mailů
+## 18.8 DKIM podpis e-mailů
 
 Pro **deliverabilitu** (aby gmail / o365 / seznam tvé maily nepoznačily jako
 spam) doporučujeme aktivovat DKIM:
@@ -160,12 +163,12 @@ spam) doporučujeme aktivovat DKIM:
 
 Detaily v `README.md` v rootu repa.
 
-## 16.9 Bezpečnostní audit
+## 18.9 Bezpečnostní audit
 
 V `source/07-security-audit.md` najdeš výsledky interního auditu — všechny
 identifikované findings (P1/P2/P3) jsou vyřešené nebo odůvodněně vynechané.
 
-## 16.10 Tipy
+## 18.10 Tipy
 
 - **Vždycky 2FA pro admin** — pokud admin účet padne, padá vše. Žádná výmluva.
 - **Pravidelně rotuj hesla** každých 6–12 měsíců.

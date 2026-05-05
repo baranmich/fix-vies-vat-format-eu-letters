@@ -1,11 +1,11 @@
-# 6. Klienti
+# 7. Klienti
 
 Klient = firma nebo osoba, které vystavuješ faktury. Každý klient má alespoň
 jeden hlavní e-mail (povinný kontakt). Pod klientem můžeš mít jednu nebo více
-**zakázek** (viz [7. Zakázky](07_Zakazky.md)) — typicky 1 zakázka = 1 projekt
+**zakázek** (viz [8. Zakázky](08_Zakazky.md)) — typicky 1 zakázka = 1 projekt
 nebo dlouhodobá spolupráce.
 
-## 6.1 Seznam klientů
+## 7.1 Seznam klientů
 
 V hlavním menu klikni **Klienti**.
 
@@ -24,13 +24,13 @@ Tabulka ukazuje:
 
 Nad tabulkou je vyhledávač (jméno / IČ) a filtr stavu (`Aktivní` / `Archivovaní`).
 
-### 6.1.1 Akce na řádku
+### 7.1.1 Akce na řádku
 
 - **Klik na jméno** → detail klienta
 - **Tlačítko Smazat** se zobrazí jen pokud klient nemá žádné faktury ani zakázky.
   Pokud má, smazání vrátí 409 a UI tlačítko skryje.
 
-## 6.2 Nový klient
+## 7.2 Nový klient
 
 Tlačítko **+ Nový klient** vpravo nahoře otevře modal.
 
@@ -49,7 +49,7 @@ Doporučený postup pro českého klienta:
    s textem „Daň přiznává odběratel".
 7. **Uložit**.
 
-### 6.2.1 Pole formuláře
+### 7.2.1 Pole formuláře
 
 | Pole | Význam |
 |---|---|
@@ -67,7 +67,7 @@ Doporučený postup pro českého klienta:
 | Splatnost (dny) | Volitelný override (jinak default 7 dní) |
 | Poznámka | Interní text — nezobrazí se na faktuře |
 
-## 6.3 Detail klienta
+## 7.3 Detail klienta
 
 Klik na jméno v seznamu → detail.
 
@@ -75,26 +75,26 @@ Klik na jméno v seznamu → detail.
 
 Detail má 4 záložky:
 
-### 6.3.1 Přehled
+### 7.3.1 Přehled
 
 Sumář: kontakt, výchozí nastavení, obraty (letos / loni), počet zakázek,
 počet faktur podle stavu.
 
-### 6.3.2 Zakázky
+### 7.3.2 Zakázky
 
 Seznam zakázek pod klientem. Tlačítko **+ Nová zakázka** otevře editor —
-viz [7. Zakázky](07_Zakazky.md).
+viz [8. Zakázky](08_Zakazky.md).
 
-### 6.3.3 Faktury
+### 7.3.3 Faktury
 
 Seznam faktur klienta (všechny zakázky + faktury bez zakázky). Filtr stavu
 + pagination.
 
-### 6.3.4 Aktivita
+### 7.3.4 Aktivita
 
 Activity log — kdo a kdy klienta vytvořil / upravil / odeslal mu fakturu.
 
-## 6.4 Editace klienta
+## 7.4 Editace klienta
 
 Na detailu klikni **Upravit** (ikona tužky vpravo nahoře).
 
@@ -103,13 +103,13 @@ Změny se okamžitě projeví na nových fakturách. Faktury, které už jsou
 klienta — tam se editace neprojeví. Tím se zajišťuje neměnnost vystavených
 dokladů.
 
-## 6.5 Archivace klienta
+## 7.5 Archivace klienta
 
 Klik na **Archivovat** — klient se schová z výchozího filtru, ale data zůstanou
 zachována (faktury, statistiky). Archivovaného klienta najdeš ve filtru
 „Archivovaní" v seznamu, kde ho můžeš obnovit (**Obnovit**).
 
-## 6.6 Tipy
+## 7.6 Tipy
 
 - **ARES** funguje jen pro česká IČ. Pro SK použij interní lookup `/api/clients/ares-lookup-sk?ic=...`.
 - **VIES** je pomalý (~1–2 sekundy) a občas nedostupný — výsledek se cachuje

@@ -41,8 +41,15 @@ na 24 h. Počkej, nebo požádej admina o reset z DB:
 
 ### 2FA — ztratil jsem telefon
 
-1. Použij **záložní kód** (8 jednorázových kódů, které jsi dostal při aktivaci).
-2. Pokud nemáš ani je, požádej admina o `php api/bin/2fa-disable.php tvuj@email.cz`.
+MyInvoice nemá záložní kódy ani UI pro deaktivaci 2FA. Požádej admina, aby
+přímo v DB udělal:
+
+```sql
+UPDATE users SET totp_enabled = 0, totp_secret = NULL WHERE email = 'tvuj@email.cz';
+```
+
+Pak se přihlásíš jen s heslem a 2FA si znovu aktivuješ na novém telefonu.
+Detail viz [§ 18.2.3](18_Bezpecnost.md).
 
 ## 99.2 Faktury
 
@@ -96,7 +103,7 @@ v názvu firmy), použij **Editovat (force)** s admin rolí.
 
 ### DKIM podpis se nedaří aktivovat
 
-1. Vygeneruj klíče: viz [16. Bezpečnost § 16.8](16_Bezpecnost.md).
+1. Vygeneruj klíče: viz [18. Bezpečnost § 16.8](18_Bezpecnost.md).
 2. Publikuj DNS TXT — počkej 5–60 minut na propagaci.
 3. Ověř DKIM přes [mxtoolbox.com](https://mxtoolbox.com/dkim.aspx).
 4. Až DNS funguje, zapni v `cfg.php → smtp.dkim.enabled => true`.

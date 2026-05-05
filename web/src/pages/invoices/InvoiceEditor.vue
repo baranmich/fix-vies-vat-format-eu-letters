@@ -15,7 +15,10 @@ import { projectsApi, type Project } from '@/api/projects'
 import { codebooksApi, type VatRate, type Currency } from '@/api/codebooks'
 import { formatMoney, formatPercent } from '@/composables/useFormat'
 import { apiErrorMessage } from '@/api/errors'
+import { useSupplierStore } from '@/stores/supplier'
 import SearchableSelect from '@/components/ui/SearchableSelect.vue'
+
+const supplierStore = useSupplierStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -36,8 +39,14 @@ const projects = ref<Project[]>([])
 const vatRates = ref<VatRate[]>([])
 const currencies = ref<Currency[]>([])
 
-// RC zobrazit jen když klient není vybraný NEBO má RC povolenou v profilu.
+// Aktivní dodavatel — pokud není plátce DPH, fakturuje bez DPH (žádné DPH UI ani v PDF).
+const supplierIsVatPayer = computed(() => supplierStore.currentSupplier?.is_vat_payer ?? true)
+
+// RC zobrazit jen když:
+//   - dodavatel je plátce DPH (neplátce nemůže RC vystavit) A
+//   - klient není vybraný NEBO má RC povolenou v profilu
 const showReverseChargeUI = computed(() => {
+  if (!supplierIsVatPayer.value) return false
   if (!form.value.client_id) return true
   const c = clients.value.find(c => c.id === form.value.client_id)
   return !!c?.reverse_charge
@@ -88,6 +97,11 @@ function addDays(date: string, days: number): string {
 }
 
 function defaultVatRateId(reverseCharge = false): number {
+  // Neplátce DPH → vždy 0% Osvobozeno (rate_percent=0, !is_reverse_charge).
+  if (!supplierIsVatPayer.value) {
+    const zero = vatRates.value.find(v => Number(v.rate_percent) === 0 && !v.is_reverse_charge)
+    if (zero) return zero.id
+  }
   if (reverseCharge) {
     const rc = vatRates.value.find(v => v.is_reverse_charge)
     if (rc) return rc.id
@@ -96,8 +110,9 @@ function defaultVatRateId(reverseCharge = false): number {
   return def?.id ?? vatRates.value[0]?.id ?? 0
 }
 
-// Když se přepne RC (z klienta nebo ručním checkboxem), sjednoť vat_rate_id všech položek
-// s novým defaultem — display by jinak ukazoval 21 % zatímco totals už počítají 0 % RC.
+// Když se přepne RC (z klienta nebo ručním checkboxem) nebo je dodavatel neplátce,
+// sjednoť vat_rate_id všech položek s novým defaultem — display by jinak ukazoval
+// 21 % zatímco totals už počítají 0 %.
 function syncItemsVatRateToReverseCharge() {
   const target = defaultVatRateId(form.value.reverse_charge)
   if (!target) return
@@ -245,8 +260,10 @@ async function applyClientDefaults(clientId: number) {
   form.value.currency_id = c.currency_default_id
   form.value.currency = c.currency_default
   form.value.language = c.language
-  const rcChanged = form.value.reverse_charge !== c.reverse_charge
-  form.value.reverse_charge = c.reverse_charge
+  // Neplátce DPH nikdy nevystavuje RC fakturu — ignorujeme klientský flag.
+  const newRc = supplierIsVatPayer.value ? c.reverse_charge : false
+  const rcChanged = form.value.reverse_charge !== newRc
+  form.value.reverse_charge = newRc
   if (rcChanged) syncItemsVatRateToReverseCharge()
   if (c.payment_due_default) {
     form.value.due_date = addDays(form.value.issue_date, c.payment_due_default)
@@ -342,7 +359,7 @@ const computed_totals = computed(() => {
   let totalVat = 0
 
   for (const item of form.value.items) {
-    const vatRate = form.value.reverse_charge
+    const vatRate = (form.value.reverse_charge || !supplierIsVatPayer.value)
       ? 0
       : vatRates.value.find(v => v.id === item.vat_rate_id)?.rate_percent ?? 0
     const base = round2(item.quantity * item.unit_price_without_vat)
@@ -785,7 +802,7 @@ async function deleteDraft() {
               <th class="px-3 py-2 text-right font-medium w-20">{{ t('invoice.items_table.qty') }}</th>
               <th class="px-3 py-2 text-left font-medium w-16">{{ t('invoice.items_table.unit') }}</th>
               <th class="px-3 py-2 text-right font-medium w-32">{{ t('invoice.items_table.unit_price') }}</th>
-              <th class="px-3 py-2 text-center font-medium w-24">{{ t('invoice.totals.vat') }}</th>
+              <th v-if="supplierIsVatPayer" class="px-3 py-2 text-center font-medium w-24">{{ t('invoice.totals.vat') }}</th>
               <th class="px-3 py-2 text-right font-medium w-32">{{ t('invoice.totals.total') }}</th>
               <th class="px-3 py-2 w-12"></th>
             </tr>
@@ -812,7 +829,7 @@ async function deleteDraft() {
                 <input v-model.number="item.unit_price_without_vat" type="number" step="0.01" min="0"
                   class="w-full h-9 px-2 border border-neutral-200 rounded text-right font-mono text-sm" />
               </td>
-              <td class="px-3 py-2">
+              <td v-if="supplierIsVatPayer" class="px-3 py-2">
                 <select v-model.number="item.vat_rate_id" class="w-full h-9 px-1 border border-neutral-200 rounded text-sm bg-white">
                   <option v-for="r in vatRates" :key="r.id" :value="r.id">{{ vatRateLabel(r) }}</option>
                 </select>
@@ -825,7 +842,7 @@ async function deleteDraft() {
               </td>
             </tr>
             <tr v-if="form.items.length === 0">
-              <td colspan="8" class="px-4 py-6 text-center text-neutral-400 text-sm">
+              <td :colspan="supplierIsVatPayer ? 8 : 7" class="px-4 py-6 text-center text-neutral-400 text-sm">
                 {{ t('invoice.no_items') }} <button type="button" @click="addItem" class="text-primary-600 hover:underline">{{ t('invoice.add_first') }}</button>
               </td>
             </tr>
@@ -864,13 +881,13 @@ async function deleteDraft() {
                   class="w-full h-10 px-3 border border-neutral-200 rounded text-sm" />
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div :class="supplierIsVatPayer ? 'grid grid-cols-2 gap-2' : ''">
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.unit_price') }}</label>
                 <input v-model.number="item.unit_price_without_vat" type="number" inputmode="decimal" step="0.01" min="0"
                   class="w-full h-10 px-3 border border-neutral-200 rounded text-right font-mono text-sm" />
               </div>
-              <div>
+              <div v-if="supplierIsVatPayer">
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.totals.vat') }}</label>
                 <select v-model.number="item.vat_rate_id" class="w-full h-10 px-2 border border-neutral-200 rounded text-sm bg-white">
                   <option v-for="r in vatRates" :key="r.id" :value="r.id">{{ vatRateLabel(r) }}</option>
@@ -901,22 +918,24 @@ async function deleteDraft() {
         <div class="bg-white border border-neutral-200 rounded-lg p-5 shadow-sm">
           <h3 class="text-sm font-semibold uppercase tracking-wide text-neutral-500 mb-3">{{ t('invoice.summary') }}</h3>
           <dl class="space-y-1.5 text-sm">
-            <div v-for="b in computed_totals.breakdown" :key="b.rate" class="flex justify-between text-neutral-600">
-              <dt>{{ t('invoice.totals.base') }} {{ formatPercent(b.rate) }}</dt>
-              <dd class="font-mono">{{ formatMoney(b.base, form.currency) }}</dd>
-            </div>
-            <div v-for="b in computed_totals.breakdown" :key="'v'+b.rate" v-show="b.vat > 0" class="flex justify-between text-neutral-600">
-              <dt>{{ t('invoice.totals.vat') }} {{ formatPercent(b.rate) }}</dt>
-              <dd class="font-mono">{{ formatMoney(b.vat, form.currency) }}</dd>
-            </div>
-            <div class="flex justify-between border-t border-neutral-200 pt-2 mt-2 font-semibold">
-              <dt>{{ t('invoice.totals.without_vat') }}</dt>
-              <dd class="font-mono">{{ formatMoney(computed_totals.without_vat, form.currency) }}</dd>
-            </div>
-            <div class="flex justify-between font-semibold">
-              <dt>{{ t('invoice.totals.vat_total') }}</dt>
-              <dd class="font-mono">{{ formatMoney(computed_totals.vat, form.currency) }}</dd>
-            </div>
+            <template v-if="supplierIsVatPayer">
+              <div v-for="b in computed_totals.breakdown" :key="b.rate" class="flex justify-between text-neutral-600">
+                <dt>{{ t('invoice.totals.base') }} {{ formatPercent(b.rate) }}</dt>
+                <dd class="font-mono">{{ formatMoney(b.base, form.currency) }}</dd>
+              </div>
+              <div v-for="b in computed_totals.breakdown" :key="'v'+b.rate" v-show="b.vat > 0" class="flex justify-between text-neutral-600">
+                <dt>{{ t('invoice.totals.vat') }} {{ formatPercent(b.rate) }}</dt>
+                <dd class="font-mono">{{ formatMoney(b.vat, form.currency) }}</dd>
+              </div>
+              <div class="flex justify-between border-t border-neutral-200 pt-2 mt-2 font-semibold">
+                <dt>{{ t('invoice.totals.without_vat') }}</dt>
+                <dd class="font-mono">{{ formatMoney(computed_totals.without_vat, form.currency) }}</dd>
+              </div>
+              <div class="flex justify-between font-semibold">
+                <dt>{{ t('invoice.totals.vat_total') }}</dt>
+                <dd class="font-mono">{{ formatMoney(computed_totals.vat, form.currency) }}</dd>
+              </div>
+            </template>
             <div class="flex justify-between border-t border-neutral-300 pt-2 mt-2 text-lg font-semibold text-primary-700">
               <dt>{{ t('invoice.totals.total') }}</dt>
               <dd class="font-mono">{{ formatMoney(computed_totals.with_vat, form.currency) }}</dd>

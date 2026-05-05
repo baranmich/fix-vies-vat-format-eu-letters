@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { invoicesApi, type Invoice, type WorkReport, type ApprovalStatus } from '@/api/invoices'
 import { formatMoney, formatDate, formatPercent, statusLabel, typeLabel, statusBadgeClass } from '@/composables/useFormat'
 import { useAuthStore } from '@/stores/auth'
+import { useSupplierStore } from '@/stores/supplier'
 import { useHotkey } from '@/composables/useHotkey'
 import { useToast } from '@/composables/useToast'
 
@@ -13,6 +14,9 @@ const toast = useToast()
 
 const auth = useAuthStore()
 const isAdmin = computed(() => auth.user?.role === 'admin')
+
+const supplierStore = useSupplierStore()
+const supplierIsVatPayer = computed(() => supplierStore.currentSupplier?.is_vat_payer ?? true)
 
 function formatRate(rate: number): string {
   const tag = locale.value === 'cs' ? 'cs-CZ' : 'en-US'
@@ -695,9 +699,9 @@ async function updateApprovalStatus() {
             <th class="px-4 py-2 text-right font-medium">{{ t('invoice.items_table.qty') }}</th>
             <th class="px-4 py-2 text-left font-medium">{{ t('invoice.items_table.unit') }}</th>
             <th class="px-4 py-2 text-right font-medium">{{ t('invoice.items_table.unit_price') }}</th>
-            <th class="px-4 py-2 text-center font-medium">{{ t('invoice.items_table.vat') }}</th>
-            <th class="px-4 py-2 text-right font-medium">{{ t('invoice.items_table.without_vat') }}</th>
-            <th class="px-4 py-2 text-right font-medium">{{ t('invoice.items_table.with_vat') }}</th>
+            <th v-if="supplierIsVatPayer" class="px-4 py-2 text-center font-medium">{{ t('invoice.items_table.vat') }}</th>
+            <th v-if="supplierIsVatPayer" class="px-4 py-2 text-right font-medium">{{ t('invoice.items_table.without_vat') }}</th>
+            <th class="px-4 py-2 text-right font-medium">{{ supplierIsVatPayer ? t('invoice.items_table.with_vat') : t('invoice.totals.total') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-neutral-100">
@@ -706,9 +710,9 @@ async function updateApprovalStatus() {
             <td class="px-4 py-2.5 text-right font-mono">{{ item.quantity }}</td>
             <td class="px-4 py-2.5 text-neutral-600">{{ item.unit }}</td>
             <td class="px-4 py-2.5 text-right font-mono">{{ formatMoney(item.unit_price_without_vat, invoice.currency) }}</td>
-            <td class="px-4 py-2.5 text-center text-xs">{{ formatPercent(item.vat_rate_snapshot ?? 0) }}</td>
-            <td class="px-4 py-2.5 text-right font-mono">{{ formatMoney(item.total_without_vat ?? 0, invoice.currency) }}</td>
-            <td class="px-4 py-2.5 text-right font-mono font-medium">{{ formatMoney(item.total_with_vat ?? 0, invoice.currency) }}</td>
+            <td v-if="supplierIsVatPayer" class="px-4 py-2.5 text-center text-xs">{{ formatPercent(item.vat_rate_snapshot ?? 0) }}</td>
+            <td v-if="supplierIsVatPayer" class="px-4 py-2.5 text-right font-mono">{{ formatMoney(item.total_without_vat ?? 0, invoice.currency) }}</td>
+            <td class="px-4 py-2.5 text-right font-mono font-medium">{{ formatMoney(supplierIsVatPayer ? (item.total_with_vat ?? 0) : (item.total_without_vat ?? 0), invoice.currency) }}</td>
           </tr>
         </tbody>
       </table>
@@ -724,13 +728,15 @@ async function updateApprovalStatus() {
               <span class="ml-1">{{ item.unit }}</span>
               <span class="text-neutral-400 mx-1.5">·</span>
               <span class="font-mono">{{ formatMoney(item.unit_price_without_vat, invoice.currency) }}</span>
-              <span class="text-neutral-400 mx-1.5">·</span>
-              <span>{{ formatPercent(item.vat_rate_snapshot ?? 0) }}</span>
+              <template v-if="supplierIsVatPayer">
+                <span class="text-neutral-400 mx-1.5">·</span>
+                <span>{{ formatPercent(item.vat_rate_snapshot ?? 0) }}</span>
+              </template>
             </span>
           </div>
           <div class="flex items-baseline justify-between pt-1 text-sm">
-            <span class="text-xs text-neutral-500">{{ t('invoice.items_table.with_vat') }}</span>
-            <span class="font-mono font-semibold">{{ formatMoney(item.total_with_vat ?? 0, invoice.currency) }}</span>
+            <span class="text-xs text-neutral-500">{{ supplierIsVatPayer ? t('invoice.items_table.with_vat') : t('invoice.totals.total') }}</span>
+            <span class="font-mono font-semibold">{{ formatMoney(supplierIsVatPayer ? (item.total_with_vat ?? 0) : (item.total_without_vat ?? 0), invoice.currency) }}</span>
           </div>
         </div>
       </div>
@@ -741,21 +747,23 @@ async function updateApprovalStatus() {
       <h3 class="text-sm font-semibold uppercase tracking-wide text-neutral-500 mb-3">{{ t('invoice.summary') }}</h3>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <dl class="space-y-1 text-sm">
-          <div v-for="b in invoice.vat_breakdown" :key="b.rate" class="flex justify-between">
-            <dt class="text-neutral-500">{{ t('invoice.totals.base') }} {{ formatPercent(b.rate) }}</dt>
-            <dd class="font-mono">{{ formatMoney(b.base, invoice.currency) }}</dd>
-          </div>
-          <div v-for="b in invoice.vat_breakdown" :key="'v'+b.rate" v-show="b.vat > 0" class="flex justify-between">
-            <dt class="text-neutral-500">{{ t('invoice.totals.vat') }} {{ formatPercent(b.rate) }}</dt>
-            <dd class="font-mono">{{ formatMoney(b.vat, invoice.currency) }}</dd>
-          </div>
+          <template v-if="supplierIsVatPayer">
+            <div v-for="b in invoice.vat_breakdown" :key="b.rate" class="flex justify-between">
+              <dt class="text-neutral-500">{{ t('invoice.totals.base') }} {{ formatPercent(b.rate) }}</dt>
+              <dd class="font-mono">{{ formatMoney(b.base, invoice.currency) }}</dd>
+            </div>
+            <div v-for="b in invoice.vat_breakdown" :key="'v'+b.rate" v-show="b.vat > 0" class="flex justify-between">
+              <dt class="text-neutral-500">{{ t('invoice.totals.vat') }} {{ formatPercent(b.rate) }}</dt>
+              <dd class="font-mono">{{ formatMoney(b.vat, invoice.currency) }}</dd>
+            </div>
+          </template>
         </dl>
         <dl class="space-y-1 text-sm">
-          <div class="flex justify-between font-semibold">
+          <div v-if="supplierIsVatPayer" class="flex justify-between font-semibold">
             <dt>{{ t('invoice.totals.without_vat') }}</dt>
             <dd class="font-mono">{{ formatMoney(invoice.totals.without_vat, invoice.currency) }}</dd>
           </div>
-          <div class="flex justify-between font-semibold">
+          <div v-if="supplierIsVatPayer" class="flex justify-between font-semibold">
             <dt>{{ t('invoice.totals.vat_total') }}</dt>
             <dd class="font-mono">{{ formatMoney(invoice.totals.vat, invoice.currency) }}</dd>
           </div>
