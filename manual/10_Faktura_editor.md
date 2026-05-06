@@ -57,7 +57,7 @@ Tabulka řádků faktury. Tlačítko **+ Přidat položku** přidá nový řáde
 |---|---|
 | Popis | Co fakturuješ. Lze multiline. **Tip:** pokud je v popisu měsíc (`Konzultace 3/2026`), klonování faktury automaticky inkrementuje. |
 | Množství | Počet jednotek (kusy / hodiny / …) |
-| Jednotka | `ks` / `hod` / `den` / `měs.` / `–` (volitelný popis) |
+| Jednotka | Z číselníku (default `h` / hodina). Číselník spravuješ v **Systém → Číselníky → Jednotky** — viz [§ 17.1.4](17_Nastaveni.md#1714-jednotky). |
 | Cena/jed. | Jednotková cena (bez DPH pokud máš DPH na konci, jinak včetně) |
 | DPH | Sazba — `21 %`, `12 %`, `0 %` (osvobozeno), `RC` (reverse charge) |
 | Celkem | Auto-počítáno (množství × cena/jed.) |

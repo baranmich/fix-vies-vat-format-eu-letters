@@ -3,7 +3,7 @@
 V hlavním menu **Systém** je rozbalovací podmenu se 6 sekcemi:
 
 - **Dodavatelé** — viz [16. Multi-supplier](16_Multi_supplier.md)
-- **Číselníky** — měny, DPH sazby, země
+- **Číselníky** — měny, DPH sazby, země, jednotky
 - **Uživatelé** — správa lidí, kteří se přihlašují
 - **E-mail šablony** — texty automatických e-mailů
 - **Activity log** — kdo co změnil
@@ -15,7 +15,7 @@ V hlavním menu **Systém** je rozbalovací podmenu se 6 sekcemi:
 
 ![Číselníky — Měny](img/15_ciselniky_meny.webp)
 
-3 záložky:
+4 záložky:
 
 ### 17.1.1 Měny
 
@@ -55,6 +55,26 @@ Každá měna pro aktuálního dodavatele = **1 bankovní účet**.
 
 Statický číselník — nemělo by být potřeba editovat. Obsahuje 200+ zemí podle
 ISO 3166-1.
+
+### 17.1.4 Jednotky
+
+Číselník měrných jednotek pro položky faktury. Globální (sdílený mezi
+dodavateli), nahrazuje volný textový vstup za dropdown.
+
+| Pole | Význam |
+|---|---|
+| Kód | Krátký identifikátor (`h`, `ks`, `den`, `měs.`) |
+| Popisek CS / EN | Co se zobrazí v UI / PDF (`hodina` / `hour`) |
+| Default | Která jednotka se předvyplní při přidání nové položky (typicky `h`) |
+| Pořadí | Číslo pro řazení v dropdownu |
+
+> 💡 **Default = `hodina`** dává smysl, protože nová položka přebírá
+> hodinovou sazbu z projektu/klienta. Pro jednorázové položky (paušál,
+> licence, materiál) jednotku ručně přepneš.
+
+> 🛈 **Auto-clean prázdných položek** — při uložení faktury se řádky bez
+> popisu i bez ceny tiše smažou. Můžeš tedy v editoru přidat víc řádků na
+> zásobu a nepoužité se neuloží.
 
 ## 17.2 Uživatelé
 

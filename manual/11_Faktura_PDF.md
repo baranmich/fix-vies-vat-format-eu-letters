@@ -123,7 +123,56 @@ Per dodavatel lze nastavit:
 
 Nastavuje se v **Systém → Dodavatelé → [tvůj dodavatel] → Editovat**.
 
-## 11.5 Editace vystavené faktury (admin only)
+### 11.4.4 Volitelné přílohy emailu
+
+V detailu faktury (i u **konceptu**) je sekce **Přílohy emailu**, kam lze
+nahrát další soubory, které se přibalí k PDF faktury při odeslání klientovi.
+Typické použití: smlouva, cenová nabídka, fotodokumentace, předávací protokol.
+
+- **Přidání** — drag-and-drop nebo tlačítko **Přidat přílohu** (multi-select).
+- **Limity** — 10 MiB na soubor, 20 MiB celkem na fakturu.
+- **Povolené formáty** — PDF, MS Office (DOC/DOCX, XLS/XLSX, PPT/PPTX),
+  OpenDocument (ODT/ODS/ODP), TXT/CSV, obrázky (JPG/PNG/GIF/WEBP/HEIC/HEIF),
+  ZIP. Kontroluje se reálný obsah souboru (ne jen přípona).
+- **Odeslání** — přílohy se automaticky přibalí k mailu při akci **Odeslat
+  e-mailem** i u **Test odeslání**.
+- **Smazání** — křížek u řádku odstraní soubor i z disku.
+
+> ⚠️ **Přílohy se NEpřibalují k upomínkám** ani k mailu schválení výkazu —
+> jdou jen s běžným odesláním faktury / proformy / dobropisu. K internímu
+> stornu nelze přílohy přidat (interní typ se klientovi neposílá).
+
+> 💡 Přílohy přežijí editaci faktury i přečíslování — jsou navázané přes
+> `invoice_id`. Smazání faktury (jen u konceptů) přílohy odstraní spolu s ní.
+
+## 11.5 Historie PDF
+
+V detailu faktury je sekce **Historie PDF** — seznam všech archivovaných
+verzí PDF, které tato faktura kdy měla:
+
+| Stav v seznamu | Co znamená |
+|---|---|
+| **Odesláno** (zelený badge) | PDF v této verzi bylo skutečně odesláno klientovi e-mailem. Nikdy se neníčí — je to důkaz, co klient dostal. |
+| **Vystavení** | PDF z okamžiku, kdy se draft povýšil na vystavenou fakturu (změna varsymbolu / snapshotů). |
+| **Úprava faktury** | PDF z doby před tím, než někdo fakturu editoval (typicky admin force edit). |
+| **Změna výkazu** | Výkaz víceprací se změnil → původní PDF s 2. stranou výkazu se odložilo. |
+| **Změna bank. údajů** | V Číselníku → Měny se změnil bankovní účet → PDF konceptů (bez snapshotu) se invalidovala. |
+
+Každý řádek má tlačítka **Zobrazit** (otevře v novém tabu) a **Stáhnout**.
+U odeslaných verzí navíc vidíš **kam to šlo** (seznam příjemců).
+
+> 🛈 **Proč to existuje:** vystavená faktura má snapshot dodavatele/klienta/
+> banky, takže PDF nemůže být změněno tichou cestou. Ale když se faktura
+> opraví přes admin force edit, původní verze by se ztratila — historie
+> PDF zachová obě (původní + novou) a u odeslané varianty navíc eviduje,
+> komu konkrétně šla.
+
+> 💡 **Nastavení retention** — historie PDF se nemaže automaticky. Cron
+> `cron-cleanup.sh` standardně odeslané (was_sent=1) verze nikdy nemaže.
+> Pokud potřebuješ ušetřit místo, použij ruční smazání jen u
+> neodeslaných invalidačních verzí (zatím není UI; přes SQL).
+
+## 11.6 Editace vystavené faktury (admin only)
 
 V krajní nouzi (admin udělal v vystavené faktuře překlep, klient ji ještě
 nedostal):
@@ -137,7 +186,7 @@ nedostal):
 > mohou být rozpor s tím, co klient dostal e-mailem. Preferuj **storno + nová
 > faktura** nebo **dobropis**.
 
-## 11.6 Změna bankovního účtu po vystavení
+## 11.7 Změna bankovního účtu po vystavení
 
 Pokud změníš bankovní účet v **Systém → Číselníky → Měny**, automaticky se
 **invalidují PDF všech faktur**, které renderují bank info live (drafty +
@@ -147,7 +196,7 @@ už dostal).
 
 V activity logu uvidíš `currency.updated` s počtem invalidovaných PDF.
 
-## 11.7 Tipy
+## 11.8 Tipy
 
 - **PDF náhled v iframe na detailu** se neobnoví automaticky po editaci —
   refreshni stránku (F5).
