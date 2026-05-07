@@ -337,7 +337,13 @@ mysql -u root -p -e "CREATE DATABASE myinvoice CHARACTER SET utf8mb4 COLLATE utf
 ```bash
 cd api && composer install && cd ..
 php api/bin/migrate.php
+php tools/generateManualHtml.php   # vyrenderuje manual/generated/ → /manual route
 ```
+
+> `generateManualHtml.php` je self-contained (nepotřebuje composer/vendor),
+> generuje HTML kapitoly + search index. Spouštět znovu po každém pull repa,
+> aby `/manual` ukazoval aktuální obsah. (V Docker variantě se volá
+> build-time uvnitř `Dockerfile`.)
 
 ### 4. Frontend
 
