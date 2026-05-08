@@ -196,39 +196,44 @@ jobs:
         run: echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build production bundle tarball
-        # Vyloučí: .git, .github, source/, cmd/ (host scripts), tools/ (build only),
-        # node_modules, api/vendor.prod (cache), api/.phpunit.cache, log/,
-        # storage/, private/, cfg.* (lokální), web/src (zdroják, dist je dost).
-        # Zahrne: api/vendor/, web/dist/, manual/, root soubory potřebné pro běh.
+        # Vyloučí: .git, .github, source/, node_modules, api/vendor.prod (cache),
+        # api/.phpunit.cache, api/tests, log/, storage/, private/, cfg.*, web/src.
+        # Zahrne: api/vendor/, web/dist/, manual/ (vč. manual.pdf), root soubory.
+        #
+        # Pozn.: tarball se píše do /tmp, ne do CWD — jinak tar detekuje, že
+        # archiv sám sebe modifikuje během čtení ("file changed as we read it",
+        # exit 1), protože CWD je `.` v archivu.
         run: |
           BUNDLE="myinvoice-${{ steps.tag.outputs.tag }}.tar.gz"
-          tar -czf "$BUNDLE" \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='source' \
-            --exclude='node_modules' \
-            --exclude='api/vendor.prod' \
-            --exclude='api/.phpunit.cache' \
-            --exclude='api/tests' \
-            --exclude='log/*' \
-            --exclude='storage/*' \
-            --exclude='private/*' \
-            --exclude='cfg.php' \
-            --exclude='cfg.local.php' \
-            --exclude='cfg.docker.php' \
-            --exclude='.env' \
-            --exclude='web/src' \
-            --exclude='web/node_modules' \
-            --exclude='web/public' \
-            --exclude='web/index.html' \
-            --exclude='web/package.json' \
-            --exclude='web/pnpm-lock.yaml' \
-            --exclude='web/tsconfig*.json' \
-            --exclude='web/vite.config.ts' \
-            --exclude='web/eslint.config.js' \
+          TMP_BUNDLE="/tmp/$BUNDLE"
+          tar -czf "$TMP_BUNDLE" \
+            --exclude='./.git' \
+            --exclude='./.github' \
+            --exclude='./source' \
+            --exclude='./node_modules' \
+            --exclude='./api/vendor.prod' \
+            --exclude='./api/.phpunit.cache' \
+            --exclude='./api/tests' \
+            --exclude='./log/*' \
+            --exclude='./storage/*' \
+            --exclude='./private/*' \
+            --exclude='./cfg.php' \
+            --exclude='./cfg.local.php' \
+            --exclude='./cfg.docker.php' \
+            --exclude='./.env' \
+            --exclude='./web/src' \
+            --exclude='./web/node_modules' \
+            --exclude='./web/public' \
+            --exclude='./web/index.html' \
+            --exclude='./web/package.json' \
+            --exclude='./web/pnpm-lock.yaml' \
+            --exclude='./web/tsconfig*.json' \
+            --exclude='./web/vite.config.ts' \
+            --exclude='./web/eslint.config.js' \
             --exclude='*.log' \
-            --transform "s,^,myinvoice-${{ steps.tag.outputs.tag }}/," \
+            --transform "s,^\./,myinvoice-${{ steps.tag.outputs.tag }}/," \
             .
+          mv "$TMP_BUNDLE" "$BUNDLE"
           ls -lh "$BUNDLE"
           sha256sum "$BUNDLE" > "$BUNDLE.sha256"
           echo "BUNDLE=$BUNDLE" >> "$GITHUB_ENV"
