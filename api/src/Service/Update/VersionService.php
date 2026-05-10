@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MyInvoice\Service\Update;
 
 use MyInvoice\Bootstrap;
+use MyInvoice\Infrastructure\Config\Config;
 use MyInvoice\Infrastructure\Database\Connection;
 use PDO;
 
@@ -210,12 +211,23 @@ final class VersionService
 
     public function upgradeFlagPath(): string
     {
-        return $this->rootDir . '/storage/upgrade-requested.json';
+        return $this->stateBaseDir() . '/storage/upgrade-requested.json';
     }
 
     public function upgradeResultPath(): string
     {
-        return $this->rootDir . '/storage/upgrade-result.json';
+        return $this->stateBaseDir() . '/storage/upgrade-result.json';
+    }
+
+    /**
+     * Pokud je nastavená MYINVOICE_DATA_DIR, ukládáme upgrade flag/result tam
+     * (zbytek kontejneru může být read-only). Jinak fallback na rootDir, aby
+     * starší docker-compose setupy s `app-storage:/var/www/html/storage`
+     * volume zůstaly funkční.
+     */
+    private function stateBaseDir(): string
+    {
+        return Config::resolveDataDir() ?? $this->rootDir;
     }
 
     // ---------- internals ------------------------------------------------
