@@ -491,19 +491,20 @@ function openWorkReport() {
   wrOpen.value = true
 }
 
-// Přenese sumu výkazu jako jednu položku faktury (popis = title výkazu, qty = hodiny, sazba = avg).
+// Přenese sumu výkazu jako jednu položku faktury (popis = title výkazu, qty = 1, cena = celková suma výkazu).
 // Pokud už existuje položka se stejným popisem (= title výkazu), AKTUALIZUJE ji
-// (množství / sazba / DPH zůstává); jinak přidá novou. Tím se opětovné kliknutí
+// (množství / cena / DPH zůstává); jinak přidá novou. Tím se opětovné kliknutí
 // "Přenést jako položku faktury" po editaci výkazu chová jako sync, ne jako duplicate.
 function pushWrToInvoiceItem() {
   if (wrItemsValid.value.length === 0) return
-  const totalHours = wrTotalHours.value
   const totalAmount = wrTotalAmount.value
-  const avgRate = totalHours > 0 ? Math.round((totalAmount / totalHours) * 100) / 100 : 0
   const defaultVatId = defaultVatRateId(form.value.reverse_charge)
   const description = wrTitle.value || t('invoice.work_report')
+  // Cíleně "ks" (kus) — výkaz se přenáší jako 1 × celková suma.
+  // Když uživatel "ks" v číselníku nemá, fallback na literál (přidá free-text).
+  const unit = units.value.find(u => u.code === 'ks')?.code || 'ks'
 
-  // 1. Položka se shodným popisem → sync (aktualizace hodin/sazby).
+  // 1. Položka se shodným popisem → sync (aktualizace ceny).
   // 2. Jinak prázdná položka (z blankItem na nové faktuře) → naplň ji, ne push.
   //    Cena se ignoruje — blankItem default cenu předvyplňuje z project.hourly_rate
   //    (nebo client.hourly_rate fallback), takže placeholder typicky cenu má.
@@ -516,16 +517,16 @@ function pushWrToInvoiceItem() {
 
   if (target) {
     target.description = description
-    target.quantity = totalHours
-    target.unit = 'h'
-    target.unit_price_without_vat = avgRate
+    target.quantity = 1
+    target.unit = unit
+    target.unit_price_without_vat = totalAmount
     // vat_rate_id záměrně neměníme — uživatel ho mohl ručně změnit
   } else {
     form.value.items.push({
       description,
-      quantity: totalHours,
-      unit: 'h',
-      unit_price_without_vat: avgRate,
+      quantity: 1,
+      unit,
+      unit_price_without_vat: totalAmount,
       vat_rate_id: defaultVatId,
       order_index: form.value.items.length,
     })
@@ -559,36 +560,32 @@ function checkWorkReportSync(): string | null {
   if (!wrOpen.value || wrItemsValid.value.length === 0) return null
   const totalHours = Math.round(wrTotalHours.value * 100) / 100
   const totalAmount = Math.round(wrTotalAmount.value * 100) / 100
-  const avgRate = totalHours > 0 ? Math.round((totalAmount / totalHours) * 100) / 100 : 0
   const description = (wrTitle.value || t('invoice.work_report')).trim()
   if (description === '') return null
 
   const ccy = currencies.value.find(c => c.id === form.value.currency_id)?.code || ''
+  const loc = locale.value === 'cs' ? 'cs' : 'en-US'
   const item = form.value.items.find(it => (it.description || '').trim() === description)
 
   if (!item) {
     return t('invoice.wr_not_in_items_confirm', {
       description,
       hours: totalHours,
-      amount: totalAmount.toLocaleString(locale.value === 'cs' ? 'cs' : 'en-US'),
+      amount: totalAmount.toLocaleString(loc),
       ccy,
     })
   }
 
   const itemQty = Number(item.quantity) || 0
   const itemRate = Number(item.unit_price_without_vat) || 0
-  const qtyDiff = Math.abs(itemQty - totalHours) > 0.01
-  const rateDiff = Math.abs(itemRate - avgRate) > 0.01
+  const itemAmount = Math.round(itemQty * itemRate * 100) / 100
+  const amountDiff = Math.abs(itemAmount - totalAmount) > 0.01
 
-  if (qtyDiff || rateDiff) {
-    const loc = locale.value === 'cs' ? 'cs' : 'en-US'
+  if (amountDiff) {
     return t('invoice.wr_diff_confirm', {
       hours: totalHours,
-      rate: avgRate.toLocaleString(loc),
       amount: totalAmount.toLocaleString(loc),
-      itemQty,
-      itemRate: itemRate.toLocaleString(loc),
-      itemAmount: (itemQty * itemRate).toLocaleString(loc),
+      itemAmount: itemAmount.toLocaleString(loc),
       ccy,
     })
   }
@@ -665,7 +662,7 @@ async function submit() {
     if (wrOpen.value && wrItemsValid.value.length > 0) {
       try {
         await invoicesApi.saveWorkReport(saved.id, {
-          project_id: saved.project_id!,
+          project_id: saved.project_id,
           title: wrTitle.value,
           items: wrItemsValid.value.map((it, i) => ({
             description: it.description,

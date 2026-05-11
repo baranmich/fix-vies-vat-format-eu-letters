@@ -184,7 +184,10 @@ function actionColor(a: string): string {
 async function deleteInvoice() {
   if (!invoice.value) return
   // Pro cancellation doklad: smaž PARENT (cascade pak odstraní i tento storno),
-  // jinak by zůstala originálka v 'cancelled' bez storno dokladu.
+  // jinak by zůstala originálka v 'cancelled' bez storno dokladu — interní storno
+  // bez parenta nedává smysl jako samostatný účetní doklad.
+  // Dobropis se ale maže samostatně — je to plnohodnotný účetní doklad, parent
+  // zůstává v cancelled stavu (admin si může případně ručně upravit).
   if (invoice.value.invoice_type === 'cancellation' && invoice.value.parent_invoice_id) {
     return deleteCancellationParent()
   }
@@ -192,15 +195,16 @@ async function deleteInvoice() {
   // hláška (force-delete účetního dokladu, cascade na storno/dobropis).
   // UI tlačítko force-delete se admin-only zobrazuje (canDelete), backend má stejný guard.
   const status = invoice.value.status
+  const isCN = invoice.value.invoice_type === 'credit_note'
   let confirmKey: string
   switch (status) {
-    case 'draft':     confirmKey = 'invoice.delete_draft_confirm';     break
-    case 'cancelled': confirmKey = 'invoice.delete_cancelled_confirm'; break
-    case 'paid':      confirmKey = 'invoice.delete_paid_confirm';      break
-    case 'sent':      confirmKey = 'invoice.delete_sent_confirm';      break
+    case 'draft':     confirmKey = isCN ? 'invoice.delete_draft_confirm_cn'     : 'invoice.delete_draft_confirm';     break
+    case 'cancelled': confirmKey = isCN ? 'invoice.delete_cancelled_confirm_cn' : 'invoice.delete_cancelled_confirm'; break
+    case 'paid':      confirmKey = 'invoice.delete_paid_confirm';                                                     break
+    case 'sent':      confirmKey = isCN ? 'invoice.delete_sent_confirm_cn'      : 'invoice.delete_sent_confirm';      break
     case 'issued':
     case 'reminded':
-    default:          confirmKey = 'invoice.delete_issued_confirm';    break
+    default:          confirmKey = isCN ? 'invoice.delete_issued_confirm_cn'    : 'invoice.delete_issued_confirm';    break
   }
   const vs = invoice.value.varsymbol || `#${invoice.value.id}`
   if (!confirm(t(confirmKey, { varsymbol: vs }))) return
@@ -299,6 +303,12 @@ async function unmarkPaid() {
   } finally {
     busy.value = null
   }
+}
+
+function openCancelModal() {
+  // Dobropisu nelze vystavit další dobropis — default mode = internal.
+  cancelMode.value = isCreditNoteSource.value ? 'internal' : 'credit_note'
+  cancelOpen.value = true
 }
 
 async function cancel() {
@@ -446,7 +456,9 @@ const isProforma = computed(() => invoice.value?.invoice_type === 'proforma')
 const canIssueFinal = computed(() => isProforma.value && invoice.value?.status === 'paid')
 const isIssued = computed(() => invoice.value && ['issued', 'sent', 'reminded'].includes(invoice.value.status))
 const canCancel = computed(() => invoice.value && ['issued', 'sent', 'reminded', 'paid'].includes(invoice.value.status)
-  && !['credit_note', 'cancellation'].includes(invoice.value.invoice_type))
+  && invoice.value.invoice_type !== 'cancellation')
+// Dobropisu nelze vystavit další dobropis — v modalu skryjeme tu volbu.
+const isCreditNoteSource = computed(() => invoice.value?.invoice_type === 'credit_note')
 // Cancellation = interní storno doklad, nikdy se neposílá klientovi (na rozdíl od dobropisu)
 const canSendEmail = computed(() =>
   invoice.value
@@ -723,10 +735,10 @@ async function updateApprovalStatus() {
     <!-- Cancel modal -->
     <div v-if="cancelOpen" class="fixed inset-0 bg-neutral-900/40 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-5">
-        <h3 class="text-lg font-semibold mb-3">{{ t('invoice.modals.cancel_title') }}</h3>
+        <h3 class="text-lg font-semibold mb-3">{{ isCreditNoteSource ? t('invoice.modals.cancel_title_cn') : t('invoice.modals.cancel_title') }}</h3>
         <p class="text-sm text-neutral-600 mb-3">{{ t('invoice.modals.cancel_choose') }}</p>
         <div class="space-y-2 mb-4">
-          <label class="flex items-start gap-2 p-3 border rounded-md cursor-pointer"
+          <label v-if="!isCreditNoteSource" class="flex items-start gap-2 p-3 border rounded-md cursor-pointer"
             :class="cancelMode === 'credit_note' ? 'border-primary-500 bg-primary-50' : 'border-neutral-200'">
             <input type="radio" v-model="cancelMode" value="credit_note" class="mt-1" />
             <div>
@@ -739,7 +751,7 @@ async function updateApprovalStatus() {
             <input type="radio" v-model="cancelMode" value="internal" class="mt-1" />
             <div>
               <div class="font-medium text-sm">{{ t('invoice.modals.cancel_internal') }}</div>
-              <div class="text-xs text-neutral-500">{{ t('invoice.modals.cancel_internal_desc') }}</div>
+              <div class="text-xs text-neutral-500">{{ isCreditNoteSource ? t('invoice.modals.cancel_internal_desc_cn') : t('invoice.modals.cancel_internal_desc') }}</div>
             </div>
           </label>
           <!-- 3. možnost: force-delete účetního dokladu — admin only.
@@ -748,8 +760,8 @@ async function updateApprovalStatus() {
             :class="cancelMode === 'delete' ? 'border-danger-500 bg-danger-50' : 'border-neutral-200'">
             <input type="radio" v-model="cancelMode" value="delete" class="mt-1" />
             <div>
-              <div class="font-medium text-sm text-danger-600">⚠ {{ t('invoice.modals.cancel_delete') }}</div>
-              <div class="text-xs text-neutral-500 mt-0.5">{{ t('invoice.modals.cancel_delete_desc') }}</div>
+              <div class="font-medium text-sm text-danger-600">⚠ {{ isCreditNoteSource ? t('invoice.modals.cancel_delete_cn') : t('invoice.modals.cancel_delete') }}</div>
+              <div class="text-xs text-neutral-500 mt-0.5">{{ isCreditNoteSource ? t('invoice.modals.cancel_delete_desc_cn') : t('invoice.modals.cancel_delete_desc') }}</div>
             </div>
           </label>
         </div>
@@ -1341,13 +1353,16 @@ async function updateApprovalStatus() {
           {{ busy === 'unmark-paid' ? '…' : t('invoice.unmark_paid') }}
         </button>
 
-        <button v-if="canCancel" @click="cancelOpen = true" :disabled="busy !== null"
+        <button v-if="canCancel" @click="openCancelModal" :disabled="busy !== null"
           class="cursor-pointer px-3 h-9 text-sm border border-danger-500/50 text-danger-500 hover:bg-danger-50 rounded-md inline-flex items-center gap-1.5">
           <svg class="w-4 h-4 text-danger-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 11v6m4-6v6m1 5H9a2 2 0 0 1-2-2V7h10v13a2 2 0 0 1-2 2zM5 7h14l-1-3H6L5 7z"/></svg>
-          {{ t('invoice.cancel_or_credit') }}
+          {{ isCreditNoteSource ? t('invoice.cancel_credit_note') : t('invoice.cancel_or_credit') }}
         </button>
 
-        <button v-if="isAdmin && (invoice.status === 'cancelled' || (invoice.invoice_type === 'cancellation' && invoice.parent_invoice_id))"
+        <button v-if="isAdmin && (
+            invoice.status === 'cancelled'
+            || (invoice.invoice_type === 'cancellation' && invoice.parent_invoice_id)
+          )"
           @click="deleteInvoice" :disabled="busy !== null"
           class="cursor-pointer px-3 h-9 text-sm border border-danger-500/50 text-danger-500 hover:bg-danger-50 rounded-md inline-flex items-center gap-1.5">
           <svg class="w-4 h-4 text-danger-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 11v6m4-6v6m1 5H9a2 2 0 0 1-2-2V7h10v13a2 2 0 0 1-2 2zM5 7h14l-1-3H6L5 7z"/></svg>

@@ -89,19 +89,17 @@ final class SetupAction
             return Json::error($response, 'setup_failed', $e->getMessage(), 500);
         }
 
-        // Pokud uživatel zaškrtl "vynutit 2FA", zapiš to do cfg.local.php
-        // (Config::load merguje cfg.local.php přes cfg.php). Selhání zápisu
-        // setup nezruší — vrátíme jen flag a uživatele instruujeme manuálně.
+        // Zapiš auth.require_totp do cfg.local.php (Config::load merguje cfg.local.php přes cfg.php).
+        // Píšeme VŽDY (i false), aby stará hodnota z předchozího setupu/resetu nepřevažovala.
+        // Selhání zápisu setup nezruší — vrátíme jen flag a uživatele instruujeme manuálně.
         $cfgLocalWritten = false;
-        if ($requireTotp) {
-            try {
-                CfgLocalWriter::setKeys(Bootstrap::rootDir(), ['auth.require_totp' => true]);
-                $cfgLocalWritten = true;
-            } catch (\Throwable $e) {
-                $this->logger->log('setup.cfg_local_write_failed', $userId, 'user', $userId, [
-                    'error' => $e->getMessage(),
-                ], $ip, $request->getHeaderLine('User-Agent'));
-            }
+        try {
+            CfgLocalWriter::setKeys(Bootstrap::rootDir(), ['auth.require_totp' => $requireTotp]);
+            $cfgLocalWritten = true;
+        } catch (\Throwable $e) {
+            $this->logger->log('setup.cfg_local_write_failed', $userId, 'user', $userId, [
+                'error' => $e->getMessage(),
+            ], $ip, $request->getHeaderLine('User-Agent'));
         }
 
         // Auto-login: vytvoř session pro nově vzniknklého admina (eliminuje public window pro setup-sample)

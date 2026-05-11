@@ -9,11 +9,13 @@ declare(strict_types=1);
  *   php api/bin/reset.php --yes       # bez ptaní
  *   php api/bin/reset.php --yes --keep-cache   # ponechá ARES/VIES cache
  *
- * Ponechává (globální číselníky + schema): countries, vat_rates, migrations
+ * Ponechává (globální číselníky + schema): countries, vat_rates, units,
+ *       exchange_rates (cache ČNB kurzů — drahé refetchnout), migrations
  * Maže: users, sessions, password_resets, login_attempts, supplier, clients,
  *       projects, invoices, work_reports, activity_log, bank_statements,
- *       invoice_counters, ares_cache, vies_cache (volitelně), email_templates,
- *       project/client revenue cache, currencies (per-supplier!)
+ *       invoice_counters, invoice_pdfs (PDF historie), invoice_attachments,
+ *       app_meta (version cache), ares_cache, vies_cache (volitelně),
+ *       email_templates, project/client revenue cache, currencies (per-supplier!)
  *
  * Pozn.: currencies jsou per-supplier (multi-tenant), takže s ním padají.
  * Po resetu setup.php založí novému supplier defaultní CZK + EUR.
@@ -38,6 +40,7 @@ require __DIR__ . '/../vendor/autoload.php';
 use MyInvoice\Bootstrap;
 use MyInvoice\Infrastructure\Config\Config;
 use MyInvoice\Infrastructure\Database\Connection;
+use MyInvoice\Service\Config\CfgLocalWriter;
 
 $args = array_flip(array_slice($argv, 1));
 $autoYes   = isset($args['--yes']) || isset($args['-y']);
@@ -90,6 +93,8 @@ $wipe = [
     'work_report_items',
     'work_reports',
     'invoice_items',
+    'invoice_pdfs',                  // PDF historie (cascade by ji vzal s invoices, ale TRUNCATE FK ignoruje)
+    'invoice_attachments',           // uživatelské přílohy faktur
     'invoices',
     'invoice_counters',
     'project_revenue_cache',
@@ -104,6 +109,7 @@ $wipe = [
     'login_attempts',
     'activity_log',
     'email_templates',
+    'app_meta',                      // version-check cache + jiné globální K/V; reset = fresh fetch
     'users',
 ];
 if (!$keepCache) {
@@ -138,6 +144,14 @@ foreach ($dirs as $d) {
         $count = wipeDir($d);
         echo "  ✓ $d ($count souborů)\n";
     }
+}
+
+// Zruš setup-time přepínače v cfg.local.php (jinak by stará hodnota přežila nový setup).
+try {
+    CfgLocalWriter::setKeys($rootDir, ['auth.require_totp' => false]);
+    echo "\n[reset] cfg.local.php: auth.require_totp = false\n";
+} catch (\Throwable $e) {
+    echo "\n[reset] cfg.local.php: nelze zapsat (" . $e->getMessage() . ") — uprav ručně, pokud potřebuješ.\n";
 }
 
 echo "\n================================================\n";

@@ -28,8 +28,25 @@ async function load() {
     ])
     status.value = nextStatus
     health.value = nextHealth
+    // Cache je stale (>24h, prázdná, nebo `latest < current`) → background refresh,
+    // aby uživatel nemusel mačkat "Zkontrolovat nyní" sám. Tichý fail je OK.
+    if (nextStatus.cache_stale && !checking.value) {
+      void backgroundRefresh()
+    }
   } catch (e: unknown) {
     errorMsg.value = (e as Error)?.message ?? 'Failed to load status'
+  }
+}
+
+async function backgroundRefresh() {
+  if (checking.value) return
+  checking.value = true
+  try {
+    status.value = await updateApi.refresh()
+  } catch {
+    // tiché selhání — UI dál ukazuje cache + tlačítko "Zkontrolovat nyní"
+  } finally {
+    checking.value = false
   }
 }
 

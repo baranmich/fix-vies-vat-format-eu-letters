@@ -259,15 +259,13 @@ try {
     exit(1);
 }
 
-// === Volitelně: zapiš require_totp do cfg.local.php ===
-if ($requireTotp) {
-    try {
-        CfgLocalWriter::setKeys($rootDir, ['auth.require_totp' => true]);
-        echo "\n🔒  Vynucení 2FA zapsáno do cfg.local.php (auth.require_totp = true).\n";
-    } catch (\Throwable $e) {
-        echo "\n⚠   Nepodařilo se zapsat cfg.local.php: " . $e->getMessage() . "\n";
-        echo "    Otevři ručně cfg.php a nastav: 'auth' => ['require_totp' => true].\n";
-    }
+// === Zapiš require_totp do cfg.local.php (vždy, aby starší hodnota nezůstávala v platnosti) ===
+try {
+    CfgLocalWriter::setKeys($rootDir, ['auth.require_totp' => $requireTotp]);
+    echo "\n🔒  Nastavení 2FA zapsáno do cfg.local.php (auth.require_totp = " . ($requireTotp ? 'true' : 'false') . ").\n";
+} catch (\Throwable $e) {
+    echo "\n⚠   Nepodařilo se zapsat cfg.local.php: " . $e->getMessage() . "\n";
+    echo "    Otevři ručně cfg.local.php a nastav: 'auth' => ['require_totp' => " . ($requireTotp ? 'true' : 'false') . "].\n";
 }
 
 echo "\n✅  Hotovo.\n";

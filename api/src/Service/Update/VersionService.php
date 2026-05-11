@@ -79,6 +79,28 @@ final class VersionService
         $cache = $this->loadCache();
         $current = $this->getCurrentVersion();
         $latest  = $cache['latest_version'] ?? null;
+
+        // Cache je stale, pokud latest < current (instalace byla mezitím upgradnutá),
+        // nebo last_check_at je víc než 24h staré, nebo chybí. Frontend pak může
+        // background-spustit refresh, takže native instalace bez cronu nezůstanou
+        // s neaktuální cache donekonečna.
+        $lastCheckAt = $cache['last_check_at'] ?? null;
+        $cacheStale = false;
+        if ($latest && $current !== 'unknown' && $this->isNewer($current, $latest)) {
+            // Nesmyslný stav (cache < instalace) — ignoruj cached latest úplně.
+            $latest = null;
+            $cache['latest_release_notes'] = null;
+            $cache['latest_release_url']   = null;
+            $cache['latest_published_at']  = null;
+            $cacheStale = true;
+        }
+        if (!$lastCheckAt) {
+            $cacheStale = true;
+        } else {
+            $age = time() - (int) strtotime((string) $lastCheckAt);
+            if ($age > 86400) $cacheStale = true;
+        }
+
         $hasUpdate = $latest && $this->isNewer($latest, $current);
 
         return [
@@ -88,8 +110,9 @@ final class VersionService
             'release_notes_md'     => $cache['latest_release_notes'] ?? null,
             'release_url'          => $cache['latest_release_url'] ?? null,
             'published_at'         => $cache['latest_published_at'] ?? null,
-            'last_check_at'        => $cache['last_check_at'] ?? null,
+            'last_check_at'        => $lastCheckAt,
             'last_check_error'     => $cache['last_check_error'] ?? null,
+            'cache_stale'          => $cacheStale,
             'environment'          => $this->detectEnvironment(),
             'upgrade_in_progress'  => $this->isUpgradeInProgress(),
             'last_upgrade_result'  => $this->loadUpgradeResult(),

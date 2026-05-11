@@ -9,6 +9,7 @@ export interface UpdateStatus {
   published_at: string | null
   last_check_at: string | null
   last_check_error: string | null
+  cache_stale: boolean
   environment: 'docker' | 'native'
   upgrade_in_progress: boolean
   last_upgrade_result: {

@@ -105,7 +105,13 @@ onMounted(async () => {
 })
 
 function nextStep() {
-  if (step.value === 1 && adminValid.value) step.value = 2
+  if (step.value === 1 && adminValid.value) {
+    // Pre-fill supplier emailu admin emailem, pokud ho ještě uživatel needitoval.
+    if (!supplier.value.email.trim()) {
+      supplier.value.email = admin.value.email.trim()
+    }
+    step.value = 2
+  }
   else if (step.value === 2) submit()
 }
 

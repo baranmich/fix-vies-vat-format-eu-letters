@@ -456,7 +456,7 @@ export interface WorkReportItem {
 export interface WorkReport {
   id: number
   invoice_id: number
-  project_id: number
+  project_id: number | null
   title: string
   total_hours: number
   total_amount: number
@@ -464,7 +464,7 @@ export interface WorkReport {
 }
 
 export interface WorkReportPayload {
-  project_id: number
+  project_id: number | null
   title: string
   items: Array<{
     description: string

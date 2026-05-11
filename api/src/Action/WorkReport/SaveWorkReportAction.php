@@ -46,13 +46,14 @@ final class SaveWorkReportAction
         }
 
         $body = (array) ($request->getParsedBody() ?? []);
-        $projectId = (int) ($body['project_id'] ?? 0);
+        // project_id je volitelné — faktura nemusí mít zakázku, výkaz pak také ne.
+        $projectIdRaw = $body['project_id'] ?? null;
+        $projectId = ($projectIdRaw !== null && $projectIdRaw !== '' && (int) $projectIdRaw > 0)
+            ? (int) $projectIdRaw
+            : null;
         $title = trim((string) ($body['title'] ?? ''));
         $items = (array) ($body['items'] ?? []);
 
-        if ($projectId <= 0) {
-            return Json::error($response, 'validation_failed', 'Chybí ID zakázky.', 400);
-        }
         if ($title === '') {
             return Json::error($response, 'validation_failed', 'Chybí název výkazu.', 400);
         }

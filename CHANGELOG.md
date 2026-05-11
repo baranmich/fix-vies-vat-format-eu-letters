@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.1] — 2026-05-11
+
+### Fixed
+
+- **`auth.require_totp` po resetu/setupu zůstával zapnutý** — `SetupAction`
+  i CLI `api/bin/setup.php` zapisovaly do `cfg.local.php` jen když uživatel
+  zvolil "Vynutit 2FA". Stará `true` hodnota tam pak přežila i další setup
+  s volbou "ne" a admin se zamykal na `/setup-totp`. Píše se teď VŽDY
+  (true i false). `reset.php` navíc explicitně shazuje `auth.require_totp = false`,
+  aby fresh start byl skutečně fresh.
+- **„Chybí ID zakázky" při ukládání výkazu na faktuře bez zakázky** —
+  `work_reports.project_id` byl `NOT NULL`, ačkoli `invoices.project_id`
+  je volitelné. Migrace `0018_work_report_project_nullable.sql` uvolnila
+  sloupec na `NULL`, `SaveWorkReportAction` + repo + frontend předávají
+  `null` čistě.
+- **Nejnovější verze v admin/update zůstávala stará** (např. `2.2.0` po
+  upgradu na 3.3.0). `VersionService::getStatus()` teď ignoruje cache,
+  kde `latest < current` (nemožný stav po manuálním upgradu), a vrací flag
+  `cache_stale` když chybí check / je starší 24h / je nesmyslná. Frontend
+  pak při otevření `/admin/update` automaticky spustí background refresh,
+  takže nativní instalace bez cron job-u `cron-version-check.php` nezůstanou
+  s neaktuální cache donekonečna.
+- **`reset.php` po sobě nechával PDF historii, přílohy a version cache** —
+  `invoice_pdfs`, `invoice_attachments` a `app_meta` nebyly v `$wipe`
+  seznamu (TRUNCATE + `FOREIGN_KEY_CHECKS=0` cascade neaktivuje, takže
+  řádky přežily i smazání faktur). Doplněno.
+
+### Changed
+
+- **Přenos výkazu víceprací do položky faktury** — místo `hodiny × průměrná sazba`
+  se vkládá `1 ks × celková suma` (užitečnější pro klienta, jednodušší
+  sync-check). Sync warning porovnává jen totals. Cíleně se používá kód `ks`
+  z číselníku jednotek (ne systémový default), aby se hodiny zbytečně
+  nepřenesly i tam, kde má uživatel default `h`.
+- **Setup wizard** — email admina se předvyplní jako default email dodavatele
+  při přechodu z kroku 1 do kroku 2 (jen pokud uživatel supplier email
+  ještě needitoval).
+- **Storno dobropisu** — modal "Storno / dobropis" je teď přístupný i pro
+  dobropis (`canCancel` ho už nevylučuje). Pro dobropis se skrývá volba
+  "Vystavit dobropis" (dobropis se nedobropisuje); zůstávají "Pouze interní
+  storno" a "Smazat dobropis (admin)". Všechny popisky a per-status confirm
+  popupy mají dedikované `_cn` varianty pro správnou terminologii.
+  `CancelInvoiceAction` přijímá `mode=internal` i pro `invoice_type=credit_note`.
+  Force-delete dobropisu **nesmaže** původní fakturu — jen samotný dobropis
+  a jeho navazující stornovací doklad (pokud existuje); uvolnění čísla v
+  číselné řadě dobropisů se děje přes existující `VarsymbolGenerator::releaseIfLatest`.
+
 ## [3.3.0] — 2026-05-10
 
 ### Added

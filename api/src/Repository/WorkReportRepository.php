@@ -52,7 +52,7 @@ final class WorkReportRepository
      * Uloží work_report (upsert) + nahradí items.
      * Vrací id work_reportu.
      */
-    public function save(int $invoiceId, int $projectId, string $title, array $items): int
+    public function save(int $invoiceId, ?int $projectId, string $title, array $items): int
     {
         $pdo = $this->db->pdo();
         $existing = $this->findByInvoice($invoiceId);
@@ -64,16 +64,19 @@ final class WorkReportRepository
             $totalAmount += (float) ($it['hours'] ?? 0) * (float) ($it['rate'] ?? 0);
         }
 
+        // project_id je nullable — faktura nemusí mít zakázku.
+        $projectIdParam = ($projectId !== null && $projectId > 0) ? $projectId : null;
+
         if ($existing) {
             $id = (int) $existing['id'];
             $pdo->prepare(
                 'UPDATE work_reports SET project_id=?, title=?, total_hours=?, total_amount=? WHERE id=?'
-            )->execute([$projectId, $title, $totalHours, $totalAmount, $id]);
+            )->execute([$projectIdParam, $title, $totalHours, $totalAmount, $id]);
         } else {
             $pdo->prepare(
                 'INSERT INTO work_reports (invoice_id, project_id, title, total_hours, total_amount)
                  VALUES (?,?,?,?,?)'
-            )->execute([$invoiceId, $projectId, $title, $totalHours, $totalAmount]);
+            )->execute([$invoiceId, $projectIdParam, $title, $totalHours, $totalAmount]);
             $id = (int) $pdo->lastInsertId();
         }
 

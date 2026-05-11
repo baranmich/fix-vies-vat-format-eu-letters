@@ -48,13 +48,18 @@ final class CancelInvoiceAction
         if (!in_array($invoice['status'], ['issued', 'sent', 'reminded', 'paid'], true)) {
             return Json::error($response, 'invalid_state', 'Lze zrušit jen vystavenou/odeslanou/zaplacenou fakturu.', 409);
         }
-        if (in_array($invoice['invoice_type'], ['credit_note', 'cancellation'], true)) {
-            return Json::error($response, 'invalid_type', 'Dobropis ani storno nelze stornovat.', 409);
+        if ($invoice['invoice_type'] === 'cancellation') {
+            return Json::error($response, 'invalid_type', 'Stornovací doklad nelze stornovat.', 409);
         }
 
         $body = (array) ($request->getParsedBody() ?? []);
         $mode = (string) ($body['mode'] ?? '');
         $reason = (string) ($body['reason'] ?? '');
+
+        // Dobropisu nelze vystavit další dobropis — povolen jen interní storno.
+        if ($invoice['invoice_type'] === 'credit_note' && $mode !== 'internal') {
+            return Json::error($response, 'invalid_mode', 'Dobropis lze stornovat pouze interně.', 409);
+        }
 
         if ($mode === 'internal') {
             return $this->internalCancel($request, $response, $invoice, $reason);
