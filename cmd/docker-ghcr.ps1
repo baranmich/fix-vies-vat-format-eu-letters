@@ -13,7 +13,18 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+# Invoke-WebRequest / curl.exe na Windows zobrazuje progress bar, ktery v
+# pollovacim loopu dramaticky zpomaluje kazde volani (i nekolik sekund navic).
+$ProgressPreference = 'SilentlyContinue'
+
+# Detekce PROJECT_ROOT — skript se pouszti dvema zpusoby (stejne jako .sh):
+#   a) standalone install (curl 3 souboru do jedne slozky): script vedle compose file
+#   b) z klonu repa: script v `cmd/`, compose file o uroven vys
+if (Test-Path (Join-Path $PSScriptRoot 'docker-compose.production.yml')) {
+    $ProjectRoot = $PSScriptRoot
+} else {
+    $ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+}
 Set-Location $ProjectRoot
 
 $ComposeFile = 'docker-compose.production.yml'
@@ -117,16 +128,27 @@ if (-not $ready) {
 # s duplicate PK v `migrations` tabulce) jen cekame, az app odpovi na HTTP.
 # Pouzivame /api/health - je v ALLOWED_PATHS pro FirstRunLockMiddleware, takze
 # vraci 200 i ve fresh-install state (kdy /api/version dostane 423 Locked).
+# Pouzivame curl.exe (shipped s Windows 10/11 v C:\Windows\System32\curl.exe),
+# protoze Invoke-WebRequest se na Windows v polling loopu chova nepredvidatelne
+# (pomale, error handling jine nez curl, navic catch{} skryval diagnostiku).
+# Zarovnano s docker-ghcr.sh — stejna sematika `curl -fsS` (200 = ok, jinak fail).
+$curl = (Get-Command curl.exe -ErrorAction SilentlyContinue)?.Source
+if (-not $curl) { $curl = 'C:\Windows\System32\curl.exe' }
+if (-not (Test-Path $curl)) {
+    Write-Error "curl.exe nenalezen (potreba na Win 10/11+). Updatuj OS nebo doinstaluj curl."
+}
+
 Write-Host "==> Waiting for app to become available (entrypoint runs migrations)..."
 $ready = $false
+$lastErr = ''
 for ($i = 1; $i -le 60; $i++) {
-    try {
-        $resp = Invoke-WebRequest -Uri "http://localhost:$($envVars.APP_PORT)/api/health" -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
-        if ($resp.StatusCode -eq 200) { $ready = $true; Write-Host "    App ready."; break }
-    } catch {}
+    $out = & $curl -fsS -m 3 -o NUL "http://localhost:$($envVars.APP_PORT)/api/health" 2>&1
+    if ($LASTEXITCODE -eq 0) { $ready = $true; Write-Host "    App ready."; break }
+    $lastErr = ($out | Out-String).Trim()
     Start-Sleep -Seconds 2
 }
 if (-not $ready) {
+    Write-Host "    Last curl error: $lastErr" -ForegroundColor Yellow
     Write-Error "App failed to respond in 120s. Check 'docker compose -f $ComposeFile logs app'."
 }
 
