@@ -255,10 +255,10 @@ function sparklineFor(currency: string): { labels: string[]; values: number[] } 
                 {{ formatMoney(period === '30' ? cf.in_30 : period === '60' ? cf.in_60 : cf.in_90, cf.currency) }}
               </div>
             </div>
-            <div class="text-xs text-neutral-500 mt-1">
-              <span v-for="cf in summary.cashflow_forecast" :key="`cf-cnt-${period}-${cf.currency}`">
+            <div class="text-xs text-neutral-500 mt-1 space-y-0.5">
+              <div v-for="cf in summary.cashflow_forecast" :key="`cf-cnt-${period}-${cf.currency}`">
                 {{ period === '30' ? cf.count_30 : period === '60' ? cf.count_60 : cf.count_90 }} {{ t('dashboard.invoices_unit') }}
-              </span>
+              </div>
             </div>
           </div>
         </div>

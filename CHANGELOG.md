@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Validace email šablony před uložením.** `PUT /api/admin/email-templates/{code}/{locale}`
+  teď před uložením zkusí šablonu pre-renderovat přes sandbox a vrátí
+  čitelnou chybu (s názvem pole `body_html`/`body_text`), pokud najde
+  nepovolený tag (`Tag „include" není povolený…`), nepovolený filtr
+  (`Filtr „|url_encode" není povolený…`), nepovolenou funkci nebo
+  syntaktickou chybu (`Chyba syntaxe (řádek N): …`). Uživatel tak vidí
+  problém okamžitě v adminu, místo aby narazil na runtime crash teprve
+  při odeslání emailu — follow-up issue #25.
+
+### Fixed
+
+- **Dashboard — cash-flow forecast: počty faktur pro různé měny se slévaly
+  do jednoho řádku** (např. `6 faktur4 faktur` místo dvou samostatných
+  řádků pro CZK a EUR). Renderovalo se přes `<span v-for>` bez oddělovače;
+  částky vedle používají `<div v-for>` se `space-y-0.5`, counts to teď
+  zrcadlí.
+
 ---
 
 ## [3.6.5] — 2026-05-14

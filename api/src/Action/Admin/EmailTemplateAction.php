@@ -9,6 +9,7 @@ use MyInvoice\Middleware\AuthMiddleware;
 use MyInvoice\Repository\EmailTemplateRepository;
 use MyInvoice\Service\ActivityLogger;
 use MyInvoice\Service\IpMatcher;
+use MyInvoice\Service\Mail\Mailer;
 use MyInvoice\Bootstrap;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -33,6 +34,7 @@ final class EmailTemplateAction
         private readonly EmailTemplateRepository $repo,
         private readonly ActivityLogger $logger,
         private readonly IpMatcher $ipMatcher,
+        private readonly Mailer $mailer,
     ) {}
 
     public function list(Request $request, Response $response): Response
@@ -103,6 +105,15 @@ final class EmailTemplateAction
         if ($subject === '')  return Json::error($response, 'validation_failed', 'Chybí subject.', 400);
         if ($bodyHtml === '') return Json::error($response, 'validation_failed', 'Chybí body_html.', 400);
         if ($bodyText === '') return Json::error($response, 'validation_failed', 'Chybí body_text.', 400);
+
+        // Pre-render přes sandbox — zachytíme nepovolené tagy/filtry/syntax dřív,
+        // než user pošle email a uvidí runtime crash (issue #25 follow-up).
+        $validation = $this->mailer->validateUserTemplate($bodyHtml, $bodyText);
+        if ($validation !== null) {
+            return Json::error($response, 'validation_failed', $validation['message'], 400, [
+                'field' => $validation['field'],
+            ]);
+        }
 
         $user = (array) $request->getAttribute(AuthMiddleware::ATTR_USER, []);
         $this->repo->save($code, $locale, $subject, $bodyHtml, $bodyText, isset($user['id']) ? (int) $user['id'] : null);

@@ -72,4 +72,46 @@ final class MailerSandboxRenderTest extends TestCase
         $this->expectException(\Twig\Sandbox\SecurityNotAllowedTagError::class);
         $this->sandbox->createTemplate("{% include '_layout.html.twig' %}")->render([]);
     }
+
+    public function testValidateUserTemplateAcceptsDefaults(): void
+    {
+        // Issue #25 follow-up — `validateUserTemplate` musí pustit default šablonu,
+        // kterou loadDefaults() vrátí, jinak by uživatel nemohl ani jen kliknout Uložit.
+        $mailer = (new \ReflectionClass(Mailer::class))->newInstanceWithoutConstructor();
+        $defaultHtml = (string) file_get_contents(dirname(__DIR__, 4) . '/templates/email/invoice_send.cs.html.twig');
+        $defaultText = (string) file_get_contents(dirname(__DIR__, 4) . '/templates/email/invoice_send.cs.txt.twig');
+        self::assertNotSame('', $defaultHtml);
+        self::assertNotSame('', $defaultText);
+        self::assertNull($mailer->validateUserTemplate($defaultHtml, $defaultText));
+    }
+
+    public function testValidateUserTemplateRejectsForbiddenTag(): void
+    {
+        $mailer = (new \ReflectionClass(Mailer::class))->newInstanceWithoutConstructor();
+        $bad = "{% include '_layout.html.twig' %}";
+        $result = $mailer->validateUserTemplate($bad, 'plain text ok');
+        self::assertNotNull($result);
+        self::assertSame('body_html', $result['field']);
+        self::assertStringContainsString('include', $result['message']);
+    }
+
+    public function testValidateUserTemplateRejectsForbiddenFilter(): void
+    {
+        $mailer = (new \ReflectionClass(Mailer::class))->newInstanceWithoutConstructor();
+        // `url_encode` není v allowed filters.
+        $bad = "{{ foo|url_encode }}";
+        $result = $mailer->validateUserTemplate('html ok', $bad);
+        self::assertNotNull($result);
+        self::assertSame('body_text', $result['field']);
+        self::assertStringContainsString('url_encode', $result['message']);
+    }
+
+    public function testValidateUserTemplateReportsSyntaxError(): void
+    {
+        $mailer = (new \ReflectionClass(Mailer::class))->newInstanceWithoutConstructor();
+        $bad = "{% if foo %}unclosed";
+        $result = $mailer->validateUserTemplate($bad, 'ok');
+        self::assertNotNull($result);
+        self::assertStringContainsString('syntax', strtolower($result['message']));
+    }
 }
