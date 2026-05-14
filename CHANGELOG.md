@@ -9,6 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.6.4] — 2026-05-14
+
+### Added
+
+- **Inline vytváření klienta a zakázky z editoru faktury.** Vedle pickeru
+  klienta a pickeru zakázky v editoru faktury (`/invoices/new` i
+  `/invoices/{id}/edit`) jsou nová tlačítka „+ Nový klient" a „+ Nová".
+  Klik otevře modální okno s plnou formou (ARES, VIES, billing emails,
+  měna, jazyk, splatnost, hodinová sazba, …). Po uložení se modal zavře,
+  nová entita se přidá do seznamu a **automaticky vybere** v pickeru;
+  rozepsaná faktura se neztratí. Tlačítko pro zakázku je aktivní pouze,
+  když je vybraný klient (pre-fillne `client_id`, měnu a sazby).
+- **Stejný flow v editoru pravidelné fakturace** (`/recurring/new` i
+  `/recurring/{id}/edit`).
+- **Sdílené komponenty:** `components/ui/Modal.vue` (generic modal —
+  Teleport, ESC close, click-outside, sticky header + scroll body),
+  `components/modals/ClientFormModal.vue`,
+  `components/modals/ProjectFormModal.vue`.
+- **Embedded mode pro existující formuláře.** `ClientForm.vue` a
+  `ProjectForm.vue` dostaly props `embedded`, `defaults`/`clientId` a
+  emity `created` / `cancel`. V embedded módu skrývají vlastní header
+  a místo `router.push` vrací výsledek přes event — což umožňuje jejich
+  reuse v jakémkoli modálním okně bez duplikace kódu.
+
+### Fixed
+
+- **InvoiceEditor — duplicitní „+" u tlačítka „+ Nový klient".** i18n
+  hodnota `client.new` obsahuje `"+ Nový klient"`, vedle ní byla ještě
+  SVG plus ikona → uživatel viděl `++`. Tlačítko teď používá
+  `client.new_title` (`"Nový klient"` bez plusu).
+
+---
+
 ## [3.6.3] — 2026-05-14
 
 ### Added

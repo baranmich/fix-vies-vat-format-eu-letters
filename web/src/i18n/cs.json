@@ -468,6 +468,7 @@
     "select_client": "Vybrat klienta…",
     "project": "Zakázka",
     "no_project": "— bez zakázky —",
+    "new_project_short": "Nová",
     "currency": "Měna",
     "language": "Jazyk",
     "reverse_charge": "Reverse charge",

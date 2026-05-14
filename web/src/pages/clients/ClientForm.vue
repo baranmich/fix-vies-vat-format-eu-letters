@@ -1,16 +1,31 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { clientsApi, type ClientPayload, type Client } from '@/api/clients'
 import { codebooksApi, type Country, type Currency } from '@/api/codebooks'
+
+/**
+ * V `embedded` módu komponenta nečte route, neredirektuje a vrací výsledek
+ * přes `@created` event. Používá se v modal okně (InvoiceEditor, RecurringForm…).
+ */
+const props = withDefaults(defineProps<{ embedded?: boolean; defaults?: Partial<ClientPayload> }>(), {
+  embedded: false,
+  defaults: () => ({}),
+})
+const emit = defineEmits<{
+  (e: 'created', client: Client): void
+  (e: 'cancel'): void
+}>()
 
 const { t, locale } = useI18n()
 
 const route = useRoute()
 const router = useRouter()
 
-const isEdit = computed(() => route.params.id !== undefined && route.params.id !== 'new')
+const isEdit = computed(() =>
+  !props.embedded && route.params.id !== undefined && route.params.id !== 'new'
+)
 const clientId = computed(() => (isEdit.value ? Number(route.params.id) : null))
 
 const form = ref<ClientPayload>({
@@ -54,6 +69,8 @@ onMounted(async () => {
   if (isEdit.value && clientId.value) {
     const c = await clientsApi.get(clientId.value)
     Object.assign(form.value, sanitize(c))
+  } else if (props.embedded && props.defaults) {
+    Object.assign(form.value, props.defaults)
   }
 })
 
@@ -161,13 +178,14 @@ async function submit() {
   errors.value = {}
   try {
     if (isEdit.value && clientId.value) {
-      await clientsApi.update(clientId.value, form.value)
+      const updated = await clientsApi.update(clientId.value, form.value)
+      if (props.embedded) { emit('created', updated); return }
+      router.push(`/clients/${clientId.value}`)
     } else {
       const created = await clientsApi.create(form.value)
+      if (props.embedded) { emit('created', created); return }
       router.push(`/clients/${created.id}`)
-      return
     }
-    router.push(`/clients/${clientId.value}`)
   } catch (e: any) {
     const data = e?.response?.data?.error
     error.value = data?.message || t('errors.generic')
@@ -179,8 +197,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="max-w-3xl">
-    <div class="flex items-center justify-between mb-4">
+  <div :class="embedded ? '' : 'max-w-3xl'">
+    <div v-if="!embedded" class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-semibold">
         {{ isEdit ? t('client.edit_title') : t('client.new_title') }}
       </h1>
@@ -341,7 +359,9 @@ async function submit() {
       </div>
 
       <div class="px-5 py-3 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3 rounded-b-lg">
-        <RouterLink to="/clients" class="px-4 h-10 leading-10 border border-neutral-300 rounded-md text-neutral-700 hover:bg-white text-sm font-medium">{{ t('common.cancel') }}</RouterLink>
+        <button v-if="embedded" type="button" @click="emit('cancel')"
+          class="px-4 h-10 border border-neutral-300 rounded-md text-neutral-700 hover:bg-white text-sm font-medium">{{ t('common.cancel') }}</button>
+        <RouterLink v-else to="/clients" class="px-4 h-10 leading-10 border border-neutral-300 rounded-md text-neutral-700 hover:bg-white text-sm font-medium">{{ t('common.cancel') }}</RouterLink>
         <button type="submit" :disabled="submitting"
           class="px-5 h-10 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white text-sm font-medium rounded-md">
           {{ submitting ? t('common.saving') : (isEdit ? t('common.save') : t('common.create')) }}

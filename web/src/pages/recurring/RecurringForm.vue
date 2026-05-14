@@ -8,6 +8,8 @@ import { projectsApi, type Project } from '@/api/projects'
 import { codebooksApi, type VatRate, type Currency, type Unit } from '@/api/codebooks'
 import { useToast } from '@/composables/useToast'
 import SearchableSelect from '@/components/ui/SearchableSelect.vue'
+import ClientFormModal from '@/components/modals/ClientFormModal.vue'
+import ProjectFormModal from '@/components/modals/ProjectFormModal.vue'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -168,6 +170,23 @@ watch(() => form.value.client_id, async (newId) => {
     projects.value = []
   }
 })
+
+// Inline create modaly — žádné opouštění editoru pravidelné fakturace.
+const clientModalOpen = ref(false)
+const projectModalOpen = ref(false)
+
+async function onClientCreatedInModal(client: Client) {
+  clients.value = [client, ...clients.value.filter(c => c.id !== client.id)]
+  form.value.client_id = client.id
+  clientModalOpen.value = false
+  // watch na client_id zavolá loadProjectsForClient + nastaví name
+}
+
+async function onProjectCreatedInModal(project: Project) {
+  projects.value = [project, ...projects.value.filter(p => p.id !== project.id)]
+  form.value.project_id = project.id
+  projectModalOpen.value = false
+}
 
 watch(() => form.value.end_of_month, (eom) => {
   if (eom) form.value.day_of_month = null
@@ -372,22 +391,46 @@ async function submit() {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('recurring.client') }} *</label>
-            <SearchableSelect
-              :model-value="form.client_id"
-              @update:model-value="(v) => { form.client_id = v }"
-              :options="clients.map(c => ({ value: c.id, label: c.company_name }))"
-              :placeholder="t('recurring.client')"
-            />
+            <div class="flex gap-2">
+              <div class="flex-1 min-w-0">
+                <SearchableSelect
+                  :model-value="form.client_id"
+                  @update:model-value="(v) => { form.client_id = v }"
+                  :options="clients.map(c => ({ value: c.id, label: c.company_name }))"
+                  :placeholder="t('recurring.client')"
+                />
+              </div>
+              <button type="button" @click="clientModalOpen = true"
+                class="cursor-pointer shrink-0 h-9 px-3 inline-flex items-center gap-1.5 border border-primary-500/40 text-primary-700 hover:bg-primary-50 rounded-md text-sm font-medium"
+                :title="t('client.new_title')">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span class="hidden sm:inline">{{ t('client.new_title') }}</span>
+              </button>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('recurring.project') }}</label>
-            <SearchableSelect
-              :model-value="form.project_id"
-              @update:model-value="(v) => { form.project_id = v }"
-              :options="projects.map(p => ({ value: p.id, label: p.name }))"
-              :placeholder="t('invoice.no_project')"
-              :disabled="!form.client_id"
-            />
+            <div class="flex gap-2">
+              <div class="flex-1 min-w-0">
+                <SearchableSelect
+                  :model-value="form.project_id"
+                  @update:model-value="(v) => { form.project_id = v }"
+                  :options="projects.map(p => ({ value: p.id, label: p.name }))"
+                  :placeholder="t('invoice.no_project')"
+                  :disabled="!form.client_id"
+                />
+              </div>
+              <button type="button" @click="projectModalOpen = true" :disabled="!form.client_id"
+                class="cursor-pointer shrink-0 h-9 px-3 inline-flex items-center gap-1.5 border border-primary-500/40 text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-sm font-medium"
+                :title="t('project.new_title')">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                <span class="hidden sm:inline">{{ t('invoice.new_project_short') }}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -556,5 +599,14 @@ async function submit() {
         </button>
       </div>
     </form>
+
+    <!-- Inline create modaly — žádné opouštění editoru -->
+    <ClientFormModal v-if="clientModalOpen"
+      @created="onClientCreatedInModal"
+      @close="clientModalOpen = false" />
+    <ProjectFormModal v-if="projectModalOpen && form.client_id"
+      :client-id="form.client_id"
+      @created="onProjectCreatedInModal"
+      @close="projectModalOpen = false" />
   </div>
 </template>

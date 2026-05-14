@@ -17,6 +17,8 @@ import { formatMoney, formatPercent } from '@/composables/useFormat'
 import { apiErrorMessage } from '@/api/errors'
 import { useSupplierStore } from '@/stores/supplier'
 import SearchableSelect from '@/components/ui/SearchableSelect.vue'
+import ClientFormModal from '@/components/modals/ClientFormModal.vue'
+import ProjectFormModal from '@/components/modals/ProjectFormModal.vue'
 
 const supplierStore = useSupplierStore()
 
@@ -294,6 +296,26 @@ onMounted(async () => {
 
 async function loadProjects(clientId: number) {
   projects.value = await projectsApi.listForClient(clientId)
+}
+
+// Inline client/project creation přes modal — UX zlepšení, žádné opouštění editoru.
+const clientModalOpen = ref(false)
+const projectModalOpen = ref(false)
+
+async function onClientCreatedInModal(client: Client) {
+  // Vlož na začátek pole (typicky čerstvě přidaný klient bývá vybraný),
+  // setni v editoru a spusť defaults/projects/VIES.
+  clients.value = [client, ...clients.value.filter(c => c.id !== client.id)]
+  form.value.client_id = client.id
+  clientModalOpen.value = false
+  await onClientChange()
+}
+
+async function onProjectCreatedInModal(project: Project) {
+  projects.value = [project, ...projects.value.filter(p => p.id !== project.id)]
+  form.value.project_id = project.id
+  projectModalOpen.value = false
+  await onProjectChange()
 }
 
 async function onClientChange() {
@@ -778,13 +800,25 @@ async function deleteDraft() {
             </div>
             <div>
               <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('invoice.client') }} *</label>
-              <SearchableSelect
-                :model-value="form.client_id"
-                @update:model-value="(v) => { form.client_id = v; onClientChange() }"
-                :options="clients.map(c => ({ value: c.id, label: c.company_name, secondary: c.ic ?? undefined }))"
-                :placeholder="t('invoice.select_client')"
-                :clearable="false"
-              />
+              <div class="flex gap-2">
+                <div class="flex-1 min-w-0">
+                  <SearchableSelect
+                    :model-value="form.client_id"
+                    @update:model-value="(v) => { form.client_id = v; onClientChange() }"
+                    :options="clients.map(c => ({ value: c.id, label: c.company_name, secondary: c.ic ?? undefined }))"
+                    :placeholder="t('invoice.select_client')"
+                    :clearable="false"
+                  />
+                </div>
+                <button type="button" @click="clientModalOpen = true"
+                  class="cursor-pointer shrink-0 h-9 px-3 inline-flex items-center gap-1.5 border border-primary-500/40 text-primary-700 hover:bg-primary-50 rounded-md text-sm font-medium"
+                  :title="t('client.new_title')">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span class="hidden sm:inline">{{ t('client.new_title') }}</span>
+                </button>
+              </div>
               <!-- VIES výsledek -->
               <div v-if="viesResult" class="mt-1 text-xs flex items-start gap-1.5">
                 <template v-if="viesResult.status === 'checking'">
@@ -808,13 +842,25 @@ async function deleteDraft() {
             </div>
             <div>
               <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('invoice.project') }}</label>
-              <SearchableSelect
-                :model-value="form.project_id"
-                @update:model-value="(v) => { form.project_id = v; onProjectChange() }"
-                :options="projects.map(p => ({ value: p.id, label: p.name + (p.status !== 'active' ? ` (${p.status})` : ''), secondary: p.project_number ?? undefined }))"
-                :placeholder="t('invoice.no_project')"
-                :disabled="!form.client_id"
-              />
+              <div class="flex gap-2">
+                <div class="flex-1 min-w-0">
+                  <SearchableSelect
+                    :model-value="form.project_id"
+                    @update:model-value="(v) => { form.project_id = v; onProjectChange() }"
+                    :options="projects.map(p => ({ value: p.id, label: p.name + (p.status !== 'active' ? ` (${p.status})` : ''), secondary: p.project_number ?? undefined }))"
+                    :placeholder="t('invoice.no_project')"
+                    :disabled="!form.client_id"
+                  />
+                </div>
+                <button type="button" @click="projectModalOpen = true" :disabled="!form.client_id"
+                  class="cursor-pointer shrink-0 h-9 px-3 inline-flex items-center gap-1.5 border border-primary-500/40 text-primary-700 hover:bg-primary-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-md text-sm font-medium"
+                  :title="t('project.new_title')">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span class="hidden sm:inline">{{ t('invoice.new_project_short') }}</span>
+                </button>
+              </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -1229,5 +1275,14 @@ async function deleteDraft() {
         </button>
       </div>
     </form>
+
+    <!-- Inline create modaly — neopouštějí editor, po save se entita auto-vybere -->
+    <ClientFormModal v-if="clientModalOpen"
+      @created="onClientCreatedInModal"
+      @close="clientModalOpen = false" />
+    <ProjectFormModal v-if="projectModalOpen && form.client_id"
+      :client-id="form.client_id"
+      @created="onProjectCreatedInModal"
+      @close="projectModalOpen = false" />
   </div>
 </template>

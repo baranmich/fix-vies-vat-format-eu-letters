@@ -2,15 +2,30 @@
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { projectsApi, type Project, type ProjectPayload, type BillingEmail } from '@/api/projects'
 import { clientsApi, type Client } from '@/api/clients'
 import { codebooksApi, type Currency } from '@/api/codebooks'
 
+/**
+ * V `embedded` módu komponenta nečte route a vrací výsledek přes `@created`.
+ * `clientId` je předaný přes prop (override route.query.client_id).
+ */
+const props = withDefaults(defineProps<{ embedded?: boolean; clientId?: number }>(), {
+  embedded: false,
+  clientId: 0,
+})
+const emit = defineEmits<{
+  (e: 'created', project: Project): void
+  (e: 'cancel'): void
+}>()
+
 const route = useRoute()
 const router = useRouter()
 
-const isEdit = computed(() => route.params.id !== undefined && route.params.id !== 'new')
+const isEdit = computed(() =>
+  !props.embedded && route.params.id !== undefined && route.params.id !== 'new'
+)
 const projectId = computed(() => (isEdit.value ? Number(route.params.id) : null))
 const initialClientId = ref<number | null>(null)
 
@@ -63,7 +78,10 @@ onMounted(async () => {
       }
     }
   } else {
-    const cid = route.query.client_id ? Number(route.query.client_id) : null
+    // embedded mode → použij prop clientId; jinak route.query.client_id
+    const cid = props.embedded
+      ? (props.clientId || null)
+      : (route.query.client_id ? Number(route.query.client_id) : null)
     if (cid) {
       initialClientId.value = cid
       client.value = await clientsApi.get(cid)
@@ -73,7 +91,7 @@ onMounted(async () => {
       if (client.value.hourly_rate && client.value.hourly_rate > 0) {
         form.value.hourly_rate = client.value.hourly_rate
       }
-    } else {
+    } else if (!props.embedded) {
       router.push('/clients')
     }
   }
@@ -114,10 +132,12 @@ async function submit() {
     if (isEdit.value && projectId.value) {
       const { client_id, ...rest } = form.value
       void client_id
-      await projectsApi.update(projectId.value, rest)
+      const updated = await projectsApi.update(projectId.value, rest)
+      if (props.embedded) { emit('created', updated); return }
       router.push(`/projects/${projectId.value}`)
     } else {
       const created = await projectsApi.create(form.value)
+      if (props.embedded) { emit('created', created); return }
       router.push(`/projects/${created.id}`)
     }
   } catch (e: any) {
@@ -129,8 +149,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="max-w-3xl">
-    <div class="flex items-center justify-between mb-4">
+  <div :class="embedded ? '' : 'max-w-3xl'">
+    <div v-if="!embedded" class="flex items-center justify-between mb-4">
       <h1 class="text-2xl font-semibold">
         {{ isEdit ? t('project.edit_title') : t('project.new_title') }}
       </h1>
@@ -139,7 +159,7 @@ async function submit() {
       </RouterLink>
     </div>
 
-    <div v-if="client" class="mb-3 text-sm text-neutral-500">
+    <div v-if="client && !embedded" class="mb-3 text-sm text-neutral-500">
       {{ t('invoice.client') }}: <span class="font-medium text-neutral-900">{{ client.company_name }}</span>
     </div>
 
@@ -253,7 +273,7 @@ async function submit() {
       </div>
 
       <div class="px-5 py-3 border-t border-neutral-200 bg-neutral-50 flex justify-end gap-3 rounded-b-lg">
-        <button type="button" @click="router.back()" class="px-4 h-10 border border-neutral-300 rounded-md text-neutral-700 hover:bg-white text-sm font-medium">{{ t('common.cancel') }}</button>
+        <button type="button" @click="embedded ? emit('cancel') : router.back()" class="px-4 h-10 border border-neutral-300 rounded-md text-neutral-700 hover:bg-white text-sm font-medium">{{ t('common.cancel') }}</button>
         <button type="submit" :disabled="submitting"
           class="px-5 h-10 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white text-sm font-medium rounded-md">
           {{ submitting ? t('common.saving') : (isEdit ? t('common.save') : t('common.create')) }}

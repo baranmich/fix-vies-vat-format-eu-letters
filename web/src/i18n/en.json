@@ -468,6 +468,7 @@
     "select_client": "Select client…",
     "project": "Project",
     "no_project": "— no project —",
+    "new_project_short": "New",
     "currency": "Currency",
     "language": "Language",
     "reverse_charge": "Reverse charge",
