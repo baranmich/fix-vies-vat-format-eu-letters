@@ -8,6 +8,7 @@ use MyInvoice\Http\Json;
 use MyInvoice\Http\SupplierGuard;
 use MyInvoice\Infrastructure\Database\Connection;
 use MyInvoice\Middleware\AuthMiddleware;
+use MyInvoice\Repository\InvoiceRepository;
 use MyInvoice\Repository\RecurringTemplateRepository;
 use MyInvoice\Service\ActivityLogger;
 use MyInvoice\Service\Invoice\PeriodicityCalculator;
@@ -38,6 +39,7 @@ final class RecurringTemplateAction
         private readonly ActivityLogger $logger,
         private readonly IpMatcher $ipMatcher,
         private readonly Connection $db,
+        private readonly InvoiceRepository $invoices,
     ) {}
 
     public function list(Request $request, Response $response): Response
@@ -291,26 +293,7 @@ final class RecurringTemplateAction
         } else {
             foreach (array_values($items) as $i => $item) {
                 if (!is_array($item)) { $err["items.{$i}"][] = 'Neplatná položka'; continue; }
-                if (empty($item['description']) || trim((string) $item['description']) === '') {
-                    $err["items.{$i}.description"][] = 'Popis je povinný';
-                }
-                if (!isset($item['vat_rate_id']) || !is_numeric($item['vat_rate_id'])) {
-                    $err["items.{$i}.vat_rate_id"][] = 'DPH sazba je povinná';
-                }
-                $qty = (float) ($item['quantity'] ?? 0);
-                if ($qty == 0.0) {
-                    $err["items.{$i}.quantity"][] = 'Množství nesmí být 0';
-                }
-                if (!isset($item['unit_price_without_vat']) || !is_numeric($item['unit_price_without_vat'])) {
-                    $err["items.{$i}.unit_price_without_vat"][] = 'Cena je povinná';
-                } else {
-                    $price = (float) $item['unit_price_without_vat'];
-                    if ($qty < 0 && $price < 0) {
-                        $msg = 'Záporné množství i záporná cena zároveň nejsou povolené';
-                        $err["items.{$i}.quantity"][] = $msg;
-                        $err["items.{$i}.unit_price_without_vat"][] = $msg;
-                    }
-                }
+                $err = array_merge($err, InvoiceAmountPolicy::validateItem($item, $i));
             }
         }
 
@@ -319,25 +302,12 @@ final class RecurringTemplateAction
             'advance_paid_amount' => 0,
             'reverse_charge' => !empty($data['reverse_charge']),
             'items' => $items,
-        ], $this->loadVatRateMap());
+        ], $this->invoices->vatRateMap());
         if ($amountError !== null) {
             $err['amount_to_pay'][] = $amountError;
         }
 
         return $err;
-    }
-
-    /**
-     * @return array<int, float>
-     */
-    private function loadVatRateMap(): array
-    {
-        $rows = $this->db->pdo()->query('SELECT id, rate_percent FROM vat_rates')->fetchAll(PDO::FETCH_ASSOC);
-        $out = [];
-        foreach ($rows as $row) {
-            $out[(int) $row['id']] = (float) $row['rate_percent'];
-        }
-        return $out;
     }
 
     private static function isValidDate(string $date): bool

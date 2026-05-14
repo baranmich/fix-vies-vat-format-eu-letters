@@ -53,26 +53,7 @@ final class InvoiceValidation
                     $err["items.{$i}"][] = 'Neplatná položka';
                     continue;
                 }
-                if (empty($item['description']) || trim((string) $item['description']) === '') {
-                    $err["items.{$i}.description"][] = 'Popis je povinný';
-                }
-                $qty = (float) ($item['quantity'] ?? 0);
-                if ($qty == 0.0) {
-                    $err["items.{$i}.quantity"][] = 'Množství nesmí být 0';
-                }
-                if (!isset($item['vat_rate_id']) || !is_numeric($item['vat_rate_id'])) {
-                    $err["items.{$i}.vat_rate_id"][] = 'DPH sazba je povinná';
-                }
-                if (!isset($item['unit_price_without_vat']) || !is_numeric($item['unit_price_without_vat'])) {
-                    $err["items.{$i}.unit_price_without_vat"][] = 'Jednotková cena je povinná';
-                } else {
-                    $price = (float) $item['unit_price_without_vat'];
-                    if ($qty < 0 && $price < 0) {
-                        $msg = 'Záporné množství i záporná cena zároveň nejsou povolené';
-                        $err["items.{$i}.quantity"][] = $msg;
-                        $err["items.{$i}.unit_price_without_vat"][] = $msg;
-                    }
-                }
+                $err = array_merge($err, InvoiceAmountPolicy::validateItem($item, $i));
             }
         }
 

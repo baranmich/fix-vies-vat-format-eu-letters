@@ -454,6 +454,12 @@ const hasNonPositiveAmountToPay = computed(() =>
   requiresPositiveAmountToPay.value && computed_totals.value.amount_to_pay <= 0
 )
 
+// Per-row check: záporné množství a záporná cena současně backend odmítne;
+// chceme to uživateli ukázat live, ne až při submitu.
+function itemHasBothNegative(item: InvoiceItem): boolean {
+  return Number(item.quantity) < 0 && Number(item.unit_price_without_vat) < 0
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
@@ -902,7 +908,7 @@ async function deleteDraft() {
             {{ t('invoice.add_item') }}
           </button>
         </div>
-        <div class="px-5 py-3 border-b border-neutral-100 text-xs text-neutral-500">
+        <div v-if="requiresPositiveAmountToPay" class="px-5 py-3 border-b border-neutral-100 text-xs text-neutral-500">
           {{ t('invoice.negative_item_hint') }}
         </div>
         <!-- Desktop: tabulka -->
@@ -921,7 +927,7 @@ async function deleteDraft() {
             </tr>
           </thead>
           <tbody class="divide-y divide-neutral-100">
-            <tr v-for="(item, i) in form.items" :key="i">
+            <tr v-for="(item, i) in form.items" :key="i" :class="itemHasBothNegative(item) ? 'bg-danger-50' : ''">
               <td class="px-2 py-2 text-center text-xs text-neutral-400">
                 <button type="button" @click="moveUp(i)" :disabled="i === 0" class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▲</button>
                 <button type="button" @click="moveDown(i)" :disabled="i === form.items.length - 1" class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▼</button>
@@ -932,7 +938,7 @@ async function deleteDraft() {
               </td>
               <td class="px-3 py-2">
                 <input v-model.number="item.quantity" type="number" step="0.001"
-                  class="w-full h-9 px-2 border border-neutral-200 rounded text-right font-mono text-sm" />
+                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
               </td>
               <td class="px-3 py-2">
                 <select v-model="item.unit" class="w-full h-9 px-1 border border-neutral-200 rounded text-sm bg-white">
@@ -942,7 +948,7 @@ async function deleteDraft() {
               </td>
               <td class="px-3 py-2">
                 <input v-model.number="item.unit_price_without_vat" type="number" step="0.01"
-                  class="w-full h-9 px-2 border border-neutral-200 rounded text-right font-mono text-sm" />
+                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
               </td>
               <td v-if="supplierIsVatPayer" class="px-3 py-2">
                 <select v-model.number="item.vat_rate_id" class="w-full h-9 px-1 border border-neutral-200 rounded text-sm bg-white">
@@ -970,7 +976,7 @@ async function deleteDraft() {
           <div v-if="form.items.length === 0" class="px-4 py-6 text-center text-neutral-400 text-sm">
             {{ t('invoice.no_items') }} <button type="button" @click="addItem" class="text-primary-600 hover:underline">{{ t('invoice.add_first') }}</button>
           </div>
-          <div v-for="(item, i) in form.items" :key="`m-${i}`" class="p-3 space-y-2">
+          <div v-for="(item, i) in form.items" :key="`m-${i}`" :class="['p-3 space-y-2', itemHasBothNegative(item) ? 'bg-danger-50' : '']">
             <div class="flex items-center justify-between text-xs text-neutral-500">
               <span class="font-mono">#{{ i + 1 }}</span>
               <div class="flex items-center gap-2">
@@ -988,7 +994,7 @@ async function deleteDraft() {
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.qty') }}</label>
                 <input v-model.number="item.quantity" type="number" inputmode="decimal" step="0.001"
-                  class="w-full h-10 px-3 border border-neutral-200 rounded text-right font-mono text-sm" />
+                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.unit') }}</label>
@@ -1002,7 +1008,7 @@ async function deleteDraft() {
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.unit_price') }}</label>
                 <input v-model.number="item.unit_price_without_vat" type="number" inputmode="decimal" step="0.01"
-                  class="w-full h-10 px-3 border border-neutral-200 rounded text-right font-mono text-sm" />
+                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
               </div>
               <div v-if="supplierIsVatPayer">
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.totals.vat') }}</label>

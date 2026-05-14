@@ -75,16 +75,21 @@ final class RecurringInvoiceGenerator
             throw new \DomainException('Šablona vypršela (end_date prošel).');
         }
 
+        // Pre-flight check částky k úhradě — vyhodnotíme stejnou matematikou jako
+        // recompute, ale BEZ DB zápisu. Tím se vyhneme orphan draftu, kdyby
+        // generator spadl mezi insertem a delete-on-fail.
+        $amountError = InvoiceAmountPolicy::validatePositiveAmountToPay([
+            'invoice_type' => (string) ($template['invoice_type'] ?? 'invoice'),
+            'advance_paid_amount' => 0,
+            'reverse_charge' => !empty($template['reverse_charge']),
+            'items' => $template['items'],
+        ], $this->invoices->vatRateMap());
+        if ($amountError !== null) {
+            throw new \DomainException($amountError);
+        }
+
         $invoiceId = $this->createInvoiceFromTemplate($template, $issueDate, $userId);
         $this->calc->recompute($invoiceId);
-        $invoice = $this->invoices->find($invoiceId);
-        if ($invoice === null) {
-            throw new \RuntimeException("Invoice #$invoiceId not found after generation");
-        }
-        if (!InvoiceAmountPolicy::hasPositiveAmountToPay($invoice)) {
-            $this->invoices->delete($invoiceId);
-            throw new \DomainException(InvoiceAmountPolicy::NON_POSITIVE_DRAFT_MESSAGE);
-        }
         $this->rateApplier->applyToInvoice($invoiceId);
 
         $issued = false;

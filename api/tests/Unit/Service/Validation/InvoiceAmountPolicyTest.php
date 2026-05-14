@@ -105,4 +105,91 @@ final class InvoiceAmountPolicyTest extends TestCase
         self::assertFalse(InvoiceAmountPolicy::requiresPositiveDraftAmountToPay('invoice', 123));
         self::assertFalse(InvoiceAmountPolicy::requiresPositiveDraftAmountToPay('credit_note'));
     }
+
+    /**
+     * Malformed item (chybějící vat_rate_id) přispěje 0 — kontrola pozitivity
+     * se NEpřeskočí. Dříve to short-circuit-ovalo a uživatel viděl chybu částky
+     * až v druhém round-tripu.
+     */
+    public function testMalformedItemDoesNotBypassPositivityCheck(): void
+    {
+        $err = InvoiceAmountPolicy::validatePositiveAmountToPay([
+            'invoice_type' => 'invoice',
+            'advance_paid_amount' => 0,
+            'reverse_charge' => false,
+            'items' => [
+                ['description' => 'Sleva', 'quantity' => 1, 'unit_price_without_vat' => -1000, 'vat_rate_id' => 1],
+                ['description' => 'Chybějící VAT', 'quantity' => 1, 'unit_price_without_vat' => 500 /* žádný vat_rate_id */],
+            ],
+        ], [1 => 0.0]);
+
+        // Validní řádek (-1000) sám o sobě = nekladná částka → musí se reportnout.
+        self::assertSame('Výsledná částka k úhradě musí být větší než 0. Pro čistě záporný nebo nulový doklad použij dobropis.', $err);
+    }
+
+    public function testAllItemsMalformedSkipsAmountCheck(): void
+    {
+        $err = InvoiceAmountPolicy::validatePositiveAmountToPay([
+            'invoice_type' => 'invoice',
+            'advance_paid_amount' => 0,
+            'reverse_charge' => false,
+            'items' => [
+                ['description' => 'X', 'quantity' => 'abc', 'unit_price_without_vat' => 'def', 'vat_rate_id' => 1],
+            ],
+        ], [1 => 21.0]);
+
+        // Nic spočítatelného → per-item errors se reportují jinde, amount check vrací null.
+        self::assertNull($err);
+    }
+
+    public function testCanBeMarkedPaidAllowsFinalFromProforma(): void
+    {
+        // Finální daňový doklad k zaplacené proformě má amount_to_pay = 0,
+        // ale označit zaplaceným ho lze (bookkeeping).
+        self::assertTrue(InvoiceAmountPolicy::canBeMarkedPaid([
+            'invoice_type' => 'invoice',
+            'parent_invoice_id' => 42,
+            'amount_to_pay' => 0,
+        ]));
+    }
+
+    public function testCanBeMarkedPaidRejectsRegularNonPositiveInvoice(): void
+    {
+        self::assertFalse(InvoiceAmountPolicy::canBeMarkedPaid([
+            'invoice_type' => 'invoice',
+            'parent_invoice_id' => null,
+            'amount_to_pay' => 0,
+        ]));
+        self::assertFalse(InvoiceAmountPolicy::canBeMarkedPaid([
+            'invoice_type' => 'proforma',
+            'amount_to_pay' => -5,
+        ]));
+    }
+
+    public function testValidateItemRejectsZeroQuantityWithEpsilon(): void
+    {
+        // 0.0001 přispěje fakticky 0 po round2 v InvoiceMath, takže by mělo být odmítnuto.
+        $err = InvoiceAmountPolicy::validateItem(
+            ['description' => 'X', 'quantity' => 0.0000000001, 'unit_price_without_vat' => 100, 'vat_rate_id' => 1],
+            0,
+        );
+        self::assertArrayHasKey('items.0.quantity', $err);
+
+        // 0.001 už projde — InvoiceMath::round2 ho zachová.
+        $err = InvoiceAmountPolicy::validateItem(
+            ['description' => 'X', 'quantity' => 0.001, 'unit_price_without_vat' => 100, 'vat_rate_id' => 1],
+            0,
+        );
+        self::assertArrayNotHasKey('items.0.quantity', $err);
+    }
+
+    public function testValidateItemRejectsBothNegative(): void
+    {
+        $err = InvoiceAmountPolicy::validateItem(
+            ['description' => 'X', 'quantity' => -1, 'unit_price_without_vat' => -100, 'vat_rate_id' => 1],
+            3,
+        );
+        self::assertArrayHasKey('items.3.quantity', $err);
+        self::assertArrayHasKey('items.3.unit_price_without_vat', $err);
+    }
 }

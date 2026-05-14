@@ -13,7 +13,9 @@ final class InvoiceAmountRegressionTest extends TestCase
         $code = file_get_contents(dirname(__DIR__, 3) . '/api/src/Action/Bank/BankStatementAction.php');
         self::assertIsString($code);
 
-        self::assertStringContainsString('InvoiceAmountPolicy::hasPositiveAmountToPay($invoice)', $code);
+        // canBeMarkedPaid honoruje výjimku finální-z-proformy (parent_invoice_id),
+        // hasPositiveAmountToPay je strict. Pro bank match chceme to první.
+        self::assertStringContainsString('InvoiceAmountPolicy::canBeMarkedPaid($invoice)', $code);
         self::assertStringContainsString('InvoiceAmountPolicy::NON_POSITIVE_MARK_PAID_MESSAGE', $code);
     }
 

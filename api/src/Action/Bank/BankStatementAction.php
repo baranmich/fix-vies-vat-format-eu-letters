@@ -286,7 +286,7 @@ final class BankStatementAction
         }
         if (
             in_array($invoice['status'], ['issued', 'sent', 'reminded'], true)
-            && !InvoiceAmountPolicy::hasPositiveAmountToPay($invoice)
+            && !InvoiceAmountPolicy::canBeMarkedPaid($invoice)
         ) {
             return Json::error($response, 'invalid_amount', InvoiceAmountPolicy::NON_POSITIVE_MARK_PAID_MESSAGE, 409);
         }

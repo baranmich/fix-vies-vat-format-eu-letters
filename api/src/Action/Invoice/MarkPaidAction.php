@@ -38,7 +38,7 @@ final class MarkPaidAction
         if (!in_array($invoice['status'], ['issued', 'sent', 'reminded'], true)) {
             return Json::error($response, 'invalid_state', 'Lze označit jako zaplacené jen vystavenou nebo odeslanou fakturu.', 409);
         }
-        if (!InvoiceAmountPolicy::hasPositiveAmountToPay($invoice)) {
+        if (!InvoiceAmountPolicy::canBeMarkedPaid($invoice)) {
             return Json::error($response, 'invalid_amount', InvoiceAmountPolicy::NON_POSITIVE_MARK_PAID_MESSAGE, 409);
         }
 
