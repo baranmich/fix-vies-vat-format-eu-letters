@@ -162,9 +162,15 @@ async function loadProjectsForClient(clientId: number) {
 watch(() => form.value.client_id, async (newId) => {
   if (newId) {
     await loadProjectsForClient(newId)
-    if (!form.value.name) {
-      const c = clients.value.find(x => x.id === newId)
-      if (c) form.value.name = c.company_name
+    const c = clients.value.find(x => x.id === newId)
+    if (c) {
+      if (!form.value.name) form.value.name = c.company_name
+      // Po výběru klienta převzít jeho default splatnosti. Až po prvotním načtení
+      // (formLoaded), aby se v edit módu nepřepsala uložená hodnota šablony.
+      // Pokud má klient default a zvolí se i zakázka, projektová splatnost níže přebije.
+      if (formLoaded.value && typeof c.payment_due_default === 'number') {
+        form.value.payment_due_days = c.payment_due_default
+      }
     }
   } else {
     projects.value = []

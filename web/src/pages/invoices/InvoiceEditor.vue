@@ -203,6 +203,22 @@ watch(() => [form.value.invoice_type, form.value.issue_date], () => {
   if (loaded.value && editedStatus.value === 'draft') loadVarsymbolPreview()
 })
 
+// Při změně Vystaveno přepočti Splatnost — projekt přebíjí klienta. Jen pro draft / nový
+// (po `loaded`), abys nepřepsal uloženou hodnotu při hydrataci nebo u vystavených dokladů.
+watch(() => form.value.issue_date, (newIssue) => {
+  if (!loaded.value || editedStatus.value !== 'draft' || !newIssue) return
+  let days: number | null = null
+  if (form.value.project_id) {
+    const p = projects.value.find(x => x.id === form.value.project_id)
+    if (p && typeof p.payment_due_days === 'number') days = p.payment_due_days
+  }
+  if (days === null && form.value.client_id) {
+    const c = clients.value.find(x => x.id === form.value.client_id)
+    if (c && typeof c.payment_due_default === 'number') days = c.payment_due_default
+  }
+  if (days !== null) form.value.due_date = addDays(newIssue, days)
+})
+
 // Při přepnutí typu na credit_note převrať množství všech existujících položek na záporná.
 watch(() => form.value.invoice_type, (newType, oldType) => {
   if (newType === 'credit_note' && oldType !== 'credit_note') {
