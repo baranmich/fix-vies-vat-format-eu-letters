@@ -36,8 +36,8 @@ Závisí na stavu faktury:
 
 Vygenerované PDF obsahuje:
 
-1. **Hlavičku** — logo dodavatele, jméno, adresa, IČ, DIČ, kontakt
-2. **Adresát** — klient (firma + adresa + IČ + DIČ)
+1. **Hlavičku** — logo dodavatele, jméno, adresa, IČO, DIČ, kontakt
+2. **Adresát** — klient (firma + adresa + IČO + DIČ)
 3. **Číslo faktury** + **typ** (Faktura / Proforma / Dobropis / Storno)
 4. **Data** — vystaveno, DUZP, splatnost
 5. **Bankovní spojení** — číslo účtu / IBAN, BIC, banka, variabilní symbol

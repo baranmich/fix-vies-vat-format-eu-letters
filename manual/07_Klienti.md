@@ -16,13 +16,13 @@ Tabulka ukazuje:
 | Sloupec | Význam |
 |---|---|
 | Jméno | Název firmy nebo osoby (klikatelný — otevře detail) |
-| IČ | České IČ, pokud je vyplněné |
+| IČO | České IČO, pokud je vyplněné |
 | Stát | 2-písmenný kód (CZ, SK, DE, …) |
 | Měna | Výchozí měna pro nové faktury |
 | Hlavní e-mail | Kontakt pro odesílání faktur |
 | Obrat letos | Suma vystavených faktur v aktuálním roce, v měně klienta |
 
-Nad tabulkou je vyhledávač (jméno / IČ) a filtr stavu (`Aktivní` / `Archivovaní`).
+Nad tabulkou je vyhledávač (jméno / IČO) a filtr stavu (`Aktivní` / `Archivovaní`).
 
 ### 7.1.1 Akce na řádku
 
@@ -38,7 +38,7 @@ Tlačítko **+ Nový klient** vpravo nahoře otevře modal.
 
 Doporučený postup pro českého klienta:
 
-1. Zadej **IČ** (8 cifer).
+1. Zadej **IČO** (8 cifer).
 2. Klikni **Načíst z ARES** — server stáhne data z oficiálního registru a
    předvyplní: název firmy, DIČ, adresu, stát.
 3. Doplň **Hlavní e-mail** (povinný).
@@ -55,7 +55,7 @@ Doporučený postup pro českého klienta:
 |---|---|
 | Firma / jméno | Název na faktuře |
 | Křestní jméno + Příjmení | Jen pro fyzické osoby (volitelné) |
-| IČ | České IČ (8 cifer); slovenské také funguje s ARES SK |
+| IČO | České IČO (8 cifer); slovenské také funguje s ARES SK |
 | DIČ | Daňové ID; ČR „CZ12345678", SK „SK1234567890", EU různě |
 | Ulice / Město / PSČ / Stát | Adresa pro fakturu |
 | Hlavní e-mail | **Povinný** — pro odesílání faktur a upomínek |
@@ -111,9 +111,9 @@ zachována (faktury, statistiky). Archivovaného klienta najdeš ve filtru
 
 ## 7.6 Tipy
 
-- **ARES** funguje jen pro česká IČ. Pro SK použij interní lookup `/api/clients/ares-lookup-sk?ic=...`.
+- **ARES** funguje jen pro česká IČO. Pro SK použij interní lookup `/api/clients/ares-lookup-sk?ic=...`.
 - **VIES** je pomalý (~1–2 sekundy) a občas nedostupný — výsledek se cachuje
   na 24 hodin v `vies_cache` tabulce.
-- Pokud klient nemá IČ (fyzická osoba), zadej alespoň jméno + adresu ručně.
+- Pokud klient nemá IČO (fyzická osoba), zadej alespoň jméno + adresu ručně.
 - Reverse charge se nastavuje **per klient**, ale lze přepsat per faktura
   v editoru.

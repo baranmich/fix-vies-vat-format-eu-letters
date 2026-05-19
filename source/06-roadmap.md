@@ -126,13 +126,13 @@ Migrace 0001–0006 byly sloučeny do jednoho `0001_init.sql` pro snazší fresh
 - [ ] `AresClient` service (Guzzle, REST JSON, retry × 1, cache → `ares_cache`)
 - [ ] `ViesClient` service (PHP SoapClient, cache → `vies_cache`)
 - [ ] `LookupAresAction`, `LookupViesAction`
-- [ ] Validace IČ (8 číslic, modulo 11 checksum)
+- [ ] Validace IČO (8 číslic, modulo 11 checksum)
 - [ ] Validace `billing_emails` (max 3, validní email)
 
 ### Frontend
 - [ ] `ClientList.vue` (tabulka, search, archived filter)
 - [ ] `ClientForm.vue` (vytvoření/edit):
-  - Tlačítko „Načíst z ARES" vedle pole IČ
+  - Tlačítko „Načíst z ARES" vedle pole IČO
   - Tlačítko „Ověřit DIČ ve VIES" vedle pole DIČ
   - Sekce „Fakturační emaily" s 0-3 řádky
   - Toggle Reverse charge
@@ -141,7 +141,7 @@ Migrace 0001–0006 byly sloučeny do jednoho `0001_init.sql` pro snazší fresh
 - [ ] `useClientsStore`, `useProjectsStore`
 
 **Akceptace:**
-1. Zadám IČ a kliknu „Načíst z ARES" → předvyplní firmu, adresu, DIČ
+1. Zadám IČO a kliknu „Načíst z ARES" → předvyplní firmu, adresu, DIČ
 2. Vytvořím klienta a 2 zakázky
 3. Editace klienta funguje, archivace skryje z listu
 4. ARES odpověď je cachovaná 24h (druhý lookup je instant)

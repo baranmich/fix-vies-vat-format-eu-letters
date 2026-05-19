@@ -27,7 +27,7 @@ Editor je rozdělený na tři bloky:
 
 ### 10.2.2 Klient + Zakázka
 
-- **Klient** (povinný) — vyber z dropdownu, vyhledávání podle jména / IČ.
+- **Klient** (povinný) — vyber z dropdownu, vyhledávání podle jména / IČO.
 - **Zakázka** (volitelná) — pokud klient má zakázky, dropdown nabídne jen jeho
   vlastní. Po výběru zakázky se předvyplní hodinová sazba a splatnost.
 

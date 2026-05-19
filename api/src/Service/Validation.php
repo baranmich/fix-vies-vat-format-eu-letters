@@ -35,7 +35,7 @@ final class Validation
             $err['phone'][] = 'Telefon je příliš dlouhý';
         }
         if (!empty($data['ic']) && !preg_match('/^\d{8}$/', (string) $data['ic'])) {
-            $err['ic'][] = 'IČ musí mít 8 číslic';
+            $err['ic'][] = 'IČO musí mít 8 číslic';
         }
         $lang = $data['language'] ?? 'cs';
         if (!in_array($lang, ['cs', 'en'], true)) {

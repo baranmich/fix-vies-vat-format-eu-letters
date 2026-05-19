@@ -61,7 +61,7 @@
       <div>{{ locale == 'en' ? supplier.country_name_en : supplier.country_name_cs }}</div>
       <div class="spacer-4">&nbsp;</div>
       <div class="ic-dic">
-        {% if supplier.ic %}{{ t('IČ', 'Reg. No.') }}: {{ supplier.ic }}<br>{% endif %}
+        {% if supplier.ic %}{{ t('IČO', 'Reg. No.') }}: {{ supplier.ic }}<br>{% endif %}
         {% if supplier.dic %}{{ t('DIČ', 'VAT ID') }}: {{ supplier.dic }}{% endif %}
       </div>
     </td>
@@ -77,7 +77,7 @@
       <div>{{ locale == 'en' ? client.country_name_en : client.country_name_cs }}</div>
       <div class="spacer-4">&nbsp;</div>
       <div class="ic-dic">
-        {% if client.ic %}{{ t('IČ', 'Reg. No.') }}: {{ client.ic }}<br>{% endif %}
+        {% if client.ic %}{{ t('IČO', 'Reg. No.') }}: {{ client.ic }}<br>{% endif %}
         {% if client.dic %}{{ t('DIČ', 'VAT ID') }}: {{ client.dic }}{% endif %}
       </div>
     </td>

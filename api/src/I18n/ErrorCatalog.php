@@ -35,7 +35,7 @@ final class ErrorCatalog
         'Hesla se neshodují.' => 'Passwords do not match.',
         'Heslo musí mít alespoň 12 znaků.' => 'Password must be at least 12 characters.',
         'Interní storno se klientovi neposílá.' => 'Internal cancellation is not sent to the client.',
-        'IČ musí mít 8 číslic.' => 'Reg. No. must have 8 digits.',
+        'IČO musí mít 8 číslic.' => 'Reg. No. must have 8 digits.',
         'Jméno je povinné.' => 'Name is required.',
         'Lze označit jako zaplacené jen vystavenou nebo odeslanou fakturu.' => 'Only an issued or sent invoice can be marked as paid.',
         'Lze poslat jen vystavenou fakturu.' => 'Only an issued invoice can be sent.',

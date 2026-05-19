@@ -35,7 +35,7 @@ fakturovat. Můžeš jich později přidat víc — viz [17. Multi-supplier](17_
 | Sekce | Popis |
 |---|---|
 | Firma / jméno OSVČ | Bude v hlavičce všech vystavených PDF |
-| IČ | Klikni vedle na **Načíst z ARES** a předvyplní se název, DIČ, adresa, právní forma. ARES je oficiální veřejný registr — fungující v ČR. |
+| IČO | Klikni vedle na **Načíst z ARES** a předvyplní se název, DIČ, adresa, právní forma. ARES je oficiální veřejný registr — fungující v ČR. |
 | DIČ | U OSVČ neplátce nech prázdné |
 | Adresa | Ulice, město, PSČ, země — pro fakturační hlavičku |
 | E-mail / telefon | Kontakt pro klienta |

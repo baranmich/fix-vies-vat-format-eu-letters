@@ -5,7 +5,7 @@
 
 ## Co je MyInvoice.cz
 
-Multi-supplier fakturační systém (jedna instalace = N dodavatelů / IČ s izolovanými daty):
+Multi-supplier fakturační systém (jedna instalace = N dodavatelů / IČO s izolovanými daty):
 - **Backend:** PHP 8.5 + Slim 4.13 + PHP-DI 7 + Twig 3.10 + Monolog 3.7 + MariaDB 10.6+ (instance `c:/inetpub/MariaDB`, db `myinvoice`)
 - **Frontend:** Vue 3.5 + Vite 8 + Tailwind 4 + Pinia 3 + vue-router 5 + vue-i18n 11 + VueUse 14 + axios 1.16 + TypeScript 5.7 (Composition API)
 - **PDF:** mPDF 8.2, **QR platba:** rikudou/czqrpayment 5 (CZK SPAYD) + smhg/sepa-qr-data 3 (EUR SEPA EPC) + chillerlan/php-qrcode 6
@@ -21,8 +21,8 @@ Multi-supplier fakturační systém (jedna instalace = N dodavatelů / IČ s izo
 ## Klíčové funkce
 
 1. **First-run setup wizard** — vytvoření admin účtu + prvního dodavatele přes ARES + volitelná sample data
-2. **Multi-supplier** — N dodavatelů (firem / IČ) v jedné instalaci, izolovaná data, přepínač v horní liště UI
-3. **Klienti** s ARES (IČ) + VIES (DIČ) lookupem, hlavní email + 1-3 fakturační
+2. **Multi-supplier** — N dodavatelů (firem / IČO) v jedné instalaci, izolovaná data, přepínač v horní liště UI
+3. **Klienti** s ARES (IČO) + VIES (DIČ) lookupem, hlavní email + 1-3 fakturační
 4. **Zakázky** 1:N pod klientem (název, splatnost, hodinová sazba, limity rozpočtu)
 5. **Typy dokladů**: Faktura, **Zálohová faktura (proforma)**, Dobropis (opravný daňový doklad), Storno
 6. **Vystavení daňového dokladu z proformy** s automatickým odečtem zaplacené zálohy

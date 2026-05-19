@@ -1153,7 +1153,7 @@
     "title": "Imports",
     "subtitle": "Load issued invoices from Pohoda XML, ISDOC or PDF (PDF/A-3 with embedded ISDOC) into the system.",
     "supplier_required_title": "Supplier must already exist",
-    "supplier_required_hint": "Invoices are imported only when the supplier reg. no. (IČ) in the file matches the supplier currently selected in the app. Files for a different supplier are skipped.",
+    "supplier_required_hint": "Invoices are imported only when the supplier reg. no. (IČO) in the file matches the supplier currently selected in the app. Files for a different supplier are skipped.",
     "status_rule_title": "Status of imported invoice",
     "status_rule_hint": "If the due date is more than 30 days old (we assume it's already paid), the invoice is stored as Paid. Otherwise as Issued — payment is then matched via the standard bank-statement flow or manually.",
     "imported_as_paid": "stored as paid",

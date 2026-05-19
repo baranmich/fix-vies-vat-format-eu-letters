@@ -1,6 +1,6 @@
 # 17. Více dodavatelů z jedné instalace
 
-MyInvoice umožňuje fakturovat za **libovolný počet dodavatelů (firem / IČ)**
+MyInvoice umožňuje fakturovat za **libovolný počet dodavatelů (firem / IČO)**
 z jedné instalace. Typické scénáře:
 
 - **OSVČ + s.r.o.** — Jan Novák, OSVČ + Novák s.r.o. = 2 dodavatelé
@@ -39,7 +39,7 @@ Tabulka:
 | Sloupec | Význam |
 |---|---|
 | Název | Název firmy / OSVČ |
-| IČ | České IČ |
+| IČO | České IČO |
 | DIČ | Daňové ID |
 | Měn | Počet aktivních měn (= počet bankovních účtů) |
 | Klientů | Počet klientů pod tímto dodavatelem |
@@ -54,7 +54,7 @@ Tlačítko **+ Nový dodavatel** vpravo nahoře.
 
 | Pole | Význam |
 |---|---|
-| IČ | Zadej a klikni **Načíst z ARES** — předvyplní zbytek |
+| IČO | Zadej a klikni **Načíst z ARES** — předvyplní zbytek |
 | Firma | Název |
 | DIČ | (volitelné, OSVČ neplátce nech prázdné) |
 | Adresa | Ulice / Město / PSČ / Stát |
@@ -96,7 +96,7 @@ Záložky:
 
 ### 17.5.1 Základní údaje
 
-Stejné jako při založení (IČ, název, adresa, kontakt). Změna se projeví na
+Stejné jako při založení (IČO, název, adresa, kontakt). Změna se projeví na
 NOVÝCH fakturách. Vystavené mají vlastní snapshot.
 
 ### 17.5.2 E-mail branding

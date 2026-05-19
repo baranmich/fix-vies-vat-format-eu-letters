@@ -9,7 +9,7 @@ declare(strict_types=1);
  *   php api/bin/sample.php --yes     # bez ptaní
  *
  * Vytvoří (pro prvního supplier):
- *   - 5 klientů (firmy s IČ + DIČ)
+ *   - 5 klientů (firmy s IČO + DIČ)
  *   - 8 zakázek (1-3 na klienta)
  *   - 20 vystavených faktur za poslední 2 měsíce
  *   - 4 dobropisy (k 4 z těch 20 faktur)

@@ -7,7 +7,7 @@ namespace MyInvoice\Service\Import;
 /**
  * Parser Pohoda XML data package — extrahuje faktury do normalizovaného array.
  *
- * Vrací {supplier_ic, invoices[]} — supplier IČ je z dataPack@ico, faktury z dataPackItem.
+ * Vrací {supplier_ic, invoices[]} — supplier IČO je z dataPack@ico, faktury z dataPackItem.
  *
  * Mapuje zpět to, co PohodaXmlExporter zapisuje. Robustní vůči chybějícím elementům.
  *

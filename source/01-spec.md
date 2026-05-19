@@ -4,7 +4,7 @@
 
 ## 1. Účel a rozsah
 
-MyInvoice.cz je **multi-supplier fakturační systém** určený pro vystavování faktur českým a EU klientům. Z jedné instalace lze fakturovat za libovolný počet dodavatelů (firem / IČ) s plně izolovanými daty. Klade důraz na rychlou tvorbu opakovaných faktur (z předchozí faktury, ze zakázky), automatické generování QR plateb (CZK SPAYD, EUR SEPA EPC) a doprovodný **výkaz víceprací** jako přílohu PDF.
+MyInvoice.cz je **multi-supplier fakturační systém** určený pro vystavování faktur českým a EU klientům. Z jedné instalace lze fakturovat za libovolný počet dodavatelů (firem / IČO) s plně izolovanými daty. Klade důraz na rychlou tvorbu opakovaných faktur (z předchozí faktury, ze zakázky), automatické generování QR plateb (CZK SPAYD, EUR SEPA EPC) a doprovodný **výkaz víceprací** jako přílohu PDF.
 
 ### Cílové prostředí
 - Produkce: **https://myinvoice.cz**
@@ -53,7 +53,7 @@ Pokud `GET /api/auth/setup-status` vrátí `{ "needs_setup": true }`, router př
    - Heslo znovu
 2. **Krok 2 — Dodavatel (volitelné, lze přeskočit a doplnit později):**
    - Firma / jméno OSVČ
-   - IČ → tlačítko *Načíst z ARES* předvyplní zbytek
+   - IČO → tlačítko *Načíst z ARES* předvyplní zbytek
    - Adresa, DIČ, email, telefon
    - První bankovní účet (CZK): číslo + kód banky
 3. **Krok 3 — Hotovo:** výzva k přihlášení s nově vytvořenými údaji.
@@ -74,7 +74,7 @@ Pokud `GET /api/auth/setup-status` vrátí `{ "needs_setup": true }`, router př
 > Bezpečnost: setup má rate-limit 5/hodina/IP a logguje IP, aby se zabránilo race-condition zneužití při deploy okně. V produkci doporučeno spustit setup ihned po deploy z důvěryhodné IP.
 
 ### 2.1 Model uživatele
-Multi-supplier: N dodavatelů (firem / IČ) v jedné instalaci, plně izolovaná data. M uživatelů má přístup ke všem dodavatelům přes přepínač v UI (X-Supplier-Id header). Typický scénář: 1 hlavní uživatel + 1 účetní s read-only přístupem, 1–5 dodavatelů.
+Multi-supplier: N dodavatelů (firem / IČO) v jedné instalaci, plně izolovaná data. M uživatelů má přístup ke všem dodavatelům přes přepínač v UI (X-Supplier-Id header). Typický scénář: 1 hlavní uživatel + 1 účetní s read-only přístupem, 1–5 dodavatelů.
 
 | Pole | Typ | Pozn. |
 |---|---|---|
@@ -134,7 +134,7 @@ supplier (1)
 ```
 
 ### 3.1 Dodavatel (Supplier)
-Jediný řádek. Pole: firma, jméno (pro OSVČ), ulice, město, PSČ, stát, IČ, DIČ, web, telefon, email, default měna (CZK/EUR), default sazba DPH, default splatnost (7 dní), default hodinová sazba (1500 Kč/h bez DPH).
+Jediný řádek. Pole: firma, jméno (pro OSVČ), ulice, město, PSČ, stát, IČO, DIČ, web, telefon, email, default měna (CZK/EUR), default sazba DPH, default splatnost (7 dní), default hodinová sazba (1500 Kč/h bez DPH).
 
 **Bankovní účty 1:N**, každý účet má:
 - `currency` ENUM('CZK','EUR','USD',...)
@@ -923,7 +923,7 @@ Implementováno přes attribute na Action: `#[RequireRole('admin')]`. `AuthMiddl
 - Strings s max-length (TEXT typy v DB, ale na vstupu omezit na 64 KB pro jednu položku).
 - Date validace: ISO 8601, rozumný rozsah (1990-2099).
 - Email validace: `filter_var($email, FILTER_VALIDATE_EMAIL)` + max 190 znaků.
-- IČ: 8 číslic + modulo-11 checksum.
+- IČO: 8 číslic + modulo-11 checksum.
 - DIČ: regex per země (CZ: `CZ\d{8,10}`, EU varianty).
 - Bank account number: regex per měna (CZ: `(prefix-)?account/code`).
 - IBAN: ISO 13616 mod-97 check.
@@ -1002,7 +1002,7 @@ Jediný upload v aplikaci: **logo dodavatele** a **podpis** (PNG / SVG, max 1 MB
 
 ### 9.16 Privacy & GDPR
 
-- **Data minimization:** ukládáme jen co potřebujeme pro fakturaci (jméno, adresa, IČ, email klienta). Žádné tracking cookies, žádné analytics třetích stran.
+- **Data minimization:** ukládáme jen co potřebujeme pro fakturaci (jméno, adresa, IČO, email klienta). Žádné tracking cookies, žádné analytics třetích stran.
 - **Right to erasure:** klient může požádat o smazání → archivace faktur (legislativa CZ vyžaduje 10 let), ale anonymizace osobních údajů (`anonymize_client(client_id)` přepíše jméno/email/telefon na placeholder).
 - **Right to access:** export všech faktur klienta jako ZIP (PDF + JSON).
 - **Cookie banner:** nepotřebujeme — používáme jen nutnou session cookie (no consent required dle ePrivacy).

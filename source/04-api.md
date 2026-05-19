@@ -145,7 +145,7 @@ POST /api/bank-transactions/{id}/ignore
     "message": "Validace selhala",
     "fields": {
       "main_email": ["Email je povinný"],
-      "ic": ["IČ musí mít 8 číslic"]
+      "ic": ["IČO musí mít 8 číslic"]
     }
   }
 }

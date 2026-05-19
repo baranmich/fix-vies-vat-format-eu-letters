@@ -7,7 +7,7 @@ declare(strict_types=1);
  *   1. Zkontroluje cfg.php (instrukce pro kopii z cfg.sample.php pokud chybí)
  *   2. Otestuje DB připojení (instrukce pokud nelze)
  *   3. Spustí pending migrace (db/migrations/*.sql)
- *   4. Zeptá se na IČ → načte z ARES → vyplní dodavatele
+ *   4. Zeptá se na IČO → načte z ARES → vyplní dodavatele
  *   5. Zeptá se na admin email + jméno + heslo
  *   6. Uloží do DB
  *
@@ -100,8 +100,8 @@ echo "\n================================================\n";
 echo "  ÚVODNÍ NASTAVENÍ DODAVATELE\n";
 echo "================================================\n";
 
-// === Krok 6: IČ + ARES ===
-$ic = prompt('IČ dodavatele (8 číslic, prázdné = vyplnit ručně): ');
+// === Krok 6: IČO + ARES ===
+$ic = prompt('IČO dodavatele (8 číslic, prázdné = vyplnit ručně): ');
 $supplier = [
     'company_name' => '',
     'street' => '', 'city' => '', 'zip' => '', 'country_iso2' => 'CZ',
@@ -110,7 +110,7 @@ $supplier = [
 
 if ($ic !== '') {
     if (!preg_match('/^\d{8}$/', $ic)) {
-        echo "    ⚠  IČ musí mít 8 číslic. Pokračujeme s ručním vyplněním.\n";
+        echo "    ⚠  IČO musí mít 8 číslic. Pokračujeme s ručním vyplněním.\n";
     } else {
         echo "    🔍 Hledám v ARES…\n";
         $logger = new Logger('setup');
@@ -138,7 +138,7 @@ $supplier['company_name'] = prompt('Název firmy', $supplier['company_name']);
 $supplier['street']       = prompt('Ulice + č.p.', $supplier['street']);
 $supplier['zip']          = prompt('PSČ', $supplier['zip']);
 $supplier['city']         = prompt('Město', $supplier['city']);
-$supplier['ic']           = prompt('IČ', $supplier['ic']);
+$supplier['ic']           = prompt('IČO', $supplier['ic']);
 $supplier['dic']          = prompt('DIČ (prázdné = neplátce)', $supplier['dic']);
 $supplier['email']        = prompt('Kontaktní email odesílatele', '');
 $supplier['display_name'] = prompt('Jméno odesílatele e-mailů (display name)', $supplier['company_name']);

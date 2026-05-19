@@ -276,7 +276,7 @@ async function submit() {
           </label>
 
           <div v-if="!skipSupplier" class="space-y-4">
-            <!-- ARES lookup helper — vyplní pole níže podle IČ -->
+            <!-- ARES lookup helper — vyplní pole níže podle IČO -->
             <div class="bg-primary-50/50 border border-primary-200 rounded-md p-3">
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('supplier.ares_lookup') }}</label>
               <div class="flex gap-2">

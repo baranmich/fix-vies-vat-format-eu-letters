@@ -324,7 +324,7 @@ CREATE TABLE invoices (
   advance_paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0,    -- odečet zaplacené zálohy
   amount_to_pay       DECIMAL(12,2) NOT NULL DEFAULT 0,    -- = total_with_vat - advance_paid_amount
   -- snapshoty pro neměnnost po vystavení:
-  client_snapshot     JSON NOT NULL,              -- celá adresa, IČ, DIČ v okamžiku vystavení
+  client_snapshot     JSON NOT NULL,              -- celá adresa, IČO, DIČ v okamžiku vystavení
   supplier_snapshot   JSON NOT NULL,
   bank_snapshot       JSON NOT NULL,
   -- spočtené součty (denormalizované, recompute při edit draftu):

@@ -15,8 +15,8 @@ use ZipArchive;
  * Orchestrace importu vystavených faktur z Pohoda XML / ISDOC (single nebo ZIP balík).
  *
  * Pravidla:
- *   - Supplier IČ z XML musí odpovídat aktuálnímu scope. Jinak fail per file.
- *   - Klient: lookup po IČ; pokud chybí, ARES → vytvoř.
+ *   - Supplier IČO z XML musí odpovídat aktuálnímu scope. Jinak fail per file.
+ *   - Klient: lookup po IČO; pokud chybí, ARES → vytvoř.
  *   - Project:
  *       a) faktura má project_number → najít nebo vytvořit (per-klient unikátní project_number).
  *       b) napříč balíkem má klient >1 odlišných emailů → per-(client, email) projekt s názvem
@@ -54,7 +54,7 @@ final class InvoiceImportService
     {
         $supplierIc = $this->loadSupplierIc($supplierId);
         if ($supplierIc === null) {
-            throw new \RuntimeException("Supplier #$supplierId nemá vyplněné IČ — import nemůže ověřit shodu.");
+            throw new \RuntimeException("Supplier #$supplierId nemá vyplněné IČO — import nemůže ověřit shodu.");
         }
 
         // 1. Rozbalení ZIPů na ploché soubory.
@@ -76,7 +76,7 @@ final class InvoiceImportService
             $parsed[] = ['file' => $f['name']] + $r;
         }
 
-        // 3. Cross-batch analýza emailů — pro každého klienta (po IČ) spočti unikátní emaily.
+        // 3. Cross-batch analýza emailů — pro každého klienta (po IČO) spočti unikátní emaily.
         $emailMap = $this->buildEmailMap($parsed);
 
         // 4. Vytvoření klientů, projektů a faktur.
@@ -141,7 +141,7 @@ final class InvoiceImportService
 
         $fileSupplierIc = preg_replace('/\D/', '', (string) ($parsed['supplier_ic'] ?? ''));
         if ($fileSupplierIc !== '' && $fileSupplierIc !== preg_replace('/\D/', '', $supplierIc)) {
-            return ['error' => "Soubor patří jinému dodavateli (IČ {$fileSupplierIc}), nelze importovat."];
+            return ['error' => "Soubor patří jinému dodavateli (IČO {$fileSupplierIc}), nelze importovat."];
         }
 
         return ['invoices' => $parsed['invoices']];
@@ -149,7 +149,7 @@ final class InvoiceImportService
 
     /**
      * @param list<array<string,mixed>> $parsedFiles
-     * @return array<string, array<string,bool>>  IČ → set emailů
+     * @return array<string, array<string,bool>>  IČO → set emailů
      */
     private function buildEmailMap(array $parsedFiles): array
     {

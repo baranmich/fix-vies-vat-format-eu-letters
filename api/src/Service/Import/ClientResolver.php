@@ -11,8 +11,8 @@ use MyInvoice\Service\Ares\AresClient;
 /**
  * Resolve klienta z importovaného XML/ISDOC:
  *   1. Lookup v `clients` podle (supplier_id, ic) — pokud existuje, vrátí jeho id.
- *   2. Pokud ne, ARES lookup podle IČ — preferovaná fakturační adresa z ARES.
- *   3. Fallback na adresu z XML, pokud ARES IČ nezná (zahraniční, neexistující).
+ *   2. Pokud ne, ARES lookup podle IČO — preferovaná fakturační adresa z ARES.
+ *   3. Fallback na adresu z XML, pokud ARES IČO nezná (zahraniční, neexistující).
  *   4. Vytvoří nový clients row, vrátí id.
  *
  * Vstup: array z parseru (`company_name, ic, dic, street, city, zip, country_iso2, email, phone`).
@@ -46,7 +46,7 @@ final class ClientResolver
             }
         }
 
-        // 2. ARES merge — pokud IČ je české (8 číslic) a ARES odpoví
+        // 2. ARES merge — pokud IČO je české (8 číslic) a ARES odpoví
         $aresData = null;
         if ($ic !== null && strlen($ic) === 8) {
             $resp = $this->ares->lookup($ic);

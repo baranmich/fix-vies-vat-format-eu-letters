@@ -171,7 +171,7 @@ Aby bylo úplně jasno, kde je hranice:
 - Odesílání faktur e-mailem
 - Upomínání po splatnosti
 - Bankovní importy (FIO, KB, ČSOB) a párování plateb podle VS
-- ARES + VIES lookup (autocomplete IČ/DIČ)
+- ARES + VIES lookup (autocomplete IČO/DIČ)
 - Export pro účetní: **Pohoda XML, ISDOC, PDF ZIP**
 
 ### MyInvoice **nedělá**

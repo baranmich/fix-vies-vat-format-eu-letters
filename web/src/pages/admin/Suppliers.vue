@@ -184,7 +184,7 @@ function switchTo(id: number) {
         <h3 class="text-lg font-semibold mb-1">{{ t('supplier.create_title') }}</h3>
         <p class="text-xs text-neutral-500 mb-4">{{ t('supplier.create_hint') }}</p>
         <div class="space-y-3">
-          <!-- ARES lookup helper — vyplní pole níže podle IČ -->
+          <!-- ARES lookup helper — vyplní pole níže podle IČO -->
           <div class="bg-primary-50/50 border border-primary-200 rounded-md p-3">
             <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('supplier.ares_lookup') }}</label>
             <div class="flex gap-2">

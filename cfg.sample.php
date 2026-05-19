@@ -132,7 +132,7 @@ return [
     ],
     'ares' => [
         'api'       => 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty',
-        'cache_ttl' => 86400,                        // 24h cache odpovědí ARES (per IČ)
+        'cache_ttl' => 86400,                        // 24h cache odpovědí ARES (per IČO)
         'timeout'   => 5,                            // HTTP timeout v sekundách
     ],
     'vies' => [

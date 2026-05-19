@@ -27,7 +27,7 @@ Pro každou fakturu v souboru:
 
 | Entita | Logika |
 |---|---|
-| **Klient** | Lookup po IČ. Pokud neexistuje, načteme adresu z **ARES** (preferenčně), fallback na adresu z XML. Vznikne nový klient. |
+| **Klient** | Lookup po IČO. Pokud neexistuje, načteme adresu z **ARES** (preferenčně), fallback na adresu z XML. Vznikne nový klient. |
 | **Zakázka** | Když má faktura `číslo zakázky` (ISDOC `OrderReference/ID`, Pohoda `numberOrder`), přiřadí se k zakázce s tím číslem (vytvoří se, pokud chybí). Pokud nemá číslo zakázky, ale klient má v importovaném balíku **více různých e-mailů**, vytvoří se per-email zakázka s názvem `{Firma} – {email}`. Jinak `bez zakázky`. |
 | **Faktura** | Přepíše se do `invoices` se zachovaným původním varsymbolem. Položky, sazby DPH, kurz, měna se převezmou. Snapshoty (klient/dodavatel/banka) se zafixují z aktuálních dat. |
 
@@ -44,7 +44,7 @@ Aby ses nemusel po importu zabývat starými fakturami:
 
 ## 16.4 Co se přeskočí
 
-- **Cizí dodavatel** — celý soubor se přeskočí, pokud IČ dodavatele v souboru
+- **Cizí dodavatel** — celý soubor se přeskočí, pokud IČO dodavatele v souboru
   neodpovídá aktuálnímu dodavateli v aplikaci. (Hláška v reportu.)
 - **Duplicita** — pokud faktura s daným varsymbolem u tohoto dodavatele už
   existuje, přeskočí se. V reportu se zobrazí důvod a id existující faktury.
@@ -120,7 +120,7 @@ ISDOC přílohu". V tom případě:
   Pohoda neukládá `číslo zakázky` per fakturu, takže se importují bez zakázky
   (pokud klient nemá více emailů — viz § 16.2).
 - **Multi-supplier** — přepni v aplikaci na cílového dodavatele předtím, než
-  spustíš import. IČ z XML se ověří proti tomuto kontextu.
+  spustíš import. IČO z XML se ověří proti tomuto kontextu.
 - **Co dělat, když import vyhodí chybu** — soubor zkontroluj v textovém
   editoru, jestli má validní XML a očekávaný root element (`<dat:dataPack>`
   pro Pohodu, `<Invoice>` v ISDOC namespace pro ISDOC). Pro PDF zkontroluj,

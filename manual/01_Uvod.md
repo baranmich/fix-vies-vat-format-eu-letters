@@ -56,7 +56,7 @@ ale není daňový poradce.
 
 ## 1.3 Klienti a zakázky
 
-- **Klienti** s lookupem v **ARES** (zadáš IČ, doplní se název, adresa, DIČ,
+- **Klienti** s lookupem v **ARES** (zadáš IČO, doplní se název, adresa, DIČ,
   právní forma) a **VIES** (ověření EU VAT ID)
 - **Zakázky** 1:N pod klientem — typicky jeden zákazník má víc projektů
   fakturovaných nezávisle
@@ -135,7 +135,7 @@ v Pohodě) a ISDOC.
 ## 1.9 Multi-supplier — víc firem z jedné instalace
 
 Z jedné instalace MyInvoice můžeš fakturovat za **libovolný počet
-dodavatelů** (firem / IČ) s plně izolovanými daty:
+dodavatelů** (firem / IČO) s plně izolovanými daty:
 
 - Vlastní číselné řady, klienty, zakázky a faktury per dodavatel
 - Vlastní logo, bankovní účty, SMTP, DKIM klíče

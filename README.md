@@ -33,7 +33,7 @@ fakturačními daty mimo váš dosah. **MyInvoice.cz je open-source, self-hosted
 alternativa s důrazem na:
 
 - **Tvoji databázi, tvoje data** — vše běží na vlastním (nebo pronajatém) serveru, žádný cloud.
-- **Multi-supplier od první verze** — fakturuj za více firem / IČ z jedné instalace, snadný přepínač v UI.
+- **Multi-supplier od první verze** — fakturuj za více firem / IČO z jedné instalace, snadný přepínač v UI.
 - **Český kontext první** — ARES + VIES lookup, SPAYD QR (ČR) i SEPA EPC QR (EU),
   ISDOC + Pohoda XML exporty, mod-11 validace bankovních účtů, GPC import výpisů.
 - **Nulové měsíční náklady** — jednorázový setup, žádné per-fakturové poplatky, žádné limity.
@@ -67,14 +67,14 @@ alternativa s důrazem na:
 ![Schvalovací stránka pro zákazníka](manual/img/09_schvalit_vykaz_prace.webp)
 
 ### 👥 Klienti & zakázky
-- Klienti s **ARES** (IČ → adresa, název) a **VIES** (DIČ) lookupem
+- Klienti s **ARES** (IČO → adresa, název) a **VIES** (DIČ) lookupem
 - Zakázky 1:N pod klientem, fakturační emaily per zakázka (účetní, PM…)
 - Filter zakázek podle klienta
 - Reverse charge přepínatelný per klient
 - Smazání chráněné 409, pokud má klient/zakázka navázané faktury
 
 ### 🏢 Multi-supplier
-- Z jedné instalace fakturuj **za libovolný počet dodavatelů (firem / IČ)**
+- Z jedné instalace fakturuj **za libovolný počet dodavatelů (firem / IČO)**
 - Přepínač v horní liště, izolovaná data (klienti, zakázky, faktury, číselníky)
 - Každý dodavatel má vlastní sadu měn + bankovních účtů, vlastní řadu varsymbolů
 - Per-dodavatel: ARES údaje, logo, podpis, SMTP `From:` jméno + `Reply-To:` adresa, Pohoda kódy
@@ -318,7 +318,7 @@ docker compose up -d
 V prohlížeči naskočí **setup wizard** (3 kroky):
 
 1. **Administrátor** — jméno, e-mail, heslo (min. 12 znaků)
-2. **Dodavatel** — IČ → *Načíst z ARES* → bankovní účet (např. `1000000005 / 0100`)
+2. **Dodavatel** — IČO → *Načíst z ARES* → bankovní účet (např. `1000000005 / 0100`)
 3. **Sample data** *(volitelné)* — checkboxem 5 klientů + 8 zakázek + 20 faktur + 4 dobropisy
 
 Wizard tě po dokončení **automaticky přihlásí**.
@@ -467,7 +467,7 @@ V prohlížeči navštiv `https://tvoje-domena.cz` (nebo `http://localhost:5173`
 a projdi **3 kroky setup wizardu**:
 
 1. **Administrátor** — jméno, e-mail, heslo (min. 12 znaků, indikátor síly)
-2. **Dodavatel** — vyplň IČ a klikni *Načíst z ARES* (předvyplní název, adresu,
+2. **Dodavatel** — vyplň IČO a klikni *Načíst z ARES* (předvyplní název, adresu,
    DIČ); doplň první bankovní účet (CZK)
 3. **Sample data** *(volitelné)* — checkboxem si necháš vygenerovat 5 klientů,
    8 zakázek, 20 faktur a 4 dobropisy pro vyzkoušení systému
@@ -476,7 +476,7 @@ Po dokončení tě wizard **automaticky přihlásí** a přesměruje do aplikace
 
 ### Další dodavatelé
 
-V menu **Systém → Dodavatelé** klikni *Nový dodavatel*. Stačí zadat IČ → ARES doplní
+V menu **Systém → Dodavatelé** klikni *Nový dodavatel*. Stačí zadat IČO → ARES doplní
 zbytek. V horní liště se objeví přepínač pro snadné přepínání mezi firmami.
 
 ### Aktualizace nativní instalace

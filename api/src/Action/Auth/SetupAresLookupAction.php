@@ -40,7 +40,7 @@ final class SetupAresLookupAction
         $body = (array) ($request->getParsedBody() ?? []);
         $ic = preg_replace('/\D/', '', (string) ($body['ic'] ?? '')) ?? '';
         if (strlen($ic) !== 8) {
-            return Json::error($response, 'invalid_ic', 'IČ musí mít 8 číslic.', 400);
+            return Json::error($response, 'invalid_ic', 'IČO musí mít 8 číslic.', 400);
         }
 
         $result = $this->ares->lookup($ic);

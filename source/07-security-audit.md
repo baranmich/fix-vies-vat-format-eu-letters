@@ -224,7 +224,7 @@
 
 ### MS-P2-3 — `MeAction` vrací úplný seznam supplierů s `company_name` + `ic`  ⏸ *(by design — všichni vidí všechno)*
 - **Soubor:** `api/src/Action/Auth/MeAction.php`
-- **Problém:** Každý authenticated user dostane seznam všech supplierů (id, company_name, ic). Pokud je více tenantů a uživatelů, údaje (název firmy, IČ) jsou viditelné napříč.
+- **Problém:** Každý authenticated user dostane seznam všech supplierů (id, company_name, ic). Pokud je více tenantů a uživatelů, údaje (název firmy, IČO) jsou viditelné napříč.
 - **Stav:** Design: „všichni vidí všechno". Pokud se to změní, filtrovat přes `user_suppliers`.
 - **Stage:** OK pro single-organization setup, audit pokud bude multi-organization SaaS.
 
