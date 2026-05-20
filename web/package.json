@@ -11,27 +11,21 @@
   },
   "dependencies": {
     "@vueuse/core": "^14.3.0",
-    "axios": "^1.16.0",
+    "axios": "^1.16.1",
     "chart.js": "^4.5.1",
     "pinia": "^3.0.4",
-    "vue": "^3.5.33",
+    "vue": "^3.5.34",
     "vue-chartjs": "^5.3.3",
-    "vue-i18n": "^11.4.0",
-    "vue-router": "^5.0.6"
+    "vue-i18n": "^11.4.4",
+    "vue-router": "^5.0.7"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2",
-    "@types/node": "^22.10.5",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "tailwindcss": "^4.2.4",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^22.19.19",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "tailwindcss": "^4.3.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10",
-    "vue-tsc": "^3.2.8"
-  },
-  "pnpm": {
-    "// onlyBuiltDependencies": "pnpm 10+ blokuje postinstall scripty od deps (supply-chain ochrana). Tento whitelist povoluje vue-demi, který má neškodný postinstall pro detekci Vue verze (Vue 2 vs 3). Více: https://pnpm.io/settings#onlybuiltdependencies",
-    "onlyBuiltDependencies": [
-      "vue-demi"
-    ]
+    "vite": "^8.0.13",
+    "vue-tsc": "^3.3.1"
   }
 }
