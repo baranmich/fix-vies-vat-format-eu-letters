@@ -166,15 +166,19 @@ async function removeAction() {
     <div v-if="loading" class="text-center text-neutral-400 py-12">…</div>
 
     <div v-else-if="tpl" class="space-y-4">
-      <RouterLink to="/recurring" class="text-sm text-neutral-600 hover:text-neutral-900">{{ t('recurring.title') }}</RouterLink>
-
       <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-        <h1 class="text-2xl font-semibold flex items-center gap-3 flex-wrap">
-          {{ tpl.name }}
-          <span class="text-xs px-2 py-0.5 rounded border whitespace-nowrap" :class="statusBadgeClass(tpl.status)">
-            {{ t('recurring.status.' + tpl.status) }}
-          </span>
-        </h1>
+        <div class="min-w-0">
+          <RouterLink :to="{ name: 'recurring' }" class="text-sm text-neutral-600 hover:text-neutral-900">{{ t('recurring.back_to_list') }}</RouterLink>
+          <h1 class="text-2xl font-semibold flex items-center gap-3 flex-wrap mt-1">
+            {{ tpl.name }}
+            <span class="text-xs px-2 py-0.5 rounded border whitespace-nowrap" :class="statusBadgeClass(tpl.status)">
+              {{ t('recurring.status.' + tpl.status) }}
+            </span>
+            <span class="text-xs px-2 py-0.5 rounded font-normal bg-primary-50 text-primary-700 border border-primary-200 whitespace-nowrap">
+              ↻ {{ t('recurring.title') }}
+            </span>
+          </h1>
+        </div>
         <div class="flex flex-wrap gap-2">
           <button v-if="tpl.status === 'active'" @click="openRunNow" :disabled="busy"
             class="cursor-pointer inline-flex items-center gap-1.5 px-3 h-9 text-sm bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-medium rounded-md">

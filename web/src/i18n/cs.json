@@ -15,6 +15,7 @@
     "name": "Název",
     "name_placeholder": "např. Hosting Acme s.r.o.",
     "name_required": "Pojmenuj šablonu pro snazší orientaci.",
+    "back_to_list": "← Zpět na seznam",
     "client": "Klient",
     "project": "Zakázka",
     "frequency": "Periodicita",

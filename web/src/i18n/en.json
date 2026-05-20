@@ -15,6 +15,7 @@
     "name": "Name",
     "name_placeholder": "e.g. Hosting Acme Ltd.",
     "name_required": "Give the template a name for easier orientation.",
+    "back_to_list": "← Back to list",
     "client": "Client",
     "project": "Project",
     "frequency": "Frequency",
