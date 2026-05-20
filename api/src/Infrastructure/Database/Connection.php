@@ -38,7 +38,7 @@ final class Connection
                 PDO::ATTR_STRINGIFY_FETCHES  => false,
             ], $this->logger);
 
-            $this->pdo->exec("SET time_zone = '+01:00'");
+            $this->pdo->exec("SET time_zone = '" . date('P') . "'");
         }
 
         return $this->pdo;
