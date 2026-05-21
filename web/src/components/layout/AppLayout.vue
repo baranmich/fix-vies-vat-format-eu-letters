@@ -153,16 +153,49 @@ function isActive(to: string): boolean {
   if (to === '/') return route.path === '/'
   // /admin/suppliers je nyní dostupné jako první tab v Codebooks → aktivuje Codebooks položku
   if (to === '/admin/codebooks' && route.path.startsWith('/admin/suppliers')) return true
-  // Pokud existuje delší `to` v menu, který by také matchoval (např. /purchase-invoices vs /purchase-invoices/export),
-  // aktivovat jen tu delší.
+
+  // Split `to` na path + query (pokud má query — např. /clients?role=vendors)
+  const [toPath, toQs] = to.split('?', 2)
+
+  // Pokud současná route NEMÁ stejný path prefix — určitě není aktivní.
+  if (!route.path.startsWith(toPath)) return false
+
+  // Pokud item má query, musí se shodovat key-by-key s current route query.
+  if (toQs) {
+    const params = new URLSearchParams(toQs)
+    for (const [k, v] of params) {
+      if (String(route.query[k] ?? '') !== v) return false
+    }
+    return true
+  }
+
+  // Item NEMÁ query — pokud current route má query a existuje JINÝ item se stejným path
+  // a matchujícím query, ten druhý je aktivní, tento ne (např. /clients vs /clients?role=vendors).
+  if (Object.keys(route.query).length > 0) {
+    for (const section of navSections.value) {
+      for (const it of section.items) {
+        if (it.to === to) continue
+        const [iPath, iQs] = it.to.split('?', 2)
+        if (iPath !== toPath || !iQs) continue
+        const iParams = new URLSearchParams(iQs)
+        let match = true
+        for (const [k, v] of iParams) {
+          if (String(route.query[k] ?? '') !== v) { match = false; break }
+        }
+        if (match) return false
+      }
+    }
+  }
+
+  // Delší `to` v menu má prednost (např. /purchase-invoices vs /purchase-invoices/export).
   for (const section of navSections.value) {
     for (const it of section.items) {
-      if (it.to !== to && it.to.startsWith(to + '/') && route.path.startsWith(it.to)) {
+      if (it.to !== to && it.to.startsWith(toPath + '/') && route.path.startsWith(it.to.split('?')[0])) {
         return false
       }
     }
   }
-  return route.path.startsWith(to)
+  return true
 }
 
 // Zavři mobile drawer po navigaci

@@ -287,6 +287,44 @@ function onAiPdfPick(e: Event) {
 
 // Drag & drop handlers (browser default = open PDF in tab; preventDefault zastaví)
 const aiDragOver = ref(false)
+
+// Batch queue — vícero PDF naráz, processed serial (1 v čase) aby se nepřetížil
+// Anthropic API rate limit. Status: pending → processing → ok | failed.
+interface BatchItem {
+  file: File
+  status: 'pending' | 'processing' | 'ok' | 'failed'
+  result: any
+}
+const aiBatchQueue = ref<BatchItem[]>([])
+const aiBatchRunning = ref(false)
+
+async function runAiBatch() {
+  if (aiBatchRunning.value || aiBatchQueue.value.length === 0) return
+  aiBatchRunning.value = true
+  try {
+    for (const item of aiBatchQueue.value) {
+      if (item.status === 'ok') continue // skip already done (idempotent re-run)
+      item.status = 'processing'
+      try {
+        const model = aiPerRequestModel.value || undefined
+        const r = await integrationsApi.extractPdfAi(item.file, model)
+        item.result = r
+        item.status = r.ok ? 'ok' : 'failed'
+      } catch (e: any) {
+        item.result = e?.response?.data ?? { error: { message: apiErrorMessage(e) } }
+        item.status = 'failed'
+      }
+    }
+    await loadAiStatus()
+    toast.success(t('integrations.ai.batch_done', { n: aiBatchQueue.value.filter(x => x.status === 'ok').length }))
+  } finally {
+    aiBatchRunning.value = false
+  }
+}
+
+function clearBatch() {
+  aiBatchQueue.value = []
+}
 function onAiDragEnter(e: DragEvent) { e.preventDefault(); aiDragOver.value = true }
 function onAiDragOver(e: DragEvent) {
   e.preventDefault()
@@ -298,14 +336,26 @@ function onAiDragLeave(e: DragEvent) {
 function onAiDrop(e: DragEvent) {
   e.preventDefault()
   aiDragOver.value = false
-  const file = e.dataTransfer?.files?.[0]
-  if (!file) return
-  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+  const files = Array.from(e.dataTransfer?.files ?? [])
+  if (files.length === 0) return
+
+  const pdfs = files.filter(f =>
+    f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+  if (pdfs.length === 0) {
     toast.error(t('integrations.ai.only_pdf'))
     return
   }
-  aiPdfFile.value = file
-  aiResult.value = null
+
+  if (pdfs.length === 1) {
+    // Single drop — preserve původní single-file flow
+    aiPdfFile.value = pdfs[0]
+    aiResult.value = null
+  } else {
+    // Batch — naqueue všechny, user klikne "Spustit dávku"
+    aiBatchQueue.value = pdfs.map(f => ({ file: f, status: 'pending' as const, result: null }))
+    aiPdfFile.value = null
+    aiResult.value = null
+  }
 }
 
 async function runAiExtract() {
@@ -764,6 +814,43 @@ onUnmounted(() => {
                   class="cursor-pointer w-full h-10 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white text-sm font-medium rounded-md">
             {{ aiExtracting ? t('integrations.ai.extracting') : t('integrations.ai.run_extract') }}
           </button>
+        </div>
+
+        <!-- Batch queue (multi-file drop) — processed serial -->
+        <div v-if="aiBatchQueue.length > 0" class="mt-4 pt-4 border-t border-neutral-100">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-medium text-neutral-700">
+              {{ t('integrations.ai.batch_title', { n: aiBatchQueue.length }) }}
+            </h3>
+            <button type="button" @click="clearBatch" :disabled="aiBatchRunning"
+                    class="cursor-pointer text-xs text-neutral-500 hover:text-danger-500">
+              {{ t('common.cancel') }}
+            </button>
+          </div>
+          <div class="space-y-1 max-h-64 overflow-y-auto border border-neutral-200 rounded-md p-2 text-xs">
+            <div v-for="(item, idx) in aiBatchQueue" :key="idx" class="flex items-center justify-between gap-2 py-1">
+              <span class="font-mono truncate flex-1">{{ item.file.name }}</span>
+              <span class="text-neutral-400">{{ Math.round(item.file.size / 1024) }} kB</span>
+              <span :class="[
+                'px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide',
+                item.status === 'ok' ? 'bg-success-50 text-success-600' :
+                item.status === 'failed' ? 'bg-danger-50 text-danger-500' :
+                item.status === 'processing' ? 'bg-warning-50 text-warning-600' :
+                'bg-neutral-100 text-neutral-500']">
+                {{ item.status === 'processing' ? '…' : item.status }}
+              </span>
+              <RouterLink v-if="item.status === 'ok' && item.result?.purchase_invoice_id"
+                :to="`/purchase-invoices/${item.result.purchase_invoice_id}`"
+                class="text-primary-600 hover:underline text-[10px]">→</RouterLink>
+            </div>
+          </div>
+          <button type="button" @click="runAiBatch" :disabled="aiBatchRunning"
+                  class="mt-3 cursor-pointer w-full h-10 bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white text-sm font-medium rounded-md">
+            {{ aiBatchRunning ? t('integrations.ai.batch_running') : t('integrations.ai.batch_run') }}
+          </button>
+          <p class="text-xs text-neutral-500 mt-2">
+            ℹ {{ t('integrations.ai.batch_serial_hint') }}
+          </p>
         </div>
 
         <div v-if="aiResult" class="mt-4 pt-4 border-t border-neutral-100">

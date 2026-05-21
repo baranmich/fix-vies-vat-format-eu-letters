@@ -60,7 +60,8 @@ final class AiExtractPdfAction
         $modelOverride = (string) ($request->getQueryParams()['model'] ?? '') ?: null;
 
         $userId = (int) ($user['id'] ?? 0);
-        $result = $this->extractor->extractAndCreate($supplierId, $userId, $bytes, $modelOverride);
+        $originalName = $file->getClientFilename() ?: null;
+        $result = $this->extractor->extractAndCreate($supplierId, $userId, $bytes, $modelOverride, $originalName);
 
         $ip = $this->ipMatcher->clientIpFromRequest($request->getServerParams());
         $this->logger->log('import.ai_extract', $userId, 'purchase_invoice',

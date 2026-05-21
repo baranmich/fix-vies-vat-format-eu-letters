@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MyInvoice\Service\Import;
 
+use MyInvoice\Bootstrap;
+use MyInvoice\Infrastructure\Config\Config;
 use MyInvoice\Infrastructure\Database\Connection;
 use MyInvoice\Repository\ClientRepository;
 use MyInvoice\Repository\PurchaseInvoiceRepository;
@@ -35,6 +37,7 @@ final class AiPdfExtractor
         private readonly PdfIsdocExtractor $pdfIsdoc,
         private readonly IsdocParser $isdoc,
         private readonly IsdocToPurchaseInvoiceMapper $isdocMapper,
+        private readonly Config $config,
     ) {}
 
     /**
@@ -44,7 +47,7 @@ final class AiPdfExtractor
      *               error?:string, ai_data?:array<string,mixed>, model?:string,
      *               usage?:array<string,int>}
      */
-    public function extractAndCreate(int $supplierId, int $userId, string $pdfBytes, ?string $modelOverride = null): array
+    public function extractAndCreate(int $supplierId, int $userId, string $pdfBytes, ?string $modelOverride = null, ?string $originalFilename = null): array
     {
         // ISDOC priorita — pokud PDF/A-3 obsahuje embedded ISDOC, použij parser (přesnější, zdarma).
         $isdocXml = $this->pdfIsdoc->extract($pdfBytes);
@@ -53,6 +56,8 @@ final class AiPdfExtractor
                 $parsed = $this->isdoc->parse($isdocXml);
                 if (!empty($parsed['invoices'])) {
                     $r = $this->isdocMapper->map($parsed['invoices'][0], $supplierId, $userId);
+                    // Attach PDF k vytvořené přijaté faktuře
+                    $this->attachPdf((int) $r['purchase_invoice_id'], $supplierId, $pdfBytes, $originalFilename);
                     return [
                         'ok'                  => true,
                         'purchase_invoice_id' => $r['purchase_invoice_id'],
@@ -106,6 +111,8 @@ final class AiPdfExtractor
         // Create purchase invoice draft
         try {
             $invoiceId = $this->createDraft($data, $supplierId, $userId, $resolved['id']);
+            // Attach PDF — uložit do archive a updatnout pdf_path/hash/size na faktuře
+            $this->attachPdf($invoiceId, $supplierId, $pdfBytes, $originalFilename);
             return [
                 'ok'                  => true,
                 'purchase_invoice_id' => $invoiceId,
@@ -257,5 +264,36 @@ final class AiPdfExtractor
         if ($vn === '') $vn = 'AI-import';
         $vn = (string) preg_replace('/[\x00-\x1F\x7F]/', '', $vn);
         return strlen($vn) > 50 ? substr($vn, 0, 50) : $vn;
+    }
+
+    /**
+     * Attach originální PDF bytes k vytvořené přijaté faktuře (uloží do archive,
+     * setne pdf_path/hash/size na faktuře). Silent fail — pokud archive není
+     * dostupný, faktura zůstane bez PDF (lze nahrát ručně později).
+     */
+    private function attachPdf(int $invoiceId, int $supplierId, string $pdfBytes, ?string $originalFilename): void
+    {
+        try {
+            $archiveRoot = (string) $this->config->get('purchase_invoice.archive_storage', '');
+            if ($archiveRoot === '') {
+                $archiveRoot = Bootstrap::rootDir() . '/storage/purchase-invoices';
+            }
+            $tenantDir = $archiveRoot . '/supplier-' . $supplierId;
+            if (!is_dir($tenantDir)) {
+                @mkdir($tenantDir, 0755, true);
+            }
+            $sha256 = hash('sha256', $pdfBytes);
+            $diskName = substr($sha256, 0, 16) . '.pdf';
+            $finalPath = $tenantDir . '/' . $diskName;
+            if (!is_file($finalPath)) {
+                @file_put_contents($finalPath, $pdfBytes);
+            }
+            $relativePath = 'supplier-' . $supplierId . '/' . $diskName;
+            $size = (int) @filesize($finalPath);
+            $name = $originalFilename ?: 'ai-imported.pdf';
+            $this->repo->setPdfMetadata($invoiceId, $supplierId, $relativePath, $sha256, $size, $name);
+        } catch (\Throwable) {
+            // Silent — extract success je důležitější než PDF attach.
+        }
     }
 }

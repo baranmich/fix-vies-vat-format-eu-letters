@@ -154,7 +154,11 @@ JSON schema:
     "street": string|null,
     "city": string|null,
     "zip": string|null,
-    "country_iso2": "CZ"|"SK"|...
+    "country_iso2": "CZ"|"SK"|...,
+    "email": string|null,
+    "phone": string|null,
+    "web": string|null,
+    "bank_account": string|null
   },
   "customer": {
     "company_name": string|null,

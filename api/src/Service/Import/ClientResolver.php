@@ -24,6 +24,7 @@ final class ClientResolver
         private readonly Connection $db,
         private readonly ClientRepository $clients,
         private readonly AresClient $ares,
+        private readonly \MyInvoice\Service\Ares\ViesClient $vies,
     ) {}
 
     /**
@@ -93,7 +94,22 @@ final class ClientResolver
             }
         }
 
-        // 3. Sestavení dat klienta — ARES preferenčně, pak fallback na XML
+        // 2b. VIES fallback — pokud nemáme IČO ale máme DIČ (zahraniční dodavatel),
+        // zkusíme VIES validation pro company_name + adresu z EU registru.
+        $viesData = null;
+        $rawDic = trim((string) ($parsedClient['dic'] ?? ''));
+        if ($aresData === null && $ic === null && $rawDic !== '') {
+            try {
+                $viesResp = $this->vies->lookup($rawDic);
+                if (!empty($viesResp['valid']) && !empty($viesResp['data'])) {
+                    $viesData = $viesResp['data'];
+                }
+            } catch (\Throwable) {
+                // VIES timeout / network failure — silent fallback na parsedClient data
+            }
+        }
+
+        // 3. Sestavení dat klienta — ARES → VIES → AI/XML extracted data (priority)
         $email = trim((string) ($parsedClient['email'] ?? ''));
         if ($email === '') {
             $email = 'unknown@import.local'; // placeholder — main_email je NOT NULL
@@ -101,15 +117,18 @@ final class ClientResolver
 
         $data = [
             'company_name' => $aresData['company_name']
+                ?? $viesData['company_name']
                 ?? ($parsedClient['company_name'] ?? 'Importovaný klient'),
             'ic'           => $ic,
-            'dic'          => $aresData['dic'] ?? ($parsedClient['dic'] ?? null) ?: null,
-            'street'       => $aresData['street'] ?? ($parsedClient['street'] ?? '') ?: '—',
-            'city'         => $aresData['city']   ?? ($parsedClient['city']   ?? '') ?: '—',
-            'zip'          => $aresData['zip']    ?? ($parsedClient['zip']    ?? '') ?: '00000',
-            'country_iso2' => $aresData['country_iso2'] ?? ($parsedClient['country_iso2'] ?? 'CZ') ?: 'CZ',
+            'dic'          => $aresData['dic'] ?? $viesData['dic'] ?? ($parsedClient['dic'] ?? null) ?: null,
+            'street'       => $aresData['street'] ?? $viesData['street'] ?? ($parsedClient['street'] ?? '') ?: '—',
+            'city'         => $aresData['city']   ?? $viesData['city']   ?? ($parsedClient['city']   ?? '') ?: '—',
+            'zip'          => $aresData['zip']    ?? $viesData['zip']    ?? ($parsedClient['zip']    ?? '') ?: '00000',
+            'country_iso2' => $aresData['country_iso2'] ?? $viesData['country_iso2']
+                ?? ($parsedClient['country_iso2'] ?? 'CZ') ?: 'CZ',
             'main_email'   => $email,
             'phone'        => $parsedClient['phone'] ?? null,
+            'web'          => $parsedClient['web'] ?? null,
             'language'     => 'cs',
             'is_customer'  => $isCustomer,
             'is_vendor'    => $isVendor,
