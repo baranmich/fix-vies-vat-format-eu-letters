@@ -12,6 +12,7 @@ use MyInvoice\Repository\PurchaseInvoiceRepository;
 use MyInvoice\Service\ActivityLogger;
 use MyInvoice\Service\Invoice\PurchaseInvoiceCalculator;
 use MyInvoice\Service\IpMatcher;
+use MyInvoice\Service\Report\VatClassificationDefaulter;
 use MyInvoice\Service\Validation\PurchaseInvoiceValidation;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
@@ -28,6 +29,7 @@ final class CreatePurchaseInvoiceAction
         private readonly PurchaseInvoiceRepository $repo,
         private readonly ClientRepository $clients,
         private readonly PurchaseInvoiceCalculator $calc,
+        private readonly VatClassificationDefaulter $vatDefaulter,
         private readonly ActivityLogger $logger,
         private readonly IpMatcher $ipMatcher,
     ) {}
@@ -59,6 +61,9 @@ final class CreatePurchaseInvoiceAction
 
         $user = (array) $request->getAttribute(AuthMiddleware::ATTR_USER, []);
         $userId = (int) ($user['id'] ?? 0);
+
+        // Auto-default VAT klasifikace pokud user nezadal
+        $this->applyVatClassificationDefaults($body);
 
         try {
             $id = $this->repo->createDraft($body, $userId, $supplierId);

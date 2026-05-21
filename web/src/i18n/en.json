@@ -668,6 +668,15 @@
     "summary": "Summary",
     "note": "Note",
     "activity": "Activity",
+    "classification": {
+      "title": "Classification",
+      "vat_classification": "VAT classification (VAT return)",
+      "no_vat_class": "(auto-default by rate)",
+      "vat_classification_hint": "Auto-assigned by VAT rate (21%→1, 12%→2, 0%→3, reverse→20).",
+      "revenue_category": "Revenue category (optional)",
+      "revenue_category_placeholder": "e.g. consulting, product, hosting",
+      "revenue_category_hint": "Free-form tag for business mix analysis in CRM."
+    },
     "pdf_history": {
       "title": "PDF history",
       "sent": "Sent to client",

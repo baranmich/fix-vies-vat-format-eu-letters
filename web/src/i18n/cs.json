@@ -668,6 +668,15 @@
     "summary": "Sumace",
     "note": "Poznámka",
     "activity": "Aktivita",
+    "classification": {
+      "title": "Klasifikace",
+      "vat_classification": "VAT klasifikace (DPH přiznání)",
+      "no_vat_class": "(auto-default podle sazby)",
+      "vat_classification_hint": "Auto-přiřazení podle sazby DPH (21%→1, 12%→2, 0%→3, reverse→20).",
+      "revenue_category": "Kategorie tržby (volitelně)",
+      "revenue_category_placeholder": "např. konzultace, produkt, hosting",
+      "revenue_category_hint": "Free-form tag pro analýzu byznys mixu v CRM."
+    },
     "pdf_history": {
       "title": "Historie PDF",
       "sent": "Odesláno klientovi",

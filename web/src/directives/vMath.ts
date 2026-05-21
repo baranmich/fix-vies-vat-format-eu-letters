@@ -1,10 +1,10 @@
 import type { Directive } from 'vue'
 
 /**
- * Safe math expression evaluator.
+ * Safe math expression evaluator (CSP-safe, žádný new Function()).
  *
  * Povolené znaky: digits, `+`, `-`, `*`, `/`, `(`, `)`, `.`, `,` (CZ desetinná čárka).
- * Žádné JS literály, funkce, ani víceslovné identifiers — protect před injection.
+ * Algoritmus: tokenize → Shunting-yard → RPN evaluation.
  *
  * Examples:
  *   "400-100"   → 300
@@ -13,54 +13,138 @@ import type { Directive } from 'vue'
  *   "12*1.21"   → 14.52
  *   "(100+50)*2" → 300
  *   "1234,56"   → 1234.56
- *   "abc"       → null (caller zachová původní string)
+ *   "-5+3"      → -2
+ *   "abc"       → null
+ *   "1/0"       → null (zero div)
  */
 export function evalMath(input: string): number | null {
   if (input === '' || input === null || input === undefined) return null
-  let s = String(input).replace(/\s/g, '').replace(/ /g, '').replace(',', '.')
+  const s = String(input).replace(/\s/g, '').replace(',', '.')
   if (s === '') return null
 
   // Whitelist znaků — defense in depth
   if (!/^[\d+\-*/.()]+$/.test(s)) return null
 
-  // Nikdy nechceme operátorové sekvence (např. "1++2" je injection-suspicious)
-  // Povolíme leading minus ("-5") a unární minus po levé závorce nebo operátoru ("(-5+3)", "5*-2")
-  if (/[+\-*/.]{3,}/.test(s)) return null
-
-  // Pokud je to už jen číslo (typicky uživatel zadal normální cenu) → zkratka
+  // Pokud je to už jen číslo, rychlá cesta
   if (/^-?\d+(\.\d+)?$/.test(s)) return parseFloat(s)
 
-  // Pro vyhodnocení použijeme Function constructor s "use strict".
-  // Bezpečné protože jsme přes regex zaručili jen aritmetické znaky — žádný identifier
-  // ani literal se sem nedostane.
   try {
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('"use strict"; return (' + s + ')')
-    const r = fn()
-    if (typeof r !== 'number' || !isFinite(r)) return null
-    // Zaokrouhlení na 4 desetinná místa — ochrana proti FP errors (např. 0.1+0.2)
-    return Math.round(r * 10000) / 10000
+    const tokens = tokenize(s)
+    if (tokens === null) return null
+    const rpn = shuntingYard(tokens)
+    if (rpn === null) return null
+    const r = evalRpn(rpn)
+    if (r === null || !isFinite(r)) return null
+    // Zaokrouhlení na 2 desetinná místa — user preference (částky v Kč/EUR)
+    return Math.round(r * 100) / 100
   } catch {
     return null
   }
 }
 
-/**
- * Vue directive `v-math` — povoluje matematické výrazy v <input> polích.
- *
- * Použití:
- *   <input v-model="item.price" v-math type="text" inputmode="decimal" />
- *
- * Behavior:
- *   - User píše "400-100" do pole
- *   - Při blur (nebo Enter) → vyhodnotí výraz → nastaví hodnotu na 300 + dispatch input event
- *     aby v-model propagoval do parent state
- *   - Pokud výraz nevalidní → ponechá původní text (uživatel uvidí svůj omyl a opraví)
- *
- * Důvod proč type="text" místo type="number":
- *   Browsery s type="number" blokují znaky `+`, `*`, `/`, závorky. inputmode="decimal"
- *   na mobile drží numerickou klávesnici.
- */
+type Token =
+  | { type: 'num'; value: number }
+  | { type: 'op'; value: '+' | '-' | '*' | '/' }
+  | { type: 'paren'; value: '(' | ')' }
+
+function tokenize(s: string): Token[] | null {
+  const tokens: Token[] = []
+  let i = 0
+  while (i < s.length) {
+    const c = s[i]
+    if (c === '(' || c === ')') {
+      tokens.push({ type: 'paren', value: c })
+      i++
+    } else if (c === '+' || c === '*' || c === '/') {
+      tokens.push({ type: 'op', value: c })
+      i++
+    } else if (c === '-') {
+      // Unární minus: na začátku nebo po operátoru / levé závorce
+      const prev = tokens[tokens.length - 1]
+      if (!prev || prev.type === 'op' || (prev.type === 'paren' && prev.value === '(')) {
+        let j = i + 1
+        while (j < s.length && /[\d.]/.test(s[j])) j++
+        if (j === i + 1) return null
+        const num = parseFloat(s.slice(i, j))
+        if (!isFinite(num)) return null
+        tokens.push({ type: 'num', value: num })
+        i = j
+      } else {
+        tokens.push({ type: 'op', value: '-' })
+        i++
+      }
+    } else if (/[\d.]/.test(c)) {
+      let j = i
+      while (j < s.length && /[\d.]/.test(s[j])) j++
+      const num = parseFloat(s.slice(i, j))
+      if (!isFinite(num)) return null
+      tokens.push({ type: 'num', value: num })
+      i = j
+    } else {
+      return null
+    }
+  }
+  return tokens
+}
+
+function shuntingYard(tokens: Token[]): Token[] | null {
+  const out: Token[] = []
+  const ops: Token[] = []
+  const precedence: Record<string, number> = { '+': 1, '-': 1, '*': 2, '/': 2 }
+  for (const t of tokens) {
+    if (t.type === 'num') {
+      out.push(t)
+    } else if (t.type === 'op') {
+      while (ops.length > 0) {
+        const top = ops[ops.length - 1]
+        if (top.type === 'op' && precedence[top.value] >= precedence[t.value]) {
+          out.push(ops.pop()!)
+        } else break
+      }
+      ops.push(t)
+    } else if (t.value === '(') {
+      ops.push(t)
+    } else {
+      // ')'
+      let found = false
+      while (ops.length > 0) {
+        const top = ops.pop()!
+        if (top.type === 'paren' && top.value === '(') { found = true; break }
+        out.push(top)
+      }
+      if (!found) return null // unbalanced parens
+    }
+  }
+  while (ops.length > 0) {
+    const top = ops.pop()!
+    if (top.type === 'paren') return null // unbalanced
+    out.push(top)
+  }
+  return out
+}
+
+function evalRpn(rpn: Token[]): number | null {
+  const stack: number[] = []
+  for (const t of rpn) {
+    if (t.type === 'num') {
+      stack.push(t.value)
+    } else if (t.type === 'op') {
+      const b = stack.pop(), a = stack.pop()
+      if (a === undefined || b === undefined) return null
+      switch (t.value) {
+        case '+': stack.push(a + b); break
+        case '-': stack.push(a - b); break
+        case '*': stack.push(a * b); break
+        case '/':
+          if (b === 0) return null
+          stack.push(a / b)
+          break
+      }
+    }
+  }
+  return stack.length === 1 ? stack[0] : null
+}
+
 export const vMath: Directive<HTMLInputElement> = {
   mounted(el) {
     const evaluate = () => {
@@ -69,9 +153,6 @@ export const vMath: Directive<HTMLInputElement> = {
       const formatted = String(r)
       if (el.value === formatted) return
       el.value = formatted
-      // Dispatch events s `bubbles: true` — Vue v-model interní listener
-      // je registrovaný na el (capture během mounted), takže input event tam
-      // doletí a v-model.number ho parsuje na Number().
       el.dispatchEvent(new Event('input', { bubbles: true }))
       el.dispatchEvent(new Event('change', { bubbles: true }))
     }
@@ -79,22 +160,17 @@ export const vMath: Directive<HTMLInputElement> = {
     // 1) Blur — primární trigger (Tab i mouseclick mimo pole)
     el.addEventListener('blur', evaluate)
 
-    // 2) Enter — power-user shortcut
+    // 2) Enter / Tab keydown — power-user shortcut
     el.addEventListener('keydown', (e) => {
       const ev = e as KeyboardEvent
-      if (ev.key === 'Enter' || ev.key === 'Tab') {
-        evaluate()
-      }
+      if (ev.key === 'Enter' || ev.key === 'Tab') evaluate()
     })
 
-    // 3) Debounced input — pokud user přestane psát na 800ms a obsah vypadá
-    //    jako výraz (obsahuje +, -, *, / mimo začátek), zkus evaluate.
+    // 3) Debounced input — 800ms po posledním keystroke (jen pokud obsah obsahuje operátor)
     let timeout: ReturnType<typeof setTimeout> | null = null
     el.addEventListener('input', () => {
       if (timeout) clearTimeout(timeout)
-      const v = el.value
-      // Trigger jen pokud obsahuje operátor (kromě leading minus pro záporná čísla)
-      if (!/[+*/]|.\-/.test(v)) return
+      if (!/[+\-*/]/.test(el.value)) return
       timeout = setTimeout(evaluate, 800)
     })
 
@@ -102,8 +178,6 @@ export const vMath: Directive<HTMLInputElement> = {
   },
   beforeUnmount(el) {
     const h = (el as any).__mathHandler
-    if (h) {
-      el.removeEventListener('blur', h)
-    }
+    if (h) el.removeEventListener('blur', h)
   },
 }
