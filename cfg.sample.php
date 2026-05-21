@@ -238,6 +238,18 @@ return [
         'partial_match_tolerance' => 1.00,           // částečná shoda částky: 1.00 = jen přesně, 0.99 = ±1%, 0.0 = jakákoliv částka
     ],
 
+    // Scan adresáře s PDF/ISDOC pro automatický import přijatých faktur.
+    // Admin spustí v UI "Nascanovat inbox" → projde rekurzivně inbox_dir, dedup
+    // přes SHA-256 (proti purchase_invoices.pdf_hash), z ISDOC vytvoří draft.
+    // Plain PDF (bez embedded ISDOC) se ve fázi 1 přeskakují — AI extrakce v fázi 2c je doplní.
+    'purchase_invoice' => [
+        'inbox_dir'         => '',                   // absolutní cesta (např. 'C:/inetpub/wwwroot/myinvoice.cz/inbox' nebo '/var/lib/myinvoice/inbox'); prázdné = scan vypnutý
+        'inbox_recursive'   => true,                 // procházet i podadresáře
+        'allowed_exts'      => ['pdf', 'isdoc', 'xml'],  // jen tyto přípony se zpracují (.xml = ISDOC payload bez wrapping PDF)
+        'move_processed_to' => '',                   // volitelný podadresář (např. 'processed'); prázdné = soubory zůstanou na místě a budou skipnuté při dalším scanu díky pdf_hash dedup
+        'archive_storage'   => __DIR__ . '/storage/purchase-invoices', // kam přesouvat originální PDF po importu (mimo webroot)
+    ],
+
     // Cron retention (api/bin/cron-cleanup.php + cron-backup.php)
     'cron' => [
         'cleanup' => [

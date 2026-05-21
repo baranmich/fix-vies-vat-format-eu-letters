@@ -45,6 +45,17 @@ use MyInvoice\Action\Invoice\MarkPaidAction;
 use MyInvoice\Action\Invoice\UnmarkPaidAction;
 use MyInvoice\Action\Invoice\BulkReissueAction;
 use MyInvoice\Action\Invoice\CloneInvoiceAction;
+use MyInvoice\Action\PurchaseInvoice\CreatePurchaseInvoiceAction;
+use MyInvoice\Action\PurchaseInvoice\DeletePurchaseInvoiceAction;
+use MyInvoice\Action\PurchaseInvoice\DownloadPurchaseInvoicePdfAction;
+use MyInvoice\Action\PurchaseInvoice\GetPurchaseInvoiceAction;
+use MyInvoice\Action\PurchaseInvoice\ListPurchaseInvoicesAction;
+use MyInvoice\Action\PurchaseInvoice\ScanInboxAction;
+use MyInvoice\Action\PurchaseInvoice\SetPurchaseInvoiceExchangeRateAction;
+use MyInvoice\Action\PurchaseInvoice\SetPurchaseInvoiceItemsAction;
+use MyInvoice\Action\PurchaseInvoice\TransitionPurchaseInvoiceStatusAction;
+use MyInvoice\Action\PurchaseInvoice\UpdatePurchaseInvoiceAction;
+use MyInvoice\Action\PurchaseInvoice\UploadPurchaseInvoicePdfAction;
 use MyInvoice\Action\Recurring\RecurringTemplateAction;
 use MyInvoice\Action\Invoice\IssueFinalFromProformaAction;
 use MyInvoice\Action\Invoice\PdfAction;
@@ -186,6 +197,21 @@ final class Routes
         $app->post   ('/api/invoices/bulk-reissue',          BulkReissueAction::class);
         $app->post   ('/api/invoices/bulk-reminder',         BulkSendRemindersAction::class);
         $app->post   ('/api/invoices/{id:[0-9]+}/clone',     CloneInvoiceAction::class);
+
+        // Přijaté faktury (purchase invoices) — fáze 1 integrace forku.
+        // Všechny chráněné AuthMiddleware + SupplierScopeMiddleware (skrz globální group).
+        // scan-inbox je admin/accountant only (check v Action).
+        $app->post   ('/api/purchase-invoices/scan-inbox',                ScanInboxAction::class);
+        $app->get    ('/api/purchase-invoices',                           ListPurchaseInvoicesAction::class);
+        $app->post   ('/api/purchase-invoices',                           CreatePurchaseInvoiceAction::class);
+        $app->get    ('/api/purchase-invoices/{id:[0-9]+}',                GetPurchaseInvoiceAction::class);
+        $app->put    ('/api/purchase-invoices/{id:[0-9]+}',                UpdatePurchaseInvoiceAction::class);
+        $app->delete ('/api/purchase-invoices/{id:[0-9]+}',                DeletePurchaseInvoiceAction::class);
+        $app->put    ('/api/purchase-invoices/{id:[0-9]+}/items',          SetPurchaseInvoiceItemsAction::class);
+        $app->post   ('/api/purchase-invoices/{id:[0-9]+}/exchange-rate', SetPurchaseInvoiceExchangeRateAction::class);
+        $app->post   ('/api/purchase-invoices/{id:[0-9]+}/transition',     TransitionPurchaseInvoiceStatusAction::class);
+        $app->post   ('/api/purchase-invoices/{id:[0-9]+}/pdf',            UploadPurchaseInvoicePdfAction::class);
+        $app->get    ('/api/purchase-invoices/{id:[0-9]+}/pdf',            DownloadPurchaseInvoicePdfAction::class);
 
         // Pravidelné fakturace (recurring templates)
         $app->get    ('/api/recurring',                       [RecurringTemplateAction::class, 'list']);

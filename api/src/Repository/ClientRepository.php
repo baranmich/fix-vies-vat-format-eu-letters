@@ -137,6 +137,29 @@ final class ClientRepository
         return (int) $this->db->pdo()->lastInsertId();
     }
 
+    /**
+     * Označí klienta jako dodavatele (is_vendor=1). Idempotentní — pokud je už označen,
+     * nedělá nic. Volá se z CreatePurchaseInvoiceAction po ověření vendor scope.
+     * is_customer flag se NEMĚNÍ — klient může být současně zákazník i dodavatel.
+     */
+    public function markAsVendor(int $id): void
+    {
+        $this->db->pdo()
+            ->prepare('UPDATE clients SET is_vendor = 1 WHERE id = ? AND is_vendor = 0')
+            ->execute([$id]);
+    }
+
+    /**
+     * Označí klienta jako zákazníka (is_customer=1). Symetrické s markAsVendor.
+     * Volá se např. při importu vystavené faktury pro nový kontakt.
+     */
+    public function markAsCustomer(int $id): void
+    {
+        $this->db->pdo()
+            ->prepare('UPDATE clients SET is_customer = 1 WHERE id = ? AND is_customer = 0')
+            ->execute([$id]);
+    }
+
     public function update(int $id, array $data): void
     {
         // Klient nemůže měnit supplier — odvodíme z aktuálního DB záznamu pro currency lookup
