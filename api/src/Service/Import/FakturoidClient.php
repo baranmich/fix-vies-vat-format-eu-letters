@@ -26,7 +26,7 @@ use Psr\Log\LoggerInterface;
 final class FakturoidClient
 {
     private const API_BASE = 'https://app.fakturoid.cz/api/v3/accounts';
-    private const USER_AGENT = 'MyInvoice.cz Import (radek@hulan.cz)';
+    private const USER_AGENT = 'MyInvoice.cz Import (https://github.com/radekhulan/myinvoice)';
     private const TIMEOUT = 30;
     private const RATE_LIMIT_THRESHOLD = 180; // req/min
 
