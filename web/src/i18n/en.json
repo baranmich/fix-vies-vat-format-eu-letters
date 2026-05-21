@@ -4,7 +4,7 @@
     "dashboard": "Dashboard", "invoices": "Invoices", "clients": "Clients",
     "projects": "Projects", "stats": "Charts", "bank": "Bank", "system": "System",
     "settings": "Settings", "supplier_current": "Supplier", "suppliers": "Suppliers", "codebooks": "Codebooks", "users": "Users",
-    "log": "Activity log", "cron_jobs": "Scheduled jobs", "exports": "Exports", "imports": "Imports", "email_templates": "Email templates", "approvals": "Approvals", "updates": "Updates", "api_tokens": "API tokens", "recurring": "Recurring invoices", "help": "Help", "logout": "Sign out",
+    "log": "Activity log", "cron_jobs": "Scheduled jobs", "exports": "Exports", "imports": "Imports", "integrations": "External integrations", "email_templates": "Email templates", "approvals": "Approvals", "updates": "Updates", "api_tokens": "API tokens", "recurring": "Recurring invoices", "help": "Help", "logout": "Sign out",
     "section_sales": "Sales", "section_purchase": "Purchases", "section_finance": "Finance", "section_clients": "Clients",
     "purchase_invoices": "Received invoices", "purchase_export": "Export", "vendors": "Vendors"
   },
@@ -1395,6 +1395,62 @@
     "preparing": "Preparing ZIP…",
     "hint": "PDFs are refreshed before export if the cache is stale. Larger archives may take a few seconds.",
     "download_failed": "Download failed"
+  },
+  "integrations": {
+    "title": "External integrations",
+    "subtitle": "Connect external services — iDoklad, Fakturoid, Anthropic AI. BYOK (bring your own key), encrypted at-rest.",
+    "coming_soon": "Coming soon",
+    "idoklad": {
+      "tab": "iDoklad",
+      "credentials_title": "iDoklad API credentials",
+      "credentials_hint": "OAuth2 client_credentials from your iDoklad account. Get → Settings → API → Applications.",
+      "configured": "Credentials configured",
+      "client_id": "Client ID",
+      "client_secret": "Client Secret",
+      "secret_placeholder_existing": "(unchanged — enter new to override)",
+      "secret_hint": "Encrypted AES-256-GCM with app.pepper, never returned back.",
+      "test_success": "iDoklad connection works — credentials saved.",
+      "save_and_test": "Save and test",
+      "delete": "Remove credentials",
+      "delete_confirm": "Remove iDoklad credentials? Running imports won't be cancelled, but future imports won't work.",
+      "deleted": "iDoklad credentials removed",
+      "how_to_get": "How to get client_id and client_secret",
+      "step1": "Sign in to your iDoklad account (app.idoklad.cz)",
+      "step2": "Settings → API → Applications",
+      "step3": "Create new app, scope = idoklad_api",
+      "step4": "Copy client_id + client_secret and paste here",
+      "run_title": "Run import",
+      "run_hint": "Import runs in background. Status polled every 2 seconds. Can be cancelled.",
+      "include_clients": "Contacts (clients)",
+      "include_issued": "Issued invoices",
+      "include_received": "Received invoices",
+      "dry_run": "Dry-run (show only, don't write)",
+      "start_import": "Start import",
+      "started": "Started job #{jobId}",
+      "cancel": "Cancel",
+      "cancelling": "Cancelling…",
+      "cancel_confirm": "Really cancel the running import? Already imported records will stay.",
+      "cancel_requested": "Cancel requested — worker will finish current item and exit",
+      "created": "Created",
+      "skipped": "Skipped",
+      "failed": "Errors",
+      "log": "Message log",
+      "status": {
+        "queued": "Queued",
+        "running": "Running",
+        "completed": "Completed",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "fakturoid": {
+      "tab": "Fakturoid",
+      "coming_hint": "Fakturoid import coming in phase 2b (parallel to iDoklad UI, different OAuth flow)."
+    },
+    "ai": {
+      "tab": "AI extraction (PDF)",
+      "coming_hint": "Anthropic Claude vision for extracting data from PDFs without ISDOC — phase 2c. BYOK API key, ~$0.001/invoice (Haiku 4.5)."
+    }
   },
   "imports": {
     "subtitle_unified": "Import both issued and received invoices in one place.",

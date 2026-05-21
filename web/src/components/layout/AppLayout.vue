@@ -105,6 +105,7 @@ const navSections = computed<NavSection[]>(() => {
         { to: '/admin/settings',         label: t('nav.settings'),        icon: ICONS.settings },
         { to: '/admin/codebooks',        label: t('nav.codebooks'),       icon: ICONS.codebooks },
         { to: '/admin/import',           label: t('nav.imports'),         icon: ICONS.imports },
+        { to: '/admin/integrations',     label: t('nav.integrations'),    icon: ICONS.api_tokens },
         { to: '/admin/users',            label: t('nav.users'),           icon: ICONS.users },
         { to: '/admin/email-templates',  label: t('nav.email_templates'), icon: ICONS.email },
         { to: '/admin/activity-log',     label: t('nav.log'),             icon: ICONS.log },

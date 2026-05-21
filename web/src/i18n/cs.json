@@ -4,7 +4,7 @@
     "dashboard": "Přehled", "invoices": "Faktury", "clients": "Klienti",
     "projects": "Zakázky", "stats": "Grafy", "bank": "Banka", "system": "Systém",
     "settings": "Nastavení", "supplier_current": "Dodavatel", "suppliers": "Dodavatelé", "codebooks": "Číselníky", "users": "Uživatelé",
-    "log": "Log", "cron_jobs": "Plánované úlohy", "exports": "Exporty", "imports": "Importy", "email_templates": "Email šablony", "approvals": "Schvalování", "updates": "Aktualizace", "api_tokens": "API tokeny", "recurring": "Pravidelné fakturace", "help": "Nápověda", "logout": "Odhlásit",
+    "log": "Log", "cron_jobs": "Plánované úlohy", "exports": "Exporty", "imports": "Importy", "integrations": "Externí integrace", "email_templates": "Email šablony", "approvals": "Schvalování", "updates": "Aktualizace", "api_tokens": "API tokeny", "recurring": "Pravidelné fakturace", "help": "Nápověda", "logout": "Odhlásit",
     "section_sales": "Prodej", "section_purchase": "Nákup", "section_finance": "Finance", "section_clients": "Klienti",
     "purchase_invoices": "Přijaté faktury", "purchase_export": "Export", "vendors": "Dodavatelé"
   },
@@ -1395,6 +1395,62 @@
     "preparing": "Připravuji ZIP…",
     "hint": "PDF se před exportem aktualizuje, pokud cache není svěží. Větší archivy mohou trvat několik sekund.",
     "download_failed": "Stažení selhalo"
+  },
+  "integrations": {
+    "title": "Externí integrace",
+    "subtitle": "Připojení k externím službám — iDoklad, Fakturoid, Anthropic AI. BYOK (přines si vlastní klíč), šifrované at-rest.",
+    "coming_soon": "Připravujeme",
+    "idoklad": {
+      "tab": "iDoklad",
+      "credentials_title": "iDoklad API credentials",
+      "credentials_hint": "OAuth2 client_credentials z iDoklad účtu. Get → Nastavení → API → Aplikace.",
+      "configured": "Credentials nastaveny",
+      "client_id": "Client ID",
+      "client_secret": "Client Secret",
+      "secret_placeholder_existing": "(nevyplněno — nastav nový pro override)",
+      "secret_hint": "Šifrováno AES-256-GCM přes app.pepper, nikdy se nevrací zpět ven.",
+      "test_success": "Připojení k iDoklad funguje — credentials uloženy.",
+      "save_and_test": "Uložit a otestovat",
+      "delete": "Odebrat credentials",
+      "delete_confirm": "Opravdu odebrat iDoklad credentials? Spuštěný import se nezruší, ale další import nepůjde.",
+      "deleted": "iDoklad credentials odebrány",
+      "how_to_get": "Jak získat client_id a client_secret",
+      "step1": "Přihlas se do iDoklad účtu (app.idoklad.cz)",
+      "step2": "Klikni na Nastavení → API → Aplikace",
+      "step3": "Vytvoř novou aplikaci, scope = idoklad_api",
+      "step4": "Copy client_id + client_secret a vložit zde",
+      "run_title": "Spustit import",
+      "run_hint": "Import běží na pozadí. Stav se polluje každé 2 sekundy. Můžeš zrušit kdykoli.",
+      "include_clients": "Kontakty (clients)",
+      "include_issued": "Vydané faktury",
+      "include_received": "Přijaté faktury",
+      "dry_run": "Dry-run (jen ukázat, nepsat)",
+      "start_import": "Spustit import",
+      "started": "Spuštěn job #{jobId}",
+      "cancel": "Zrušit",
+      "cancelling": "Ruším…",
+      "cancel_confirm": "Opravdu zrušit běžící import? Již importované záznamy zůstanou.",
+      "cancel_requested": "Cancel požádán — worker dokončí aktuální item a skončí",
+      "created": "Vytvořeno",
+      "skipped": "Přeskočeno",
+      "failed": "Chyby",
+      "log": "Log zpráv",
+      "status": {
+        "queued": "Ve frontě",
+        "running": "Běží",
+        "completed": "Dokončeno",
+        "failed": "Selhalo",
+        "cancelled": "Zrušeno"
+      }
+    },
+    "fakturoid": {
+      "tab": "Fakturoid",
+      "coming_hint": "Fakturoid import bude dostupný v fázi 2b (paralel s iDoklad UI, jiný OAuth flow)."
+    },
+    "ai": {
+      "tab": "AI extrakce (PDF)",
+      "coming_hint": "Anthropic Claude vision pro extrakci dat z PDF faktur bez ISDOC — fáze 2c. BYOK API klíč, ~$0.001/faktura (Haiku 4.5)."
+    }
   },
   "imports": {
     "title": "Importy",
