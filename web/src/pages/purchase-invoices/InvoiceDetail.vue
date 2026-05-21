@@ -180,13 +180,6 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
           <svg class="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           {{ t('common.edit') }}
         </RouterLink>
-        <!-- Force-edit pro received/booked (admin only) -->
-        <RouterLink v-else-if="canForceEdit" :to="`/purchase-invoices/${invoice.id}/edit?force=1`"
-          class="cursor-pointer px-3 h-9 text-sm border border-warning-500/40 rounded-md text-warning-600 hover:bg-warning-50 inline-flex items-center gap-1.5"
-          :title="t('purchase_invoice.force_edit_hint')">
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-          {{ t('purchase_invoice.force_edit') }}
-        </RouterLink>
         <a v-if="invoice.pdf_path" :href="purchaseInvoicesApi.pdfUrl(invoice.id)" target="_blank"
           class="cursor-pointer px-3 h-9 text-sm border border-primary-500/40 rounded-md text-primary-700 hover:bg-primary-50 inline-flex items-center gap-1.5">
           <svg class="w-4 h-4 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"/></svg>
@@ -428,13 +421,20 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
     </div>
 
     <!-- ═══ More actions (vendor detail link, paralel s vystavenou InvoiceDetail) ═══ -->
-    <div v-if="invoice && invoice.vendor_id" class="bg-white border border-neutral-200 rounded-lg p-5 shadow-sm">
+    <div v-if="invoice && (invoice.vendor_id || canForceEdit)" class="bg-white border border-neutral-200 rounded-lg p-5 shadow-sm">
       <h3 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-3">{{ t('invoice.more_actions') }}</h3>
       <div class="flex flex-wrap gap-2">
-        <RouterLink :to="`/clients/${invoice.vendor_id}`"
+        <RouterLink v-if="invoice.vendor_id" :to="`/clients/${invoice.vendor_id}`"
           class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 text-neutral-700 hover:bg-neutral-50 rounded-md inline-flex items-center gap-1.5">
           <svg class="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z"/></svg>
           {{ t('purchase_invoice.vendor_detail') }}
+        </RouterLink>
+        <!-- Force-edit pro received/booked (admin only) -->
+        <RouterLink v-if="canForceEdit" :to="`/purchase-invoices/${invoice.id}/edit?force=1`"
+          class="cursor-pointer px-3 h-9 text-sm border border-warning-500/40 text-warning-600 hover:bg-warning-50 rounded-md inline-flex items-center gap-1.5"
+          :title="t('purchase_invoice.force_edit_hint')">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          {{ t('purchase_invoice.force_edit') }}
         </RouterLink>
       </div>
     </div>

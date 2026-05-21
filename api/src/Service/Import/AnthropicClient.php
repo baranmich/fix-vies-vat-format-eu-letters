@@ -181,8 +181,16 @@ JSON schema:
     }
   ],
   "total_without_vat": number|null,
-  "total_with_vat": number|null
+  "total_with_vat": number|null,
+  "total_with_vat_rounded": number|null
 }
+
+DŮLEŽITÉ k zaokrouhlení:
+- `total_with_vat` = přesný součet (např. 228.69)
+- `total_with_vat_rounded` = zaokrouhlená částka pokud je na PDF uvedeno
+  zaokrouhlení (např. "229.00 Kč", "K úhradě: 229").
+- Rozdíl (229 - 228.69 = 0.31) půjde do pole `rounding` faktury.
+- Pokud na PDF NENÍ explicitní zaokrouhlení, vrať `total_with_vat_rounded: null`.
 EOT;
 
         try {

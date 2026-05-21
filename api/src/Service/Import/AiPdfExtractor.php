@@ -49,6 +49,19 @@ final class AiPdfExtractor
      */
     public function extractAndCreate(int $supplierId, int $userId, string $pdfBytes, ?string $modelOverride = null, ?string $originalFilename = null): array
     {
+        // Dedup check — pokud PDF se stejným SHA-256 už existuje u tenanta, vrať existing.
+        $sha256 = hash('sha256', $pdfBytes);
+        $existingId = $this->repo->findIdByPdfHash($supplierId, $sha256);
+        if ($existingId !== null) {
+            return [
+                'ok'                  => true,
+                'purchase_invoice_id' => $existingId,
+                'source'              => 'duplicate',
+                'duplicate'           => true,
+                'message'             => 'PDF je již importován jako faktura #' . $existingId,
+            ];
+        }
+
         // ISDOC priorita — pokud PDF/A-3 obsahuje embedded ISDOC, použij parser (přesnější, zdarma).
         $isdocXml = $this->pdfIsdoc->extract($pdfBytes);
         if ($isdocXml !== null) {
@@ -194,6 +207,9 @@ final class AiPdfExtractor
             'exchange_rate'         => null,
             'exchange_rate_source'  => 'manual',
             'reverse_charge'        => false,
+            // Rozdíl mezi přesným total a zaokrouhleným total z PDF (např. 229 - 228.69 = 0.31).
+            // Calculator pak respektuje uložený total_with_vat = sum(items) + rounding.
+            'rounding'              => $this->computeRounding($data),
             'language'              => 'cs',
             'items'                 => $items,
         ];
@@ -256,6 +272,24 @@ final class AiPdfExtractor
     {
         foreach ($vatRates as $id => $r) if (abs($r - $rate) < 0.01) return $id;
         return null;
+    }
+
+    /**
+     * Compute rounding rozdíl mezi AI-extracted total_with_vat (sum of items) a
+     * total_with_vat_rounded (částka zobrazená na PDF, pokud byla zaokrouhlena).
+     *
+     * Příklad: items sum 228.69, PDF říká "K úhradě 229" → rounding = 0.31.
+     * Pokud AI nedetekovala explicitní zaokrouhlení, vrátí 0.
+     */
+    private function computeRounding(array $data): float
+    {
+        $total = (float) ($data['total_with_vat'] ?? 0);
+        $rounded = isset($data['total_with_vat_rounded']) && $data['total_with_vat_rounded'] !== null
+            ? (float) $data['total_with_vat_rounded'] : null;
+        if ($rounded === null || $total === 0.0) return 0.0;
+        $diff = round($rounded - $total, 2);
+        // Sanity check — pouze pokud rozdíl je < 1 Kč (typicky zaokrouhlení nahoru/dolů)
+        return abs($diff) < 1.0 ? $diff : 0.0;
     }
 
     private function sanitizeVendorNumber(string $vn): string
