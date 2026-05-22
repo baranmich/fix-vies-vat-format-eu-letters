@@ -142,6 +142,13 @@ const canForceEdit = computed(() =>
   invoice.value &&
   ['received', 'booked', 'paid'].includes(invoice.value.status)
 )
+
+function confirmForceEdit() {
+  if (!invoice.value) return
+  const status = t('purchase_invoice.status.' + invoice.value.status)
+  if (!confirm(t('purchase_invoice.force_edit_confirm', { status }))) return
+  router.push(`/purchase-invoices/${invoice.value.id}/edit?force=1`)
+}
 const canDelete = computed(() => invoice.value?.status === 'draft')
 
 /**
@@ -473,13 +480,13 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
           <svg class="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM12 14a7 7 0 0 0-7 7h14a7 7 0 0 0-7-7z"/></svg>
           {{ t('purchase_invoice.vendor_detail') }}
         </RouterLink>
-        <!-- Force-edit pro received/booked (admin only) -->
-        <RouterLink v-if="canForceEdit" :to="`/purchase-invoices/${invoice.id}/edit?force=1`"
+        <!-- Force-edit pro received/booked/paid (admin only, s confirm() varováním) -->
+        <button v-if="canForceEdit" type="button" @click="confirmForceEdit"
           class="cursor-pointer px-3 h-9 text-sm border border-warning-500/40 text-warning-600 hover:bg-warning-50 rounded-md inline-flex items-center gap-1.5"
           :title="t('purchase_invoice.force_edit_hint')">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           {{ t('purchase_invoice.force_edit') }}
-        </RouterLink>
+        </button>
         <!-- Force-delete pro received/booked (admin only, dvojí potvrzení) -->
         <button v-if="canForceDelete" type="button" @click="forceDelete"
           class="cursor-pointer px-3 h-9 text-sm border border-danger-500/40 text-danger-500 hover:bg-danger-50 rounded-md inline-flex items-center gap-1.5"
