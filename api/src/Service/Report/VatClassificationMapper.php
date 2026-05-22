@@ -108,10 +108,23 @@ final class VatClassificationMapper
         }
 
         $byLine = [];
-        // Vystavené (revenue side)
+        // Vystavené (revenue side).
+        // Auto-default code přes CASE: pokud chybí vat_classification_code, derivuj z reverse_charge
+        // + vat_rate_snapshot. Tím nepropadají DPH přiznání řádky tichou klasifikační dírou
+        // (historická data + recent imports bez auto-classifier).
         $rows = $this->db->pdo()->prepare(
             "SELECT
-                  COALESCE(ii.vat_classification_code, i.vat_classification_code) AS code,
+                  COALESCE(
+                      ii.vat_classification_code,
+                      i.vat_classification_code,
+                      CASE
+                          WHEN i.reverse_charge = 1 THEN '20'  -- EU/RC sale default
+                          WHEN ii.vat_rate_snapshot >= 21 THEN '1'   -- 21% tuzemsko
+                          WHEN ii.vat_rate_snapshot >= 12 THEN '2'   -- 12% tuzemsko
+                          WHEN ii.vat_rate_snapshot = 0  THEN '3'   -- osvobozeno
+                          ELSE NULL
+                      END
+                  ) AS code,
                   SUM(COALESCE(ii.total_without_vat, 0)) AS base_total,
                   SUM(COALESCE(ii.total_vat, 0))         AS vat_total,
                   COUNT(DISTINCT i.id) AS inv_count
@@ -141,7 +154,16 @@ final class VatClassificationMapper
         // Přijaté (cost side — nárok na odpočet)
         $rows = $this->db->pdo()->prepare(
             "SELECT
-                  COALESCE(pii.vat_classification_code, pi.vat_classification_code) AS code,
+                  COALESCE(
+                      pii.vat_classification_code,
+                      pi.vat_classification_code,
+                      CASE
+                          WHEN pi.reverse_charge = 1 THEN '5'   -- RC purchase default
+                          WHEN pii.vat_rate_snapshot >= 21 THEN '40' -- 21% nárok
+                          WHEN pii.vat_rate_snapshot >= 12 THEN '41' -- 12% nárok
+                          ELSE NULL
+                      END
+                  ) AS code,
                   SUM(COALESCE(pii.total_without_vat, 0)) AS base_total,
                   SUM(COALESCE(pii.total_vat, 0))         AS vat_total,
                   COUNT(DISTINCT pi.id) AS inv_count
@@ -149,7 +171,7 @@ final class VatClassificationMapper
              JOIN purchase_invoice_items pii ON pii.purchase_invoice_id = pi.id
             WHERE pi.supplier_id = ?
               AND pi.status NOT IN ('draft', 'cancelled')
-              AND GREATEST(pi.tax_date, pi.issue_date) BETWEEN ? AND ?
+              AND COALESCE(pi.tax_date, pi.issue_date) BETWEEN ? AND ?
          GROUP BY code"
         );
         $rows->execute([$supplierId, $start, $end]);

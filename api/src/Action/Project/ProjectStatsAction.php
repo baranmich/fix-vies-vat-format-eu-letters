@@ -65,10 +65,16 @@ final class ProjectStatsAction
      */
     private function topProjects(\PDO $pdo, int $year, string $currency, int $sid, string $rev): array
     {
+        // CZK přepočet místo single-currency filtru — multi-currency projekty
+        // se neroztrhnou ani nevypadnou z rankingu. Parametr $currency zachován
+        // pro BC ale ignoruje se (vždy CZK).
+        unset($currency);
+        $revCzk = "$rev * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)";
         $stmt = $pdo->prepare(
             "SELECT p.id, p.name,
                     c.company_name AS client_company_name,
-                    SUM($rev) AS revenue,
+                    SUM($revCzk) AS revenue,
+                    GROUP_CONCAT(DISTINCT cur.code ORDER BY cur.code SEPARATOR ',') AS currencies,
                     COUNT(i.id) AS invoice_count
                FROM invoices i
                JOIN projects p ON p.id = i.project_id
@@ -77,13 +83,12 @@ final class ProjectStatsAction
               WHERE i.supplier_id = ?
                 AND i.status IN ('issued', 'sent', 'reminded', 'paid')
                 AND i.invoice_type IN ('invoice', 'credit_note')
-                AND cur.code = ?
                 AND YEAR(COALESCE(i.tax_date, i.issue_date)) = ?
            GROUP BY p.id, p.name, c.company_name
              HAVING revenue > 0
            ORDER BY revenue DESC"
         );
-        $stmt->execute([$sid, $currency, $year]);
+        $stmt->execute([$sid, $year]);
         $all = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
         $top = array_slice($all, 0, 12);
@@ -94,6 +99,7 @@ final class ProjectStatsAction
             'name'                => $r['name'],
             'client_company_name' => $r['client_company_name'],
             'revenue'             => (float) $r['revenue'],
+            'currencies'          => (string) $r['currencies'],
             'invoice_count'       => (int) $r['invoice_count'],
         ], $top);
 
@@ -112,10 +118,14 @@ final class ProjectStatsAction
      */
     private function topProjects12m(\PDO $pdo, string $currency, int $sid, string $rev): array
     {
+        // CZK přepočet — viz topProjects().
+        unset($currency);
+        $revCzk = "$rev * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)";
         $stmt = $pdo->prepare(
             "SELECT p.id, p.name,
                     c.company_name AS client_company_name,
-                    SUM($rev) AS revenue,
+                    SUM($revCzk) AS revenue,
+                    GROUP_CONCAT(DISTINCT cur.code ORDER BY cur.code SEPARATOR ',') AS currencies,
                     COUNT(i.id) AS invoice_count
                FROM invoices i
                JOIN projects p ON p.id = i.project_id
@@ -124,13 +134,12 @@ final class ProjectStatsAction
               WHERE i.supplier_id = ?
                 AND i.status IN ('issued', 'sent', 'reminded', 'paid')
                 AND i.invoice_type IN ('invoice', 'credit_note')
-                AND cur.code = ?
                 AND COALESCE(i.tax_date, i.issue_date) >= DATE_SUB(CURDATE(), INTERVAL 12 MONTH)
            GROUP BY p.id, p.name, c.company_name
              HAVING revenue > 0
            ORDER BY revenue DESC"
         );
-        $stmt->execute([$sid, $currency]);
+        $stmt->execute([$sid]);
         $all = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         $top = array_slice($all, 0, 12);
         $rest = array_slice($all, 12);
@@ -139,6 +148,7 @@ final class ProjectStatsAction
             'name'                => $r['name'],
             'client_company_name' => $r['client_company_name'],
             'revenue'             => (float) $r['revenue'],
+            'currencies'          => (string) $r['currencies'],
             'invoice_count'       => (int) $r['invoice_count'],
         ], $top);
         $others = ['revenue' => 0.0, 'count' => 0];

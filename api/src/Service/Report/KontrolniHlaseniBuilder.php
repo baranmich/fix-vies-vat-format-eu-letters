@@ -306,18 +306,22 @@ final class KontrolniHlaseniBuilder
      */
     private function collectReverseChargeIssued(int $supplierId, string $start, string $end): array
     {
+        // LEFT JOIN vat_classifications + fallback na i.reverse_charge flag, aby se do KH
+        // dostaly i faktury bez explicit vat_classification_code (regulatory: RC sekce A.1
+        // nesmí dropnout řádky tichou INNER JOIN ztrátou — historická data + recent imports
+        // bez auto-classifier).
         $stmt = $this->db->pdo()->prepare("
             SELECT i.id, i.varsymbol, COALESCE(i.tax_date, i.issue_date) AS tax_date,
                    i.total_without_vat AS base, i.exchange_rate, COALESCE(cur.code, 'CZK') AS currency,
                    c.dic AS counterparty_dic
               FROM invoices i
               JOIN clients c ON c.id = i.client_id
-              JOIN vat_classifications vc ON vc.code = i.vat_classification_code
+         LEFT JOIN vat_classifications vc ON vc.code = i.vat_classification_code
          LEFT JOIN currencies cur ON cur.id = i.currency_id
              WHERE i.supplier_id = ?
                AND i.status NOT IN ('draft', 'cancelled')
                AND i.invoice_type != 'proforma'
-               AND vc.is_reverse_charge = 1
+               AND (vc.is_reverse_charge = 1 OR (vc.code IS NULL AND i.reverse_charge = 1))
                AND COALESCE(i.tax_date, i.issue_date) BETWEEN ? AND ?
         ");
         $stmt->execute([$supplierId, $start, $end]);
@@ -337,18 +341,21 @@ final class KontrolniHlaseniBuilder
      */
     private function collectReverseChargePurchases(int $supplierId, string $start, string $end): array
     {
+        // LEFT JOIN + fallback na pi.reverse_charge (viz collectReverseChargeIssued komentář).
+        // GREATEST → COALESCE: tax_date je u purchase invoices někdy null, GREATEST dělá NULL;
+        // COALESCE(tax_date, issue_date) je správný behavior shodný se sales side.
         $stmt = $this->db->pdo()->prepare("
-            SELECT pi.id, pi.vendor_invoice_number, GREATEST(pi.tax_date, pi.issue_date) AS tax_date,
+            SELECT pi.id, pi.vendor_invoice_number, COALESCE(pi.tax_date, pi.issue_date) AS tax_date,
                    pi.total_without_vat AS base, pi.exchange_rate, COALESCE(cur.code, 'CZK') AS currency,
                    c.dic AS counterparty_dic
               FROM purchase_invoices pi
               JOIN clients c ON c.id = pi.vendor_id
-              JOIN vat_classifications vc ON vc.code = pi.vat_classification_code
+         LEFT JOIN vat_classifications vc ON vc.code = pi.vat_classification_code
          LEFT JOIN currencies cur ON cur.id = pi.currency_id
              WHERE pi.supplier_id = ?
                AND pi.status NOT IN ('draft', 'cancelled')
-               AND vc.is_reverse_charge = 1
-               AND GREATEST(pi.tax_date, pi.issue_date) BETWEEN ? AND ?
+               AND (vc.is_reverse_charge = 1 OR (vc.code IS NULL AND pi.reverse_charge = 1))
+               AND COALESCE(pi.tax_date, pi.issue_date) BETWEEN ? AND ?
         ");
         $stmt->execute([$supplierId, $start, $end]);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);

@@ -505,16 +505,14 @@ final class CrmAggregationService
      */
     public function expenseBreakdown(int $supplierId, int $monthsBack = 12, ?string $currency = null): array
     {
+        // CZK přepočet — bez něj sumace EUR+CZK ve stejné kategorii dává nesmysl
+        // (100 EUR + 50 000 CZK = 50 100). Parametr $currency BC, vždy CZK.
+        unset($currency);
         $start = (new \DateTimeImmutable())->modify('-' . $monthsBack . ' months')->format('Y-m-d');
         $params = [$supplierId, $start];
-        $curFilter = '';
-        if ($currency !== null) {
-            $curFilter = ' AND cur.code = ?';
-            $params[] = $currency;
-        }
         $sql = "
             SELECT pi.expense_category_id, ec.code, ec.label,
-                   SUM(COALESCE(pi.total_with_vat, 0)) AS total,
+                   SUM(COALESCE(pi.total_with_vat, 0) * COALESCE(IF(cur.code = 'CZK', 1, pi.exchange_rate), 1)) AS total,
                    COUNT(*) AS cnt
               FROM purchase_invoices pi
          LEFT JOIN expense_categories ec ON ec.id = pi.expense_category_id
@@ -522,7 +520,6 @@ final class CrmAggregationService
              WHERE pi.supplier_id = ?
                AND pi.issue_date >= ?
                AND pi.status NOT IN ('draft', 'cancelled')
-               $curFilter
           GROUP BY pi.expense_category_id, ec.code, ec.label
           ORDER BY total DESC
         ";
@@ -548,20 +545,22 @@ final class CrmAggregationService
      */
     public function churnRisk(int $supplierId, int $thresholdDays = 60, int $limit = 20): array
     {
+        // GROUP BY jen po klientovi (ne per currency) — multi-currency klient byl rozdělen
+        // do N řádků (jedna měna = jedna pozice v listu, partial revenue). CZK přepočet.
         $today = (new \DateTimeImmutable())->format('Y-m-d');
         $stmt = $this->db->pdo()->prepare(
             "SELECT c.id AS client_id, c.company_name,
                     MAX(i.issue_date) AS last_invoice_date,
                     DATEDIFF(?, MAX(i.issue_date)) AS days_since,
-                    SUM(COALESCE(i.total_with_vat, 0)) AS total_revenue,
-                    COALESCE(cur.code, 'CZK') AS currency
+                    SUM(COALESCE(i.total_with_vat, 0) * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)) AS total_revenue,
+                    GROUP_CONCAT(DISTINCT cur.code ORDER BY cur.code SEPARATOR ',') AS currencies
                FROM clients c
                JOIN invoices i ON i.client_id = c.id AND i.status NOT IN ('draft', 'cancelled')
           LEFT JOIN currencies cur ON cur.id = i.currency_id
               WHERE c.supplier_id = ?
                 AND i.invoice_type != 'proforma'
                 AND c.is_customer = 1
-           GROUP BY c.id, c.company_name, cur.code
+           GROUP BY c.id, c.company_name
              HAVING DATEDIFF(?, MAX(i.issue_date)) > ?
            ORDER BY days_since ASC
               LIMIT " . (int) $limit
@@ -573,7 +572,8 @@ final class CrmAggregationService
             'last_invoice_date' => (string) $r['last_invoice_date'],
             'days_since'        => (int) $r['days_since'],
             'total_revenue'     => (float) $r['total_revenue'],
-            'currency'          => (string) $r['currency'],
+            'currency'          => 'CZK',
+            'currencies'        => (string) ($r['currencies'] ?? 'CZK'),
         ], $stmt->fetchAll(\PDO::FETCH_ASSOC));
     }
 
