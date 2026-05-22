@@ -1,0 +1,5 @@
+# Tlačítko "Sponsor" v hlavičce GitHub repa.
+# Custom URL ukazuje na sekci "Podpora autora" v README (Partners Banka + QR kód).
+# Viz https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+custom: ['https://github.com/radekhulan/myinvoice#podpora-autora']
