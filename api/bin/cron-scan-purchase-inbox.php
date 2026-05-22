@@ -93,9 +93,36 @@ $scanner   = $container->get(PurchaseInvoiceInboxScanner::class);
 $started      = microtime(true);
 $totalSummary = ['suppliers' => 0, 'created' => 0, 'skipped' => 0, 'failed' => 0, 'details' => []];
 
+// Live progress callback — píše per-file na STDOUT s explicit fflush,
+// protože PHP stdout je full-buffered když je pipnutý (Tee-Object).
+// `-d output_buffering=0` vypne jen PHP userland buffer, ne C stdio buffer,
+// takže bez fflush by se output v cmd okně objevil až na konci běhu.
+$progress = static function (array $event): void {
+    if (($event['phase'] ?? '') === 'start') {
+        $line = sprintf(
+            "  [%d/%d] %s …\n",
+            (int) ($event['index'] ?? 0),
+            (int) ($event['total'] ?? 0),
+            basename((string) ($event['file'] ?? '')),
+        );
+    } else {
+        $status = (string) ($event['status'] ?? '?');
+        $reason = (string) ($event['reason'] ?? '');
+        $extra  = '';
+        if (!empty($event['purchase_invoice_id'])) {
+            $extra = ' (#' . (int) $event['purchase_invoice_id'] . ')';
+        }
+        $line = sprintf("      → %s%s%s\n", $status, $extra, $reason !== '' ? ' — ' . $reason : '');
+    }
+    fwrite(STDOUT, $line);
+    fflush(STDOUT);
+};
+
 foreach ($supplierIds as $sid) {
+    fwrite(STDOUT, "[" . date('H:i:s') . "] supplier {$sid} — scan start\n");
+    fflush(STDOUT);
     try {
-        $result = $scanner->scan($sid, $cronUserId, false);
+        $result = $scanner->scan($sid, $cronUserId, false, $progress);
     } catch (\Throwable $e) {
         fwrite(STDERR, "[scan-purchase-inbox] supplier {$sid}: " . $e->getMessage() . "\n");
         continue;

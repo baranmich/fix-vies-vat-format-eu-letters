@@ -63,7 +63,14 @@ final class PurchaseInvoiceInboxScanner
      *     details: list<array<string,mixed>>
      * }
      */
-    public function scan(int $supplierId, int $userId, bool $dryRun = false): array
+    /**
+     * @param callable|null $progress Optional callback(array $event) fired for each
+     *        per-file event. Events have shape:
+     *          - ['phase' => 'start',  'file' => abs, 'index' => 1-based, 'total' => N]
+     *          - ['phase' => 'result', 'file' => abs, 'status' => ..., 'reason' => ...]
+     *        Použito v cron skriptu pro live progress výpis do konzole/logu.
+     */
+    public function scan(int $supplierId, int $userId, bool $dryRun = false, ?callable $progress = null): array
     {
         $inboxDir = (string) $this->config->get('purchase_invoice.inbox_dir', '');
         if ($inboxDir === '') {
@@ -120,9 +127,26 @@ final class PurchaseInvoiceInboxScanner
         $details = [];
 
         $files = $this->listFiles($inboxReal, $recursive, $allowedExts);
-        foreach ($files as $absPath) {
+        $totalFiles = count($files);
+        // Helper closure — wrap detail push + fire progress callback (pokud existuje).
+        // Tím se výpis posílá průběžně po každém souboru, ne až na konci.
+        $emit = function (array $detail) use (&$details, $progress): void {
+            $details[] = $detail;
+            if ($progress !== null) {
+                ($progress)(['phase' => 'result'] + $detail);
+            }
+        };
+        foreach ($files as $idx => $absPath) {
+            if ($progress !== null) {
+                ($progress)([
+                    'phase' => 'start',
+                    'file'  => $absPath,
+                    'index' => $idx + 1,
+                    'total' => $totalFiles,
+                ]);
+            }
             if ($created + $skipped + $failed >= self::MAX_FILES_PER_RUN) {
-                $details[] = ['file' => $absPath, 'status' => 'limit_reached', 'reason' => 'Maximální počet souborů per run dosažen'];
+                $emit(['file' => $absPath, 'status' => 'limit_reached', 'reason' => 'Maximální počet souborů per run dosažen']);
                 break;
             }
 
@@ -133,7 +157,7 @@ final class PurchaseInvoiceInboxScanner
             $real = realpath($absPath);
             if ($real === false) {
                 $failed++;
-                $details[] = ['file' => $absPath, 'status' => 'rejected', 'reason' => 'Nelze resolvovat realpath'];
+                $emit(['file' => $absPath, 'status' => 'rejected', 'reason' => 'Nelze resolvovat realpath']);
                 continue;
             }
             $isWindows = DIRECTORY_SEPARATOR === '\\';
@@ -141,33 +165,33 @@ final class PurchaseInvoiceInboxScanner
             $haystack  = $isWindows ? strtolower($real) : $real;
             if (!str_starts_with($haystack, $needle)) {
                 $failed++;
-                $details[] = ['file' => $absPath, 'status' => 'rejected', 'reason' => 'Path traversal'];
+                $emit(['file' => $absPath, 'status' => 'rejected', 'reason' => 'Path traversal']);
                 continue;
             }
 
             $size = @filesize($real);
             if ($size === false || $size === 0) {
                 $failed++;
-                $details[] = ['file' => $real, 'status' => 'rejected', 'reason' => 'Prázdný nebo nečitelný'];
+                $emit(['file' => $real, 'status' => 'rejected', 'reason' => 'Prázdný nebo nečitelný']);
                 continue;
             }
             if ($size > self::MAX_FILE_SIZE) {
                 $failed++;
-                $details[] = ['file' => $real, 'status' => 'rejected', 'reason' => 'Soubor větší než 20 MiB'];
+                $emit(['file' => $real, 'status' => 'rejected', 'reason' => 'Soubor větší než 20 MiB']);
                 continue;
             }
 
             $sha = hash_file('sha256', $real);
             if ($sha === false) {
                 $failed++;
-                $details[] = ['file' => $real, 'status' => 'rejected', 'reason' => 'Nelze spočítat hash'];
+                $emit(['file' => $real, 'status' => 'rejected', 'reason' => 'Nelze spočítat hash']);
                 continue;
             }
 
             $existingId = $this->purchaseRepo->findIdByPdfHash($supplierId, $sha);
             if ($existingId !== null) {
                 $skipped++;
-                $details[] = ['file' => $real, 'status' => 'skipped', 'reason' => 'Již importováno', 'purchase_invoice_id' => $existingId];
+                $emit(['file' => $real, 'status' => 'skipped', 'reason' => 'Již importováno', 'purchase_invoice_id' => $existingId]);
                 continue;
             }
 
@@ -184,22 +208,22 @@ final class PurchaseInvoiceInboxScanner
                     );
                     if (!empty($aiResult['ok']) && !empty($aiResult['purchase_invoice_id'])) {
                         $created++;
-                        $details[] = [
+                        $emit([
                             'file'   => $real,
                             'status' => 'imported',
                             'reason' => 'AI extract',
                             'purchase_invoice_id' => $aiResult['purchase_invoice_id'],
                             'vendor_id'           => $aiResult['vendor_id'] ?? null,
                             'source'              => $aiResult['source'] ?? 'ai',
-                        ];
+                        ]);
                         continue;
                     }
                     // AI selhalo — pokračujeme do skipped section níže s AI error msg
-                    $details[] = [
+                    $emit([
                         'file'   => $real,
                         'status' => 'skipped',
                         'reason' => 'AI extrakce selhala: ' . ($aiResult['error'] ?? 'unknown'),
-                    ];
+                    ]);
                     $skipped++;
                     continue;
                 }
@@ -207,13 +231,13 @@ final class PurchaseInvoiceInboxScanner
 
             if ($isdocXml === null) {
                 $skipped++;
-                $details[] = [
+                $emit([
                     'file'   => $real,
                     'status' => 'skipped',
                     'reason' => $ext === 'pdf'
                         ? 'PDF neobsahuje ISDOC. Pro AI extrakci nakonfiguruj Anthropic Claude v Externí integrace → AI.'
                         : 'Soubor nelze parsovat jako ISDOC',
-                ];
+                ]);
                 continue;
             }
 
@@ -221,12 +245,12 @@ final class PurchaseInvoiceInboxScanner
                 $parsed = $this->isdocParser->parse($isdocXml);
                 if (empty($parsed['invoices'])) {
                     $failed++;
-                    $details[] = ['file' => $real, 'status' => 'failed', 'reason' => 'ISDOC neobsahuje fakturu'];
+                    $emit(['file' => $real, 'status' => 'failed', 'reason' => 'ISDOC neobsahuje fakturu']);
                     continue;
                 }
             } catch (\Throwable $e) {
                 $failed++;
-                $details[] = ['file' => $real, 'status' => 'failed', 'reason' => 'ISDOC parser error: ' . $e->getMessage()];
+                $emit(['file' => $real, 'status' => 'failed', 'reason' => 'ISDOC parser error: ' . $e->getMessage()]);
                 continue;
             }
 
@@ -234,13 +258,13 @@ final class PurchaseInvoiceInboxScanner
             // vytvoříme draft purchase_invoice + uložíme PDF do archive_storage.
             if ($dryRun) {
                 $skipped++;
-                $details[] = [
+                $emit([
                     'file'   => $real,
                     'status' => 'skipped',
                     'reason' => 'dry-run — nezapisuji do DB',
                     'isdoc_invoice_count' => count($parsed['invoices']),
                     'supplier_ic'         => $parsed['supplier_ic'] ?? null,
-                ];
+                ]);
                 continue;
             }
 
@@ -254,20 +278,20 @@ final class PurchaseInvoiceInboxScanner
                     }
                     $created++;
                     $createdInThisFile++;
-                    $details[] = [
+                    $emit([
                         'file'   => $real,
                         'status' => 'created',
                         'reason' => $result['vendor_created']
                             ? 'vytvořen vendor + draft přijaté faktury'
                             : 'draft přijaté faktury (vendor reuse)',
                         'purchase_invoice_id' => $result['purchase_invoice_id'],
-                    ];
+                    ]);
                 } catch (\InvalidArgumentException $e) {
                     $failed++;
-                    $details[] = ['file' => $real, 'status' => 'rejected', 'reason' => $e->getMessage()];
+                    $emit(['file' => $real, 'status' => 'rejected', 'reason' => $e->getMessage()]);
                 } catch (\Throwable $e) {
                     $failed++;
-                    $details[] = ['file' => $real, 'status' => 'failed', 'reason' => 'Mapper error: ' . $e->getMessage()];
+                    $emit(['file' => $real, 'status' => 'failed', 'reason' => 'Mapper error: ' . $e->getMessage()]);
                 }
             }
         }

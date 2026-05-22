@@ -29,8 +29,17 @@ final class AnthropicClient
     private const API_VERSION = '2023-06-01';
     private const TIMEOUT = 120; // PDF extraction trvá 10-30s typicky
     private const MAX_PDF_BYTES = 32 * 1024 * 1024; // 32 MiB hard limit (Anthropic limit)
+    private const MAX_RETRIES = 3;
+    private const MAX_RETRY_SLEEP = 65; // seconds — pokrývá 1-minute token bucket reset
+    // Throttle: pokud `remaining_input_tokens` z headerů klesne pod tuto hranici,
+    // další volání počká do `reset` timestampu. Drží řadu PDF v batchi z toho,
+    // aby cumulativně přefoukla 50k token/min limit a způsobila 429.
+    private const RATE_LIMIT_THROTTLE_THRESHOLD = 5000;
 
     private Client $http;
+
+    /** @var array{remaining_input:int, reset_at:int}|null */
+    private ?array $rateLimitState = null;
 
     public function __construct(
         private readonly Connection $db,
@@ -86,16 +95,11 @@ final class AnthropicClient
             return ['ok' => false, 'error' => 'API key nenastaven'];
         }
         try {
-            $resp = $this->http->post(self::API_URL, [
-                'headers' => $this->authHeaders($creds['api_key']),
-                'json' => [
-                    'model' => $creds['default_model'],
-                    'max_tokens' => 10,
-                    'messages' => [['role' => 'user', 'content' => 'Reply OK']],
-                ],
-            ]);
-            $code = $resp->getStatusCode();
-            $body = json_decode((string) $resp->getBody(), true);
+            ['code' => $code, 'body' => $body] = $this->postWithRetry([
+                'model' => $creds['default_model'],
+                'max_tokens' => 10,
+                'messages' => [['role' => 'user', 'content' => 'Reply OK']],
+            ], $creds['api_key']);
             if ($code !== 200) {
                 $msg = is_array($body) ? ($body['error']['message'] ?? 'HTTP ' . $code) : 'HTTP ' . $code;
                 return ['ok' => false, 'error' => $msg];
@@ -218,33 +222,28 @@ DŮLEŽITÉ k zaokrouhlení:
 EOT;
 
         try {
-            $resp = $this->http->post(self::API_URL, [
-                'headers' => $this->authHeaders($creds['api_key']),
-                'json' => [
-                    'model' => $model,
-                    'max_tokens' => 4096,
-                    'system' => $systemPrompt,
-                    'messages' => [[
-                        'role' => 'user',
-                        'content' => [
-                            [
-                                'type' => 'document',
-                                'source' => [
-                                    'type' => 'base64',
-                                    'media_type' => 'application/pdf',
-                                    'data' => $base64Pdf,
-                                ],
-                            ],
-                            [
-                                'type' => 'text',
-                                'text' => 'Vytáhni strukturovaná data z této faktury podle JSON schema. Odpověz JEN samotným JSON, bez markdown.',
+            ['code' => $code, 'body' => $body] = $this->postWithRetry([
+                'model' => $model,
+                'max_tokens' => 4096,
+                'system' => $systemPrompt,
+                'messages' => [[
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'document',
+                            'source' => [
+                                'type' => 'base64',
+                                'media_type' => 'application/pdf',
+                                'data' => $base64Pdf,
                             ],
                         ],
-                    ]],
-                ],
-            ]);
-            $code = $resp->getStatusCode();
-            $body = json_decode((string) $resp->getBody(), true);
+                        [
+                            'type' => 'text',
+                            'text' => 'Vytáhni strukturovaná data z této faktury podle JSON schema. Odpověz JEN samotným JSON, bez markdown.',
+                        ],
+                    ],
+                ]],
+            ], $creds['api_key']);
             if ($code !== 200) {
                 $msg = is_array($body) ? ($body['error']['message'] ?? 'HTTP ' . $code) : 'HTTP ' . $code;
                 return ['ok' => false, 'error' => $msg];
@@ -286,5 +285,88 @@ EOT;
             'anthropic-version' => self::API_VERSION,
             'content-type'      => 'application/json',
         ];
+    }
+
+    /**
+     * POST /v1/messages s rate-limit obranou:
+     *   1. **Throttle** — pokud poslední response ohlásil zbytek vstupních tokenů
+     *      pod prahem, spí do `reset_at` (proaktivní vyhnutí se 429 v batchi).
+     *   2. **Retry** — na HTTP 429 počká podle `retry-after` headeru a opakuje
+     *      max `MAX_RETRIES`-krát s exponenciálním fallbackem.
+     *
+     * @param array<string,mixed> $payload
+     * @return array{code:int, body:array<string,mixed>|null}
+     */
+    private function postWithRetry(array $payload, string $apiKey): array
+    {
+        $this->applyThrottle();
+        $attempt = 0;
+        while (true) {
+            $resp = $this->http->post(self::API_URL, [
+                'headers' => $this->authHeaders($apiKey),
+                'json'    => $payload,
+            ]);
+            $code = $resp->getStatusCode();
+            $body = json_decode((string) $resp->getBody(), true);
+            $this->captureRateLimit($resp);
+
+            if ($code !== 429 || $attempt >= self::MAX_RETRIES) {
+                return ['code' => $code, 'body' => is_array($body) ? $body : null];
+            }
+
+            $sleep = $this->computeRetrySleep($resp, $attempt);
+            $this->logger->info('Anthropic rate-limited, retrying', [
+                'attempt' => $attempt + 1,
+                'sleep'   => $sleep,
+            ]);
+            sleep($sleep);
+            $attempt++;
+        }
+    }
+
+    /**
+     * Spí do `reset_at` pokud poslední response signalizoval, že zbývá málo
+     * input tokenů. Cap na MAX_RETRY_SLEEP, aby se neudusila celá request.
+     */
+    private function applyThrottle(): void
+    {
+        if ($this->rateLimitState === null) return;
+        if ($this->rateLimitState['remaining_input'] >= self::RATE_LIMIT_THROTTLE_THRESHOLD) return;
+        $wait = $this->rateLimitState['reset_at'] - time();
+        if ($wait <= 0) return;
+        $wait = min(self::MAX_RETRY_SLEEP, $wait + 1);
+        $this->logger->info('Anthropic throttle wait', [
+            'seconds'         => $wait,
+            'remaining_input' => $this->rateLimitState['remaining_input'],
+        ]);
+        sleep($wait);
+        // Po čekání resetuj — header v další response nám stejně dá fresh hodnoty.
+        $this->rateLimitState = null;
+    }
+
+    private function captureRateLimit(\Psr\Http\Message\ResponseInterface $resp): void
+    {
+        $remainingHdr = $resp->getHeaderLine('anthropic-ratelimit-input-tokens-remaining');
+        $resetHdr     = $resp->getHeaderLine('anthropic-ratelimit-input-tokens-reset');
+        if ($remainingHdr === '' || $resetHdr === '') return;
+        try {
+            $resetTs = (new \DateTimeImmutable($resetHdr))->getTimestamp();
+        } catch (\Throwable) {
+            return;
+        }
+        $this->rateLimitState = [
+            'remaining_input' => (int) $remainingHdr,
+            'reset_at'        => $resetTs,
+        ];
+    }
+
+    private function computeRetrySleep(\Psr\Http\Message\ResponseInterface $resp, int $attempt): int
+    {
+        $retryAfter = (int) $resp->getHeaderLine('retry-after');
+        if ($retryAfter <= 0) {
+            // Fallback: 2, 4, 8 … s, capped.
+            $retryAfter = (int) min(self::MAX_RETRY_SLEEP, 2 ** ($attempt + 1));
+        }
+        return (int) min(self::MAX_RETRY_SLEEP, max(1, $retryAfter));
     }
 }
