@@ -136,11 +136,11 @@ const allowedTransitions = computed<PurchaseInvoiceStatus[]>(() => {
 })
 
 const canEdit = computed(() => invoice.value?.status === 'draft')
-// Force-edit pro received/booked — admin only (paid/cancelled jsou immutable)
+// Force-edit pro received/booked/paid — admin only (cancelled je immutable = audit trail)
 const canForceEdit = computed(() =>
   auth.user?.role === 'admin' &&
   invoice.value &&
-  ['received', 'booked'].includes(invoice.value.status)
+  ['received', 'booked', 'paid'].includes(invoice.value.status)
 )
 const canDelete = computed(() => invoice.value?.status === 'draft')
 

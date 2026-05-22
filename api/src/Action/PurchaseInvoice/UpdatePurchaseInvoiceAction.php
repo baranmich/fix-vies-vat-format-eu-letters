@@ -21,7 +21,8 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  * PUT /api/purchase-invoices/{id}
  *
  * Update přijaté faktury. Standardně lze editovat pouze draft.
- * Admin může s `?force=1` upravit i nepředaný (received) — booked / paid / cancelled jsou immutable.
+ * Admin může s `?force=1` upravit i received / booked / paid — cancelled zůstává immutable
+ * (storná jsou součástí auditní stopy a nemají se editovat).
  */
 final class UpdatePurchaseInvoiceAction
 {
@@ -52,11 +53,11 @@ final class UpdatePurchaseInvoiceAction
         $isForce = !empty($request->getQueryParams()['force']);
 
         if ($existing['status'] !== 'draft') {
-            // Force-update: admin smí upravit received nebo booked (s ?force=1).
-            // paid/cancelled zůstávají immutable (financial integrity).
-            if (!$isAdmin || !$isForce || in_array($existing['status'], ['paid', 'cancelled'], true)) {
+            // Force-update: admin smí upravit received / booked / paid (s ?force=1).
+            // cancelled zůstává immutable (storno = auditní stopa, nemá se editovat).
+            if (!$isAdmin || !$isForce || $existing['status'] === 'cancelled') {
                 return Json::error($response, 'not_editable',
-                    "Faktura ve stavu '{$existing['status']}' nelze upravit. Admin může upravit received/booked s ?force=1.",
+                    "Faktura ve stavu '{$existing['status']}' nelze upravit. Admin může upravit received/booked/paid s ?force=1.",
                     409);
             }
         }
