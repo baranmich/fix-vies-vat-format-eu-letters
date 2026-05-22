@@ -82,11 +82,17 @@ final class GetProjectAction
             $stmtY->fetchAll(\PDO::FETCH_ASSOC)
         );
 
-        // Nezaplaceno (issued/sent + invoice/credit_note) + Po splatnosti per měna
+        // Nezaplaceno + Po splatnosti per měna. _czk fieldy přes i.exchange_rate
+        // pro multi-currency projekt — UI agreguje napříč měnami v CZK.
         $stmtU = $pdo->prepare(
             "SELECT cur.code AS currency,
-                    SUM(i.amount_to_pay) AS unpaid_total, COUNT(*) AS unpaid_count,
+                    SUM(i.amount_to_pay) AS unpaid_total,
+                    SUM(i.amount_to_pay * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)) AS unpaid_total_czk,
+                    COUNT(*) AS unpaid_count,
                     SUM(CASE WHEN i.due_date <= CURDATE() THEN i.amount_to_pay ELSE 0 END) AS overdue_total,
+                    SUM(CASE WHEN i.due_date <= CURDATE()
+                             THEN i.amount_to_pay * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)
+                             ELSE 0 END) AS overdue_total_czk,
                     SUM(CASE WHEN i.due_date <= CURDATE() THEN 1 ELSE 0 END) AS overdue_count
                FROM invoices i
                JOIN currencies cur ON cur.id = i.currency_id
@@ -98,11 +104,13 @@ final class GetProjectAction
         $stmtU->execute([$id]);
         $project['unpaid_summary'] = array_map(
             fn (array $r) => [
-                'currency'      => $r['currency'],
-                'unpaid_total'  => (float) $r['unpaid_total'],
-                'unpaid_count'  => (int) $r['unpaid_count'],
-                'overdue_total' => (float) $r['overdue_total'],
-                'overdue_count' => (int) $r['overdue_count'],
+                'currency'           => $r['currency'],
+                'unpaid_total'       => (float) $r['unpaid_total'],
+                'unpaid_total_czk'   => (float) $r['unpaid_total_czk'],
+                'unpaid_count'       => (int) $r['unpaid_count'],
+                'overdue_total'      => (float) $r['overdue_total'],
+                'overdue_total_czk'  => (float) $r['overdue_total_czk'],
+                'overdue_count'      => (int) $r['overdue_count'],
             ],
             $stmtU->fetchAll(\PDO::FETCH_ASSOC)
         );

@@ -254,6 +254,17 @@ final class AiPdfExtractor
             ];
         }
 
+        // Reverse charge auto-detect: vendor je v EU/3.zemi A všechny řádky mají vat_rate=0
+        // → typicky přenesená daňová povinnost (Čech přijímá službu/zboží ze zahraničí).
+        // AI tuto info neextrahuje explicitně, takže detekujeme heuristikou.
+        $reverseCharge = $this->inferReverseCharge($vendorId, $items);
+        if ($reverseCharge) {
+            $this->logger->info('AI extractor: detected reverse_charge (non-CZ vendor + all items vat_rate=0)', [
+                'vendor_id' => $vendorId,
+                'vendor_invoice_number' => $data['vendor_invoice_number'] ?? null,
+            ]);
+        }
+
         $payload = [
             'vendor_id'             => $vendorId,
             'vendor_invoice_number' => $this->sanitizeVendorNumber((string) $data['vendor_invoice_number']),
@@ -265,7 +276,7 @@ final class AiPdfExtractor
             'currency_id'           => $this->resolveCurrencyId((string) $data['currency'], $supplierId),
             'exchange_rate'         => null,
             'exchange_rate_source'  => 'manual',
-            'reverse_charge'        => false,
+            'reverse_charge'        => $reverseCharge,
             // Rozdíl mezi přesným total a zaokrouhleným total z PDF (např. 229 - 228.69 = 0.31).
             // Calculator pak respektuje uložený total_with_vat = sum(items) + rounding.
             'rounding'              => $sign * $this->computeRounding($data),
@@ -429,6 +440,39 @@ final class AiPdfExtractor
         $diff = round($rounded - $total, 2);
         // Sanity check — pouze pokud rozdíl je < 1 Kč (typicky zaokrouhlení nahoru/dolů)
         return abs($diff) < 1.0 ? $diff : 0.0;
+    }
+
+    /**
+     * Heuristika reverse charge: vendor je v jiné zemi než CZ a všechny řádky
+     * mají vat_rate=0 → přenesená daňová povinnost.
+     *
+     * Vrátí false pokud:
+     *   - vendor je CZ
+     *   - jakýkoli item má vat_rate > 0 (tuzemská faktura s DPH)
+     *   - country lookup selže (bezpečný default)
+     */
+    private function inferReverseCharge(int $vendorId, array $items): bool
+    {
+        if (empty($items)) return false;
+        // Pokud kterýkoli item má vat_rate > 0 → není to RC.
+        // loadVatRateMap vrací [id => rate_percent] (float).
+        $vatRates = $this->loadVatRateMap();
+        foreach ($items as $it) {
+            $rateId = (int) ($it['vat_rate_id'] ?? 0);
+            $ratePercent = $vatRates[$rateId] ?? null;
+            if ($ratePercent !== null && (float) $ratePercent > 0.0) return false;
+        }
+        // Vendor country lookup
+        try {
+            $stmt = $this->db->pdo()->prepare(
+                'SELECT co.iso2 FROM clients c JOIN countries co ON co.id = c.country_id WHERE c.id = ?'
+            );
+            $stmt->execute([$vendorId]);
+            $iso2 = (string) $stmt->fetchColumn();
+            return $iso2 !== '' && $iso2 !== 'CZ';
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
