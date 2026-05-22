@@ -100,15 +100,19 @@ final class KontrolniHlaseniBuilder
         $vetaP->setAttribute('stat', (string) ($supplier['country_iso2'] ?? 'CZ'));
         $dphkh->appendChild($vetaP);
 
-        // VetaA1 — Přenesená daňová povinnost (dodavatel)
+        // VetaA1 — Přenesená daňová povinnost (dodavatel).
+        // XSD vyžaduje: dic_odb, c_evid_dd, duzp (NE "dppd"), zakl_dane1, kod_pred_pl.
+        // kod_pred_pl '5' = obecný tuzemský reverse charge (defaultní hodnota, MFČR
+        // číselník Kód předmětů plnění; ideálně by mělo přicházet z vat_classification_code).
         foreach ($a1 as $r) {
             $cleanDic = $this->cleanDic($r['counterparty_dic'] ?? '');
             if ($cleanDic === '') continue; // Pattern [0-9]{1,10} required
             $v = $dom->createElement('VetaA1');
             $v->setAttribute('c_evid_dd', (string) $r['vendor_invoice_number']);
             $v->setAttribute('dic_odb', $cleanDic);
-            $v->setAttribute('dppd', $this->formatDate($r['tax_date']));
+            $v->setAttribute('duzp', $this->formatDate($r['tax_date']));
             $v->setAttribute('zakl_dane1', $this->formatAmount($r['base']));
+            $v->setAttribute('kod_pred_pl', '5');
             $dphkh->appendChild($v);
         }
 
@@ -153,7 +157,10 @@ final class KontrolniHlaseniBuilder
             $dphkh->appendChild($v);
         }
 
-        // VetaB2 — přijatá tuzemská nad 10 000 Kč
+        // VetaB2 — přijatá tuzemská nad 10 000 Kč.
+        // XSD vyžaduje: pomer (A/N — poměrný odpočet podle §75) a zdph_44
+        // (N = běžné, P = oprava nedobytné pohledávky podle §74b, A = §44 do 31.3.2019).
+        // Default: oba 'N' (běžný odpočet, žádná oprava).
         foreach ($b2 as $r) {
             $cleanDic = $this->cleanDic($r['counterparty_dic'] ?? '');
             if ($cleanDic === '') continue;
@@ -165,6 +172,8 @@ final class KontrolniHlaseniBuilder
             $v->setAttribute('dan1', $this->formatAmount($r['vat21']));
             $v->setAttribute('zakl_dane2', $this->formatAmount($r['base12']));
             $v->setAttribute('dan2', $this->formatAmount($r['vat12']));
+            $v->setAttribute('pomer', 'N');
+            $v->setAttribute('zdph_44', 'N');
             $dphkh->appendChild($v);
         }
 
