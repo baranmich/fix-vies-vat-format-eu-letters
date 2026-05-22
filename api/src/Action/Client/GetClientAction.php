@@ -148,6 +148,64 @@ final class GetClientAction
               GROUP BY cur.code"
         );
         $stmtU->execute([$id]);
+        // Náklady (přijaté faktury od tohoto klienta v roli vendor).
+        // Agregujeme server-side aby čísla nebyla závislá na paginaci listu — frontend
+        // dříve počítal z prvních N načtených purchase faktur, takže při per_page=20
+        // (cfg.php nastavení) ukazoval jen 3 z 11 faktur pro rok 2024.
+        //
+        // Pravidla: total_with_vat (jak jsme platili), vyloučit draft/cancelled.
+        // total_czk přes pi.exchange_rate (CZK fakturám necháme 1 přes COALESCE).
+        $stmtCM = $pdo->prepare(
+            "SELECT DATE_FORMAT(pi.issue_date, '%Y-%m') AS month,
+                    cur.code AS currency,
+                    SUM(pi.total_with_vat) AS total,
+                    SUM(pi.total_with_vat * COALESCE(IF(cur.code = 'CZK', 1, pi.exchange_rate), 1)) AS total_czk
+               FROM purchase_invoices pi
+               JOIN currencies cur ON cur.id = pi.currency_id
+              WHERE pi.vendor_id = ?
+                AND pi.supplier_id = ?
+                AND pi.status NOT IN ('draft', 'cancelled')
+                AND pi.issue_date >= DATE_SUB(CURDATE(), INTERVAL 24 MONTH)
+              GROUP BY month, cur.code
+              ORDER BY month"
+        );
+        $stmtCM->execute([$id, $sid]);
+        $client['costs_by_month'] = array_map(
+            fn (array $r) => [
+                'month'     => $r['month'],
+                'currency'  => $r['currency'],
+                'total'     => (float) $r['total'],
+                'total_czk' => (float) $r['total_czk'],
+            ],
+            $stmtCM->fetchAll(\PDO::FETCH_ASSOC)
+        );
+
+        $stmtCY = $pdo->prepare(
+            "SELECT YEAR(pi.issue_date) AS year,
+                    cur.code AS currency,
+                    SUM(pi.total_with_vat) AS total,
+                    SUM(pi.total_with_vat * COALESCE(IF(cur.code = 'CZK', 1, pi.exchange_rate), 1)) AS total_czk,
+                    COUNT(*) AS count
+               FROM purchase_invoices pi
+               JOIN currencies cur ON cur.id = pi.currency_id
+              WHERE pi.vendor_id = ?
+                AND pi.supplier_id = ?
+                AND pi.status NOT IN ('draft', 'cancelled')
+              GROUP BY year, cur.code
+              ORDER BY year DESC"
+        );
+        $stmtCY->execute([$id, $sid]);
+        $client['costs_by_year'] = array_map(
+            fn (array $r) => [
+                'year'      => (int) $r['year'],
+                'currency'  => $r['currency'],
+                'total'     => (float) $r['total'],
+                'total_czk' => (float) $r['total_czk'],
+                'count'     => (int) $r['count'],
+            ],
+            $stmtCY->fetchAll(\PDO::FETCH_ASSOC)
+        );
+
         $client['unpaid_summary'] = array_map(
             fn (array $r) => [
                 'currency'           => $r['currency'],

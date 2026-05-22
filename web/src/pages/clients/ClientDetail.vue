@@ -48,50 +48,41 @@ const purchaseDisplayCurrency = computed(() =>
   purchaseIsMultiCurrency.value ? 'CZK' : (purchaseCurrencies.value[0] || 'CZK')
 )
 
-function purchaseAmountInDisplayCcy(pi: PurchaseInvoice): number {
-  const total = Number(pi.total_with_vat) || 0
-  if (!purchaseIsMultiCurrency.value) return total
-  // V multi-ccy režimu vše na CZK; CZK faktury násobíme 1, ostatní přes exchange_rate.
-  if ((pi.currency || 'CZK') === 'CZK') return total
-  const rate = Number(pi.exchange_rate) || 0
-  return rate > 0 ? total * rate : total
-}
-
+// Náklady čteme ze server-side agregace (client.costs_by_month / costs_by_year) — nezávislé na paginaci
+// listu. Multi-currency: v multi režimu sloučíme do CZK přes total_czk, single-ccy zachová per měnu.
 const purchaseByMonth = computed(() => {
-  const m = new Map<string, { total: number, count: number, currency: string }>()
-  const ccy = purchaseDisplayCurrency.value
-  for (const pi of purchaseInvoices.value) {
-    if (pi.status === 'draft' || pi.status === 'cancelled') continue
-    const key = (pi.issue_date || '').slice(0, 7) // YYYY-MM
-    if (!key) continue
-    const cur = m.get(key) ?? { total: 0, count: 0, currency: ccy }
-    cur.total += purchaseAmountInDisplayCcy(pi)
-    cur.count += 1
-    m.set(key, cur)
+  const rows = client.value?.costs_by_month ?? []
+  if (purchaseIsMultiCurrency.value) {
+    const m = new Map<string, number>()
+    for (const r of rows) m.set(r.month, (m.get(r.month) ?? 0) + r.total_czk)
+    return Array.from(m.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, total]) => ({ month, total, count: 0, currency: 'CZK' }))
   }
-  return Array.from(m.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([month, v]) => ({ month, ...v }))
+  return rows
+    .slice()
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map(r => ({ month: r.month, total: r.total, count: 0, currency: r.currency }))
 })
 
 const purchaseByYear = computed(() => {
-  // V single-ccy režimu zachováme rozpad per měna (BC, jen jedna měna stejně).
-  // V multi-ccy režimu sloučíme do CZK.
-  const m = new Map<string, { total: number, count: number, currency: string }>()
-  for (const pi of purchaseInvoices.value) {
-    if (pi.status === 'draft' || pi.status === 'cancelled') continue
-    const year = (pi.issue_date || '').slice(0, 4)
-    if (!year) continue
-    const cur = purchaseIsMultiCurrency.value ? 'CZK' : (pi.currency || 'CZK')
-    const key = `${year}|${cur}`
-    const v = m.get(key) ?? { total: 0, count: 0, currency: cur }
-    v.total += purchaseAmountInDisplayCcy(pi)
-    v.count += 1
-    m.set(key, v)
+  const rows = client.value?.costs_by_year ?? []
+  if (purchaseIsMultiCurrency.value) {
+    const m = new Map<number, { total: number, count: number }>()
+    for (const r of rows) {
+      const v = m.get(r.year) ?? { total: 0, count: 0 }
+      v.total += r.total_czk
+      v.count += r.count
+      m.set(r.year, v)
+    }
+    return Array.from(m.entries())
+      .sort(([a], [b]) => b - a)
+      .map(([year, v]) => ({ year: String(year), currency: 'CZK', total: v.total, count: v.count }))
   }
-  return Array.from(m.entries())
-    .map(([key, v]) => ({ year: key.split('|')[0], ...v }))
-    .sort((a, b) => b.year.localeCompare(a.year))
+  return rows
+    .slice()
+    .sort((a, b) => b.year - a.year)
+    .map(r => ({ year: String(r.year), currency: r.currency, total: r.total, count: r.count }))
 })
 
 const purchaseMonthlyChart = computed(() => ({
@@ -217,7 +208,9 @@ async function load() {
       clientsApi.get(id),
       invoicesApi.listGrouped({ client_id: id, page: 1 }),
       recurringApi.list({ client_id: id }).catch(() => [] as RecurringTemplate[]),
-      purchaseInvoicesApi.listGrouped({ vendor_id: id }).catch(() => ({ data: [] as Array<{invoices: PurchaseInvoice[]}> })),
+      // per_page=200 = backend max, aby v detailu klienta byly všechny přijaté faktury najednou
+      // (rok 2024 + starší by jinak vypadly z první stránky při per_page=20 v cfg.php).
+      purchaseInvoicesApi.listGrouped({ vendor_id: id, per_page: 200 }).catch(() => ({ data: [] as Array<{invoices: PurchaseInvoice[]}> })),
     ])
     client.value = c
     invoices.value = grouped.data.flatMap(g => g.invoices)

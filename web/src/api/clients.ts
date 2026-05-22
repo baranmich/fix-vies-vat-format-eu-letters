@@ -33,6 +33,9 @@ export interface Client {
   revenue_by_month?: Array<{ month: string; currency: string; total: number; total_czk: number }>
   revenue_by_year?:  Array<{ year: number; currency: string; total: number; total_czk: number; count: number }>
   revenue_by_project?: Array<{ project_id: number | null; project_name: string | null; currency: string; total: number; total_czk: number; count: number }>
+  // Náklady (purchase_invoices) — server-side aggregované, ne závislé na paginaci listu.
+  costs_by_month?: Array<{ month: string; currency: string; total: number; total_czk: number }>
+  costs_by_year?:  Array<{ year: number; currency: string; total: number; total_czk: number; count: number }>
   unpaid_summary?:   Array<{ currency: string; unpaid_total: number; unpaid_total_czk: number; unpaid_count: number; overdue_total: number; overdue_total_czk: number; overdue_count: number }>
   // Cache stats z client_revenue_cache (per c.currency_default) + live computed costs
   revenue?: number
