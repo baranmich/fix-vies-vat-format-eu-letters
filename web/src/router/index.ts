@@ -54,7 +54,9 @@ const routes: RouteRecordRaw[] = [
       { path: 'recurring/:id(\\d+)',    name: 'recurring-detail', component: () => import('@/pages/recurring/RecurringDetail.vue') },
       { path: 'recurring/:id(\\d+)/edit', name: 'recurring-edit', component: () => import('@/pages/recurring/RecurringForm.vue') },
       { path: 'admin/update',           name: 'admin-update',    component: () => import('@/pages/admin/Update.vue'),    meta: { adminOnly: true } },
-      { path: 'profile/totp',           name: 'profile-totp',          component: () => import('@/pages/TotpSetup.vue') },
+      // /profile/totp je zachován pro BC (staré bookmarks, force-TOTP middleware redirect),
+      // ale UI ho merge-uje do /profile/password (tabs). Redirect zachovává query stringy.
+      { path: 'profile/totp',           name: 'profile-totp',          redirect: (to) => ({ path: '/profile/password', query: { ...to.query, tab: 'totp' } }) },
       { path: 'profile/password',       name: 'profile-password',      component: () => import('@/pages/PasswordChange.vue') },
       { path: 'profile/api-tokens',     name: 'profile-api-tokens',    component: () => import('@/pages/ApiTokens.vue') },
     ],
