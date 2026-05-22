@@ -13,11 +13,13 @@ declare(strict_types=1);
  *       exchange_rates (cache ČNB kurzů — drahé refetchnout), migrations
  * Maže: users, sessions, password_resets, login_attempts, api_tokens,
  *       supplier, clients, projects, invoices, work_reports, activity_log,
- *       bank_statements, invoice_counters, invoice_pdfs (PDF historie),
+ *       bank_statements, bank_transactions, payment_matches (bank N:N matching),
+ *       invoice_counters, purchase_invoice_counters, invoice_pdfs (PDF historie),
  *       invoice_attachments, recurring_invoice_templates + _items
- *       (pravidelné fakturace), app_meta (version cache), ares_cache,
- *       vies_cache (volitelně), email_templates, project/client revenue cache,
- *       currencies (per-supplier!)
+ *       (pravidelné fakturace), purchase_invoices + _items, app_meta
+ *       (version cache), ares_cache, vies_cache (volitelně), email_templates,
+ *       project/client revenue cache, currencies (per-supplier!),
+ *       crm_monthly_summary, tax_submissions
  *
  * Pozn.: currencies jsou per-supplier (multi-tenant), takže s ním padají.
  * Po resetu setup.php založí novému supplier defaultní CZK + EUR.
@@ -90,7 +92,9 @@ if (!$autoYes) {
 
 // Tabulky ke smazání (v pořadí kvůli FK; FOREIGN_KEY_CHECKS=0 je dole, ale držíme topologii)
 $wipe = [
-    // Bank
+    // Bank — payment_matches musí PŘED bank_transactions (FK on delete cascade by to vzal,
+    // ale držíme topologii pro robustnost a explicit auditní stopu mazání)
+    'payment_matches',               // N:N bank tx ↔ purchase/sale invoice (migrace 0034)
     'bank_transactions',
     'bank_statements',
     // Vystavené faktury + work reports
@@ -106,6 +110,7 @@ $wipe = [
     // Přijaté faktury (fáze 1+ integrace forku)
     'purchase_invoice_items',
     'purchase_invoices',
+    'purchase_invoice_counters',     // per-tenant counter PF-YYYYMM-NNNN (migrace 0026)
     'expense_categories',            // per-tenant kategorie nákladů (migrace 0035)
     // Import jobs + AI extractions (fáze 2a/2b/2c)
     'import_jobs',                   // iDoklad/Fakturoid background jobs
