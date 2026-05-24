@@ -1510,6 +1510,56 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/BankStatementDetail' }
+    delete:
+      tags: [Bank]
+      summary: Smaže výpis vč. transakcí a payment_matches (admin only)
+      description: |
+        Cascade delete přes FK constraints — smaže transakce výpisu i jejich
+        payment_matches záznamy. Status zaplacených faktur se NEzmění (případný
+        rollback paid→issued je doménou uživatele přes /unmatch endpoint).
+
+        Vyžaduje roli `admin`. Účetní (`accountant`) může nahrávat a párovat,
+        ale ne mazat (forensic integrity uzávěrek DPH/KH).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean, example: true }
+        '403': { description: "Forbidden — role není admin" }
+        '404': { description: "Výpis nenalezen nebo nepatří current supplier" }
+
+  /api/v1/bank-statements/{id}/download:
+    parameters:
+      - $ref: '#/components/parameters/SupplierIdHeader'
+      - in: path
+        name: id
+        required: true
+        schema: { type: integer, format: int64 }
+    get:
+      tags: [Bank]
+      summary: Stáhne originální obsah GPC souboru
+      description: |
+        Vrací bajt-přesný originál uploadovaného GPC souboru (uložený od v4.1.0
+        v `bank_statements.file_content`). Pro výpisy importované před v4.1.0
+        není soubor k dispozici → 410 Gone.
+
+        Klient si může před voláním zkontrolovat pole `has_file` v `BankStatement`.
+      responses:
+        '200':
+          description: OK — GPC bajty
+          headers:
+            Content-Disposition:
+              schema: { type: string }
+              description: 'attachment; filename="<original-filename>"'
+          content:
+            text/plain:
+              schema: { type: string, format: binary }
+        '404': { description: "Výpis nenalezen" }
+        '410': { description: "Soubor není k dispozici (importováno před v4.1.0)" }
 
   /api/v1/bank-transactions/{id}/match:
     parameters:
@@ -1785,6 +1835,44 @@ paths:
       responses:
         '200':
           description: OK
+
+  /api/v1/codebooks/years:
+    parameters:
+      - $ref: '#/components/parameters/SupplierIdHeader'
+    get:
+      tags: [Codebooks]
+      summary: Distinct roky z faktur (zdroj pro year filter dropdown)
+      description: |
+        Vrací DISTINCT `YEAR(issue_date)` z `invoices` a `purchase_invoices`
+        per aktuální supplier. Backend navíc doplňuje aktuální + minulý rok
+        do `combined` setu (aby UI dropdown nikdy nebyl prázdný — fresh setup
+        bez dokladů).
+
+        Použij pro historické datové migrace (Fakturoid, iDoklad — typicky
+        5-10+ let), kde hardcoded posledních N let v UI by data zakryl.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items: { type: integer }
+                    example: [2026, 2025, 2024, 2023, 2018]
+                    description: Distinct roky z `invoices` (vystavené)
+                  purchase_invoices:
+                    type: array
+                    items: { type: integer }
+                    example: [2026, 2025, 2024]
+                    description: Distinct roky z `purchase_invoices` (přijaté)
+                  combined:
+                    type: array
+                    items: { type: integer }
+                    example: [2026, 2025, 2024, 2023, 2018]
+                    description: Sjednocení obou množin + aktuální a minulý rok jako floor
 
   # ------------------------------------------------------------
   # Recurring invoice templates (pravidelné fakturace) — admin API
@@ -3716,11 +3804,12 @@ components:
         period_from: { type: string, format: date }
         period_to: { type: string, format: date }
         account_number: { type: string, example: "1234567890/0100" }
-        currency: { type: string, example: CZK }
+        currency: { type: string, nullable: true, example: EUR, description: "ISO 4217 (CZK, EUR, ...). Odvozeno z transakcí výpisu (GPC pole 075.118-122) nebo z currencies.account_number match. NULL u výpisů importovaných před v4.1.0." }
         transactions_count: { type: integer }
         matched_count: { type: integer }
         unmatched_count: { type: integer }
         ignored_count: { type: integer }
+        has_file: { type: boolean, description: "True pokud server má uložený originální obsah GPC souboru — k stažení přes /api/v1/bank-statements/{id}/download. False u výpisů importovaných před v4.1.0." }
         imported_by_user_id: { type: integer, nullable: true }
         created_at: { type: string, format: date-time }
 
@@ -3997,6 +4086,14 @@ components:
           type: string
           nullable: true
           description: "MFČR kód pro DPH/KH (připraveno pro fázi 6)"
+        is_fixed_asset:
+          type: boolean
+          default: false
+          description: |
+            Řádek je za dlouhodobý majetek (§ 4 odst. 4 písm. c — vozidlo, stroj, ...).
+            Per-řádek override umožňuje mixed doklady (pár položek majetek, zbytek běžné).
+            Pokud je nastaveno na řádku, vyhrává nad `PurchaseInvoice.is_fixed_asset` (header).
+            Hodnota se na DPHDP3 navíc uvede na ř. 47 (`nar_maj`).
 
     PurchaseInvoiceItemPayload:
       type: object
@@ -4009,6 +4106,7 @@ components:
         vat_rate_id: { type: integer }
         order_index: { type: integer }
         vat_classification_code: { type: string, nullable: true }
+        is_fixed_asset: { type: boolean, default: false }
 
     PurchaseInvoice:
       type: object
@@ -4029,6 +4127,17 @@ components:
         exchange_rate_date: { type: string, format: date, nullable: true }
         exchange_rate_source: { type: string, enum: [cnb, manual, idoklad, fakturoid] }
         reverse_charge: { type: boolean }
+        is_fixed_asset:
+          type: boolean
+          default: false
+          description: |
+            Doklad je za dlouhodobý majetek (§ 4 odst. 4 písm. c) — vozidlo, stroj.
+            Header flag pro celý doklad. Pro mixed doklady (část majetek, část běžné
+            náklady) použij per-řádek `PurchaseInvoiceItem.is_fixed_asset`.
+
+            Když je nastaveno a doklad jde do odpočtu na ř. 40-45 DPHDP3 (přímo
+            nebo přes ř. 43 RC mirror), hodnota se navíc uvede na ř. 47 jako
+            doplňující údaj (`nar_maj`).
         language: { type: string, enum: [cs, en] }
         note_above_items: { type: string, nullable: true }
         note_below_items: { type: string, nullable: true }
@@ -4108,6 +4217,10 @@ components:
         exchange_rate_date: { type: string, format: date, nullable: true }
         exchange_rate_source: { type: string, enum: [cnb, manual, idoklad, fakturoid], default: cnb }
         reverse_charge: { type: boolean, default: false }
+        is_fixed_asset:
+          type: boolean
+          default: false
+          description: "Doklad za dlouhodobý majetek — propíše se do ř. 47 DPHDP3 jako doplňující údaj."
         language: { type: string, enum: [cs, en], default: cs }
         note_above_items: { type: string, nullable: true }
         note_below_items: { type: string, nullable: true }
