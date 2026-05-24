@@ -81,13 +81,19 @@ final class EpoSupplierBlockBuilder
         if (!empty($supplier['opr_prijmeni']))  $vetaP->setAttribute('opr_prijmeni', (string) $supplier['opr_prijmeni']);
         if (!empty($supplier['opr_postaveni'])) $vetaP->setAttribute('opr_postaveni', (string) $supplier['opr_postaveni']);
 
-        // Sestavitel přiznání (typicky účetní). DB má jeden řetězec "Jméno Příjmení";
-        // splitujeme stejným pattern jako company_name u FO.
+        // Sestavitel přiznání (typicky účetní). Příjmení má vlastní sloupec
+        // `sest_prijmeni` (sjednoceno s jednatelem opr_*). Když není vyplněno,
+        // fallback: split `sest_jmeno` podle první mezery (BC pro stará data).
         if (!empty($supplier['sest_jmeno'])) {
-            $sestParts = explode(' ', trim((string) $supplier['sest_jmeno']), 2);
-            $vetaP->setAttribute('sest_jmeno', $sestParts[0] ?? '');
-            if (!empty($sestParts[1])) {
-                $vetaP->setAttribute('sest_prijmeni', $sestParts[1]);
+            if (!empty($supplier['sest_prijmeni'])) {
+                $vetaP->setAttribute('sest_jmeno', (string) $supplier['sest_jmeno']);
+                $vetaP->setAttribute('sest_prijmeni', (string) $supplier['sest_prijmeni']);
+            } else {
+                $sestParts = explode(' ', trim((string) $supplier['sest_jmeno']), 2);
+                $vetaP->setAttribute('sest_jmeno', $sestParts[0] ?? '');
+                if (!empty($sestParts[1])) {
+                    $vetaP->setAttribute('sest_prijmeni', $sestParts[1]);
+                }
             }
         }
         if (!empty($supplier['sest_telefon'])) $vetaP->setAttribute('sest_telef', self::normalizePhone((string) $supplier['sest_telefon']));

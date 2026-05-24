@@ -258,7 +258,7 @@ final class DphPriznaniBuilder
                     s.email, s.phone,
                     s.street_number_pop, s.street_number_orient,
                     s.opr_jmeno, s.opr_prijmeni, s.opr_postaveni,
-                    s.sest_jmeno, s.sest_telefon, s.sest_email, s.sest_funkce
+                    s.sest_jmeno, s.sest_prijmeni, s.sest_telefon, s.sest_email, s.sest_funkce
                FROM supplier s
           LEFT JOIN countries c ON c.id = s.country_id
               WHERE s.id = ?"

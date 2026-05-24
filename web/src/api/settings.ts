@@ -53,6 +53,7 @@ export interface Supplier {
   data_box_type?: string | null
   data_box_id?: string | null
   sest_jmeno?: string | null
+  sest_prijmeni?: string | null
   sest_telefon?: string | null
   sest_email?: string | null
   sest_funkce?: string | null

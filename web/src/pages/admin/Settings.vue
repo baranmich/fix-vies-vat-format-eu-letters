@@ -96,6 +96,7 @@ async function saveSupplier() {
       data_box_type: (supplier.value as any).data_box_type ?? null,
       data_box_id: (supplier.value as any).data_box_id ?? null,
       sest_jmeno: (supplier.value as any).sest_jmeno ?? null,
+      sest_prijmeni: (supplier.value as any).sest_prijmeni ?? null,
       sest_telefon: (supplier.value as any).sest_telefon ?? null,
       sest_email: (supplier.value as any).sest_email ?? null,
       sest_funkce: (supplier.value as any).sest_funkce ?? null,
@@ -507,10 +508,15 @@ async function removeCurrency(c: CurrencyAccount) {
 
           <h4 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 mt-5 mb-2">{{ t('settings.sest_section') }}</h4>
           <p class="text-xs text-neutral-500 mb-3">{{ t('settings.sest_hint') }}</p>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.sest_jmeno') }}</label>
               <input v-model="supplier.sest_jmeno" type="text" maxlength="100"
+                class="w-full h-9 px-3 border border-neutral-300 rounded-md text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.sest_prijmeni') }}</label>
+              <input v-model="supplier.sest_prijmeni" type="text" maxlength="100"
                 class="w-full h-9 px-3 border border-neutral-300 rounded-md text-sm" />
             </div>
             <div>
@@ -518,6 +524,8 @@ async function removeCurrency(c: CurrencyAccount) {
               <input v-model="supplier.sest_funkce" type="text" maxlength="80"
                 class="w-full h-9 px-3 border border-neutral-300 rounded-md text-sm" />
             </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.sest_telefon') }}</label>
               <input v-model="supplier.sest_telefon" type="text" maxlength="40"

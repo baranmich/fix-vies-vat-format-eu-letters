@@ -149,16 +149,41 @@ final class EpoXsdValidationTest extends TestCase
         $attrs = [];
         foreach ($vetaP->attributes() as $k => $v) $attrs[(string) $k] = (string) $v;
 
-        // Atributy, které MUSÍ být vyplněny pokud má supplier=1 odpovídající
-        // sloupec v DB. Test předpokládá seed/setup data se všemi vyplněnými poli.
-        $expected = [
-            'c_ufo', 'c_pracufo', 'dic', 'typ_ds',
-            'zkrobchjm', 'ulice', 'c_pop', 'c_orient',
-            'naz_obce', 'psc', 'stat',
-            'email', 'c_telef',
-            'opr_jmeno', 'opr_prijmeni', 'opr_postaveni',
-            'sest_jmeno', 'sest_prijmeni', 'sest_telef',
+        // Regrese „pole je v DB, ale nepřenese se do XML": atribut se v XML vyžaduje
+        // JEN když má supplier odpovídající sloupec vyplněný. FO bez sestavitele
+        // legitimně nemá opr_*/sest_*, OSVČ nemá zkrobchjm — proto podmíněně (jinak by
+        // test padal na neúplných, ale validních profilech).
+        $sup = $this->conn?->pdo()->query(
+            'SELECT financial_office_code, workplace_code, dic, taxpayer_type, company_name,
+                    street_number_pop, street_number_orient, email, phone, cz_nace_code,
+                    opr_jmeno, opr_prijmeni, opr_postaveni, sest_jmeno, sest_prijmeni, sest_telefon
+               FROM supplier WHERE id = 1'
+        )->fetch(\PDO::FETCH_ASSOC) ?: [];
+
+        // Vždy povinné (struktura každého validního plátce).
+        $expected = ['c_ufo', 'dic', 'typ_ds', 'ulice', 'naz_obce', 'psc', 'stat'];
+        // Podmíněné: XML atribut → supplier sloupec (vyžadováno jen když je sloupec vyplněn).
+        $conditional = [
+            'c_pracufo'     => 'workplace_code',
+            'c_pop'         => 'street_number_pop',
+            'c_orient'      => 'street_number_orient',
+            'email'         => 'email',
+            'c_telef'       => 'phone',
+            'opr_jmeno'     => 'opr_jmeno',
+            'opr_prijmeni'  => 'opr_prijmeni',
+            'opr_postaveni' => 'opr_postaveni',
+            'sest_jmeno'    => 'sest_jmeno',
+            'sest_prijmeni' => 'sest_prijmeni',  // vlastní sloupec (fallback split sest_jmeno když prázdné)
+            'sest_telef'    => 'sest_telefon',
         ];
+        foreach ($conditional as $attr => $col) {
+            if (!empty($sup[$col])) $expected[] = $attr;
+        }
+        // zkrobchjm jen pro PO (FO má místo toho jmeno/prijmeni).
+        if (($sup['taxpayer_type'] ?? '') === 'po' && !empty($sup['company_name'])) {
+            $expected[] = 'zkrobchjm';
+        }
+
         $missing = [];
         foreach ($expected as $attr) {
             if (!array_key_exists($attr, $attrs) || $attrs[$attr] === '') {
@@ -167,8 +192,8 @@ final class EpoXsdValidationTest extends TestCase
         }
         $this->assertEmpty(
             $missing,
-            "{$formCode} VetaP chybí atributy: " . implode(', ', $missing)
-                . "\n(supplier=1 možná nemá vyplněná všechna pole — viz Settings → Daňové údaje)",
+            "{$formCode} VetaP chybí atributy (pole vyplněné v supplier, ale chybí v XML): "
+                . implode(', ', $missing),
         );
 
         // Ulice nesmí obsahovat trailing číslo, když máme c_pop/c_orient zvlášť
@@ -180,16 +205,19 @@ final class EpoXsdValidationTest extends TestCase
             );
         }
 
-        // c_telef MUSÍ být bez `+420` prefixu a bez mezer (EPO konvence — 9 digits)
-        $this->assertDoesNotMatchRegularExpression(
-            '/[\s+]/',
-            $attrs['c_telef'],
-            'c_telef obsahuje mezery nebo + prefix — normalizace neproběhla',
-        );
+        // c_telef MUSÍ být bez `+420` prefixu a bez mezer (EPO konvence — 9 digits).
+        if (isset($attrs['c_telef']) && $attrs['c_telef'] !== '') {
+            $this->assertDoesNotMatchRegularExpression(
+                '/[\s+]/',
+                $attrs['c_telef'],
+                'c_telef obsahuje mezery nebo + prefix — normalizace neproběhla',
+            );
+        }
 
-        // c_okec v VetaD je jen u DPH (KH XSD ho nemá v povolených atributech)
+        // c_okec v VetaD je jen u DPH (KH XSD ho nemá v povolených atributech) — a jen
+        // pokud supplier má vyplněný cz_nace_code (jinak se atribut legitimně nevyplní).
         $vetaD = $root->VetaD;
-        if ($formCode === 'dphdp3') {
+        if ($formCode === 'dphdp3' && !empty($sup['cz_nace_code'])) {
             $this->assertNotEmpty(
                 (string) $vetaD['c_okec'],
                 'VetaD.c_okec chybí — supplier.cz_nace_code se nepřenáší do XML',

@@ -1350,6 +1350,7 @@
     "sest_section": "Sestavitel přiznání (účetní)",
     "sest_hint": "Volitelné — pokud výkaz sestavuje účetní/poradce.",
     "sest_jmeno": "Jméno",
+    "sest_prijmeni": "Příjmení",
     "sest_funkce": "Funkce",
     "sest_telefon": "Telefon",
     "sest_email": "Email",

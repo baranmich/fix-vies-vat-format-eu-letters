@@ -103,6 +103,10 @@ Pole sestavitele jsou relevantní jen pokud **přiznání za tebe podává jiná
 | **E-mail sestavitele** (`sest_email`) | (interní log) | Pro audit — EPO XML ho neukládá |
 | **Funkce / role** (`sest_funkce`) | (interní log) | Volně psané, např. `účetní`, `daňový poradce` |
 
+> Pokud necháš **Příjmení sestavitele** prázdné a do Jména napíšeš celé jméno
+> („Jan Novák"), builder ho do XML rozdělí podle první mezery (zpětná
+> kompatibilita). Pro spolehlivost ale vyplň obě pole zvlášť.
+
 ### Kontaktní údaje pro podání
 
 | Pole v UI | XML atribut | Popis |

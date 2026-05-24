@@ -203,7 +203,7 @@ final class SettingsAction
             // Tax settings pro EPO výkazy (migrace 0038, fáze 6)
             'taxpayer_type', 'vat_period', 'financial_office_code', 'workplace_code',
             'cz_nace_code', 'data_box_type', 'data_box_id',
-            'sest_jmeno', 'sest_telefon', 'sest_email', 'sest_funkce',
+            'sest_jmeno', 'sest_prijmeni', 'sest_telefon', 'sest_email', 'sest_funkce',
             // Doplňky pro DPH/KH XML VetaP (migrace 0043)
             'street_number_pop', 'street_number_orient',
             'opr_jmeno', 'opr_prijmeni', 'opr_postaveni',
@@ -221,7 +221,7 @@ final class SettingsAction
         // Empty string → null pro tax fields (NULL = nevyplněno)
         foreach (['taxpayer_type', 'vat_period', 'financial_office_code', 'workplace_code',
                   'cz_nace_code', 'data_box_type', 'data_box_id',
-                  'sest_jmeno', 'sest_telefon', 'sest_email', 'sest_funkce',
+                  'sest_jmeno', 'sest_prijmeni', 'sest_telefon', 'sest_email', 'sest_funkce',
                   'street_number_pop', 'street_number_orient',
                   'opr_jmeno', 'opr_prijmeni', 'opr_postaveni'] as $f) {
             if (array_key_exists($f, $body) && trim((string) ($body[$f] ?? '')) === '') {

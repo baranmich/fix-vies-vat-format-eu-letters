@@ -1350,6 +1350,7 @@
     "sest_section": "Tax return preparer (accountant)",
     "sest_hint": "Optional — if accountant/advisor prepares the report.",
     "sest_jmeno": "Name",
+    "sest_prijmeni": "Surname",
     "sest_funkce": "Function",
     "sest_telefon": "Phone",
     "sest_email": "Email",
