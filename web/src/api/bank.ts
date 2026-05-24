@@ -34,6 +34,7 @@ export interface BankTransaction {
   description: string | null
   bank_ref: string | null
   matched_invoice_id: number | null
+  matched_purchase_invoice_id?: number | null
   matched_varsymbol?: string | null
   matched_invoice_amount?: number | null
   matched_client_name?: string | null
@@ -74,6 +75,10 @@ export const bankApi = {
     api.post<{ ignored: true }>(`/bank-transactions/${txId}/ignore`, {}).then(r => r.data),
   unmatch: (txId: number) =>
     api.post<{ unmatched: true }>(`/bank-transactions/${txId}/unmatch`, {}).then(r => r.data),
+  createPurchaseInvoice: (txId: number, vendorId: number) =>
+    api.post<{ purchase_invoice_id: number; vendor_id: number; currency: string }>(
+      `/bank-transactions/${txId}/create-purchase-invoice`, { vendor_id: vendorId },
+    ).then(r => r.data),
   rematch: (statementId: number) =>
     api.post<{ considered: number; newly_matched: number; newly_partial: number; still_unmatched: number }>(
       `/bank-statements/${statementId}/rematch`, {}).then(r => r.data),

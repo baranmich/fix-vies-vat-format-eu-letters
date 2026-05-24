@@ -99,6 +99,26 @@ Pro transakce, které nejsou platby faktur (poplatky, převody mezi vlastními
 1. Klik **Ignorovat**.
 2. Status → `Ignorováno`. Pro reporting se nepočítá.
 
+### 13.4.3 Vytvoření přijaté faktury z výpisu (doklad o úhradě)
+
+U **odchozí (záporné) platby**, ke které ještě nemáš v systému přijatou fakturu,
+můžeš rovnou založit její koncept přímo z výpisu:
+
+1. Detail výpisu → najdi odchozí transakci → klik **Vytvořit fakturu**.
+2. Vyber **existujícího dodavatele** (nebo klik **Nový dodavatel** a založ ho).
+   Dodavatel se nezakládá automaticky — musíš ho potvrdit.
+3. Potvrď → vznikne **koncept přijaté faktury** v hrubé částce platby
+   (1 položka, 0 % DPH) a rovnou se otevře v editoru.
+4. V editoru doplň **rozpad DPH**, skutečné **číslo dokladu** a nahraj **PDF**.
+
+Variabilní symbol z platby se předvyplní do pole VS; číslo dokladu dostane
+dočasný placeholder `BANK-{id}` (přepiš ho na reálné číslo z faktury). Platba se
+zároveň **spáruje** na nově vzniklý koncept (vazba, ne `paid` — to potvrdíš až po
+finalizaci faktury).
+
+> 💡 **Tlačítko „Otevřít"** u spárované transakce přeskočí na navázanou fakturu
+> (vydanou i přijatou).
+
 ## 13.5 Reverse: zrušení spárování
 
 Pokud automatika spárovala chybně:
@@ -129,6 +149,10 @@ Setup:
 - **Auto-match funguje jen s VS** — bez VS musíš párovat ručně. Apeluj na
   klienty, aby VS vyplňovali (typicky ho v bance nabízí, když napíšeš číslo
   faktury jako popis).
+- **Platby kartou** (bez VS) se zkusí spárovat na přijatou fakturu i podle
+  **částky + podobnosti názvu** dodavatele (název protistrany na výpisu nemusí
+  přesně sedět s názvem dodavatele). Spáruje se jen při jednoznačné shodě;
+  jinak nech na ručním párování / založení dokladu (viz 13.4.3).
 - **Tolerance ± 0,01** — částečné platby (klient pošle míň) se nespárují
   automaticky, musíš ručně. Zvaž nastavení tolerance v `cfg.php` →
   `bank.matching.tolerance`.

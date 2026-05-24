@@ -19,8 +19,8 @@ final class AccountNumberNormalizerTest extends TestCase
     /** @return iterable<string, array{string, string}> */
     public static function normalizeCases(): iterable
     {
-        yield 'zero-padded GPC'         => ['0000000112866706', '112866706'];
-        yield 'plain digits'            => ['112866706',        '112866706'];
+        yield 'zero-padded GPC'         => ['0000000123456789', '123456789'];
+        yield 'plain digits'            => ['123456789',        '123456789'];
         yield 'CZ prefix dash'          => ['19-2000145399',    '192000145399'];
         yield 'spaces'                  => ['1 000 000 005',    '1000000005'];
         yield 'prefix + zero padding'   => ['0000019-2000145399', '192000145399'];
@@ -31,8 +31,8 @@ final class AccountNumberNormalizerTest extends TestCase
 
     public function testEqualsZeroPaddedVsPlain(): void
     {
-        self::assertTrue(AccountNumberNormalizer::equals('0000000112866706', '112866706'));
-        self::assertTrue(AccountNumberNormalizer::equals('112866706', '0000000112866706'));
+        self::assertTrue(AccountNumberNormalizer::equals('0000000123456789', '123456789'));
+        self::assertTrue(AccountNumberNormalizer::equals('123456789', '0000000123456789'));
     }
 
     public function testEqualsDifferentAccounts(): void

@@ -36,6 +36,7 @@ final class GpcParser
         $lines = preg_split('/\r\n|\n|\r/', $content);
         $header = null;
         $transactions = [];
+        $lastTxIndex = -1; // index poslední 075 transakce (pro navázání 078 avíza)
 
         foreach ($lines as $line) {
             if ($line === '' || strlen($line) < 3) continue;
@@ -44,6 +45,15 @@ final class GpcParser
                 $header = $this->parseHeader($line);
             } elseif ($type === '075') {
                 $transactions[] = $this->parseTransaction($line);
+                $lastTxIndex = count($transactions) - 1;
+            } elseif ($type === '078' || $type === '079') {
+                // Doplňující údaj / avízo k předchozí transakci — u kartových plateb tu
+                // banka uvádí název obchodníka + lokalitu + maskované číslo karty
+                // (např. "078NAZEV OBCHODU MESTO ZEME PK: 000000******0000"). V 075 je
+                // client_name u karet prázdné, takže bez tohohle by se název ztratil.
+                if ($lastTxIndex >= 0) {
+                    $this->mergeAdditionalInfo($transactions[$lastTxIndex], substr($line, 3));
+                }
             }
         }
 
@@ -167,6 +177,38 @@ final class GpcParser
             'description'          => $description ?: null,
             'bank_ref'             => null,
         ];
+    }
+
+    /**
+     * Navázání 078/079 avíza (doplňující text) na transakci. Sjednotí víc avíz do
+     * description; pokud transakce nemá název protistrany (typicky karetní platba,
+     * kde je 075 client_name prázdné), použije z avíza i jméno obchodníka.
+     *
+     * @param array<string,mixed> $tx by-ref
+     */
+    private function mergeAdditionalInfo(array &$tx, string $rawInfo): void
+    {
+        $info = $this->cp1250ToUtf8(trim($rawInfo));
+        if ($info === '') return;
+
+        // description: připoj (nebo nastav) — chceme zachovat vše (název, lokalita, karta).
+        $existing = (string) ($tx['description'] ?? '');
+        $merged = $existing === '' ? $info : ($existing . ' | ' . $info);
+        $tx['description'] = mb_substr($merged, 0, 255);
+
+        // counterparty_name: jen pokud chybí. Vezmi část před "PK:" (maskované č. karty),
+        // jinak celý text. Tím u karet doplníme obchodníka (název před " PK:").
+        if (empty($tx['counterparty_name'])) {
+            $name = $info;
+            $pkPos = stripos($name, ' PK:');
+            if ($pkPos !== false) {
+                $name = substr($name, 0, $pkPos);
+            }
+            $name = trim($name);
+            if ($name !== '') {
+                $tx['counterparty_name'] = mb_substr($name, 0, 190);
+            }
+        }
     }
 
     /**

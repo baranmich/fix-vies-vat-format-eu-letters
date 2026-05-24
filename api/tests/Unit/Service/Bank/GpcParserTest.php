@@ -189,4 +189,55 @@ final class GpcParserTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $parser->parse("nějaký nesmyslný obsah bez 074 řádku");
     }
+
+    public function testMergesO78AdvisoIntoTransaction(): void
+    {
+        // Karetní platba: 075 má prázdné client_name, název obchodníka je v navazujícím
+        // 078 řádku. Bez parsování 078 by se název obchodníka ztratil. (Fiktivní data.)
+        $header = '074' . str_pad('1', 16) . str_pad('', 20) . '010126'
+            . str_pad('0', 14, '0') . '+' . str_pad('0', 14, '0') . '+'
+            . str_pad('0', 14, '0') . '+' . str_pad('0', 14, '0') . '+'
+            . '001' . '010126';
+        $tx = '075'
+            . str_pad('1', 16) . str_pad('1', 16) . str_pad('D', 13)
+            . str_pad('28500', 12, '0', STR_PAD_LEFT)              // 285.00
+            . '1'                                                   // debit
+            . str_pad('0', 10, '0', STR_PAD_LEFT)
+            . '00' . '0100' . '0000'
+            . str_pad('0', 10, '0', STR_PAD_LEFT)
+            . '200426'
+            . str_pad('', 20)                                       // client_name PRÁZDNÉ (karta)
+            . '00203' . '200426';
+        // Fiktivní data (NE reálný výpis).
+        $advizo = '078ACME OBCHOD PRAHA CZ PK: 000000******0000';
+
+        $r = (new GpcParser())->parse($header . "\n" . $tx . "\n" . $advizo);
+
+        self::assertCount(1, $r['transactions']);
+        $t = $r['transactions'][0];
+        // Název obchodníka doplněn z 078 (část před " PK:").
+        self::assertSame('ACME OBCHOD PRAHA CZ', $t['counterparty_name']);
+        // description zachová celé avízo (název + lokalita + maskovaná karta).
+        self::assertStringContainsString('ACME OBCHOD PRAHA CZ PK: 000000******0000', (string) $t['description']);
+    }
+
+    public function testO78DoesNotOverwriteExisting075Name(): void
+    {
+        // Když 075 client_name vyplněné je, 078 ho nepřepíše (jen doplní description).
+        $header = '074' . str_pad('1', 16) . str_pad('', 20) . '010126'
+            . str_pad('0', 14, '0') . '+' . str_pad('0', 14, '0') . '+'
+            . str_pad('0', 14, '0') . '+' . str_pad('0', 14, '0') . '+'
+            . '001' . '010126';
+        $tx = '075'
+            . str_pad('1', 16) . str_pad('1', 16) . str_pad('D', 13)
+            . str_pad('100', 12, '0', STR_PAD_LEFT) . '2'
+            . str_pad('0', 10, '0', STR_PAD_LEFT) . '00' . '0100' . '0000'
+            . str_pad('0', 10, '0', STR_PAD_LEFT) . '200426'
+            . str_pad('ACME s.r.o.', 20) . '00203' . '200426';
+        $advizo = '078Poznamka k platbe';
+
+        $t = (new GpcParser())->parse($header . "\n" . $tx . "\n" . $advizo)['transactions'][0];
+        self::assertSame('ACME s.r.o.', $t['counterparty_name']);
+        self::assertStringContainsString('Poznamka k platbe', (string) $t['description']);
+    }
 }

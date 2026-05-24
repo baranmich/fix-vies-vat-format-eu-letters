@@ -6,8 +6,8 @@ namespace MyInvoice\Service\Bank;
 
 /**
  * Normalizace bankovního účtu pro porovnávání mezi:
- *  - GPC výpisem (zero-padded 16 cifer, např. `0000000112866706`)
- *  - currencies.account_number (uložené bez padding, např. `112866706`)
+ *  - GPC výpisem (zero-padded 16 cifer, např. `0000000123456789`)
+ *  - currencies.account_number (uložené bez padding, např. `123456789`)
  *  - CZ účty s prefixem (`19-2000145399` → `192000145399`)
  *
  * Strip non-digits + ltrim '0'. Po normalize se dva různé zápisy stejného účtu

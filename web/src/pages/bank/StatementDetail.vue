@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute, RouterLink } from 'vue-router'
+import { useRoute, RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { bankApi, type BankStatementDetail, type BankTransaction } from '@/api/bank'
 import { formatMoney, formatDate } from '@/composables/useFormat'
 import { useHotkey } from '@/composables/useHotkey'
 import { useToast } from '@/composables/useToast'
 import { apiErrorMessage } from '@/api/errors'
+import VendorPicker from '@/components/purchase/VendorPicker.vue'
+import ClientFormModal from '@/components/modals/ClientFormModal.vue'
+import type { Client } from '@/api/clients'
 
 const { t } = useI18n()
 const toast = useToast()
+const router = useRouter()
 
 const route = useRoute()
 const statement = ref<BankStatementDetail | null>(null)
@@ -19,7 +23,40 @@ const matchingTx = ref<number | null>(null)
 const matchVarsymbol = ref<string>('')
 const matchError = ref<string>('')
 
-useHotkey('escape', () => { if (matchingTx.value !== null) matchingTx.value = null })
+// Vytvoření konceptu přijaté faktury z odchozí (záporné) platby.
+const createTx = ref<BankTransaction | null>(null)
+const createVendorId = ref<number | null>(null)
+const vendorModalOpen = ref(false)
+const creatingPi = ref(false)
+const vendorPickerRef = ref<InstanceType<typeof VendorPicker> | null>(null)
+
+useHotkey('escape', () => {
+  if (matchingTx.value !== null) matchingTx.value = null
+  if (createTx.value !== null && !vendorModalOpen.value) createTx.value = null
+})
+
+function openCreate(tx: BankTransaction) {
+  createTx.value = tx
+  createVendorId.value = null
+}
+function onVendorCreated(client: Client) {
+  vendorModalOpen.value = false
+  createVendorId.value = client.id
+  vendorPickerRef.value?.reload()
+}
+async function submitCreatePurchase() {
+  if (!createTx.value || !createVendorId.value || creatingPi.value) return
+  creatingPi.value = true
+  try {
+    const r = await bankApi.createPurchaseInvoice(createTx.value.id, createVendorId.value)
+    createTx.value = null
+    router.push(`/purchase-invoices/${r.purchase_invoice_id}`)
+  } catch (e) {
+    toast.error(apiErrorMessage(e))
+  } finally {
+    creatingPi.value = false
+  }
+}
 
 async function load() {
   loading.value = true
@@ -196,7 +233,15 @@ async function rematchStatement() {
                 {{ statusLabel(tx.match_status) }}
               </span>
             </td>
-            <td class="px-3 py-2 text-right text-xs">
+            <td class="px-3 py-2 text-right text-xs whitespace-nowrap">
+              <RouterLink v-if="tx.matched_invoice_id" :to="`/invoices/${tx.matched_invoice_id}`"
+                class="text-primary-600 hover:text-primary-700 mr-2">{{ t('bank.open') }}</RouterLink>
+              <RouterLink v-else-if="tx.matched_purchase_invoice_id" :to="`/purchase-invoices/${tx.matched_purchase_invoice_id}`"
+                class="text-primary-600 hover:text-primary-700 mr-2">{{ t('bank.open') }}</RouterLink>
+              <button v-if="tx.amount < 0 && tx.match_status === 'unmatched'" @click="openCreate(tx)"
+                class="cursor-pointer text-primary-600 hover:text-primary-700 mr-2">
+                {{ t('bank.create_purchase') }}
+              </button>
               <button v-if="tx.match_status === 'unmatched' || tx.match_status === 'auto_partial'"
                 @click="startMatch(tx)" class="cursor-pointer text-primary-600 hover:text-primary-700 mr-2">
                 {{ t('bank.match') }}
@@ -248,7 +293,19 @@ async function rematchStatement() {
             </RouterLink>
             <span v-if="tx.matched_client_name" class="text-neutral-500 ml-2">{{ tx.matched_client_name }}</span>
           </div>
-          <div class="flex gap-2 pt-1">
+          <div class="flex flex-wrap gap-2 pt-1">
+            <RouterLink v-if="tx.matched_invoice_id" :to="`/invoices/${tx.matched_invoice_id}`"
+              class="flex-1 h-9 inline-flex items-center justify-center text-sm border border-primary-500/40 text-primary-700 hover:bg-primary-50 rounded-md">
+              {{ t('bank.open') }}
+            </RouterLink>
+            <RouterLink v-else-if="tx.matched_purchase_invoice_id" :to="`/purchase-invoices/${tx.matched_purchase_invoice_id}`"
+              class="flex-1 h-9 inline-flex items-center justify-center text-sm border border-primary-500/40 text-primary-700 hover:bg-primary-50 rounded-md">
+              {{ t('bank.open') }}
+            </RouterLink>
+            <button v-if="tx.amount < 0 && tx.match_status === 'unmatched'" @click="openCreate(tx)"
+              class="cursor-pointer flex-1 h-9 text-sm border border-primary-500/40 text-primary-700 hover:bg-primary-50 font-medium rounded-md">
+              {{ t('bank.create_purchase') }}
+            </button>
             <button v-if="tx.match_status === 'unmatched' || tx.match_status === 'auto_partial'"
               @click="startMatch(tx)"
               class="cursor-pointer flex-1 h-9 text-sm border border-primary-500/40 text-primary-700 hover:bg-primary-50 font-medium rounded-md">
@@ -292,5 +349,31 @@ async function rematchStatement() {
         </div>
       </div>
     </div>
+
+    <!-- Vytvoření konceptu přijaté faktury z odchozí platby — výběr dodavatele -->
+    <div v-if="createTx" class="fixed inset-0 bg-neutral-900/40 z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-5">
+        <h3 class="text-lg font-semibold mb-1">{{ t('bank.create_purchase_title') }}</h3>
+        <p class="text-xs text-neutral-500 mb-3">
+          {{ formatMoney(Math.abs(createTx.amount), createTx.currency ?? 'CZK') }} ·
+          {{ formatDate(createTx.posted_at) }}
+          <span v-if="createTx.counterparty_name"> · {{ createTx.counterparty_name }}</span>
+        </p>
+        <VendorPicker ref="vendorPickerRef" v-model="createVendorId" :on-create-new="() => { vendorModalOpen = true }" />
+        <p class="text-xs text-neutral-500 mt-2 mb-4">{{ t('bank.create_purchase_hint') }}</p>
+        <div class="flex justify-end gap-2">
+          <button @click="createTx = null" class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 rounded-md hover:bg-neutral-50">{{ t('common.cancel') }}</button>
+          <button @click="submitCreatePurchase" :disabled="!createVendorId || creatingPi"
+            class="cursor-pointer px-4 h-9 text-sm bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-medium rounded-md">
+            {{ creatingPi ? '…' : t('bank.create_purchase_submit') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <ClientFormModal v-if="vendorModalOpen"
+      :defaults="{ is_vendor: true, is_customer: false, company_name: createTx?.counterparty_name || '' }"
+      @created="onVendorCreated"
+      @close="vendorModalOpen = false" />
   </div>
 </template>

@@ -44,6 +44,8 @@ final class BankStatementAction
         private readonly InvoiceRepository $invoices,
         private readonly GpcParser $parser,
         private readonly FinalFromProformaCreator $finalCreator,
+        private readonly \MyInvoice\Repository\PurchaseInvoiceRepository $purchaseRepo,
+        private readonly \MyInvoice\Service\Invoice\PurchaseInvoiceCalculator $purCalc,
     ) {}
 
     public function scan(Request $request, Response $response): Response
@@ -330,7 +332,9 @@ final class BankStatementAction
 
         $txStmt = $this->db->pdo()->prepare(
             'SELECT bt.*, i.varsymbol AS matched_varsymbol, i.amount_to_pay AS matched_invoice_amount,
-                    i.client_id, c.company_name AS matched_client_name
+                    i.client_id, c.company_name AS matched_client_name,
+                    (SELECT pm.purchase_invoice_id FROM payment_matches pm
+                      WHERE pm.bank_transaction_id = bt.id ORDER BY pm.id LIMIT 1) AS matched_purchase_invoice_id
                FROM bank_transactions bt
           LEFT JOIN invoices i ON i.id = bt.matched_invoice_id
           LEFT JOIN clients c ON c.id = i.client_id
@@ -343,11 +347,168 @@ final class BankStatementAction
             $t['id'] = (int) $t['id'];
             $t['amount'] = (float) $t['amount'];
             $t['matched_invoice_id'] = $t['matched_invoice_id'] !== null ? (int) $t['matched_invoice_id'] : null;
+            $t['matched_purchase_invoice_id'] = $t['matched_purchase_invoice_id'] !== null ? (int) $t['matched_purchase_invoice_id'] : null;
         }
         $s['id'] = (int) $s['id'];
         $s['has_file'] = (bool) ($s['has_file'] ?? false);
         $s['transactions'] = $transactions;
         return Json::ok($response, $s);
+    }
+
+    /**
+     * POST /api/bank-transactions/{id}/create-purchase-invoice
+     *
+     * Založí KONCEPT přijaté faktury (doklad o úhradě) z ODCHOZÍ bankovní transakce.
+     * Spáruje dodavatele dle názvu protistrany, jinak ho založí (minimální). Předvyplní
+     * fakturu (částka, datum, VS, měna, popis) a vrátí ID k otevření v editoru. Žádné
+     * automatické párování ani placení — jen draft k revizi + nahrání PDF.
+     */
+    public function createPurchaseInvoice(Request $request, Response $response, array $args): Response
+    {
+        $user = (array) $request->getAttribute(AuthMiddleware::ATTR_USER, []);
+        if (!in_array(($user['role'] ?? ''), ['admin', 'accountant'], true)) {
+            return Json::error($response, 'forbidden', 'Pouze admin nebo účetní.', 403);
+        }
+        $txId = (int) ($args['id'] ?? 0);
+        if (!$this->txBelongsToCurrentSupplier($request, $txId)) {
+            return Json::error($response, 'not_found', 'Transakce nenalezena.', 404);
+        }
+        $supplierId = SupplierGuard::currentId($request);
+        $userId = (int) ($user['id'] ?? 0);
+        $pdo = $this->db->pdo();
+
+        $stmt = $pdo->prepare(
+            'SELECT bt.amount, bt.posted_at, bt.variable_symbol, bt.counterparty_name,
+                    bt.counterparty_account, bt.description, bs.account_number
+               FROM bank_transactions bt
+               JOIN bank_statements bs ON bs.id = bt.statement_id
+              WHERE bt.id = ?'
+        );
+        $stmt->execute([$txId]);
+        $tx = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if (!$tx) {
+            return Json::error($response, 'not_found', 'Transakce nenalezena.', 404);
+        }
+        if ((float) $tx['amount'] >= 0) {
+            return Json::error($response, 'not_outgoing',
+                'Přijatou fakturu lze založit jen z odchozí (záporné) platby.', 400);
+        }
+
+        $gross = round(abs((float) $tx['amount']), 2);
+        $postedAt = (string) ($tx['posted_at'] ?? date('Y-m-d'));
+        $name = trim((string) ($tx['counterparty_name'] ?? ''));
+        [$currencyId, $currencyCode] = $this->resolveStatementCurrency($supplierId, (string) ($tx['account_number'] ?? ''));
+
+        // Dodavatele NEzakládáme — musí existovat a uživatel ho vybral ve VendorPickeru
+        // (vč. tlačítka „nový dodavatel"). Backend jen ověří, že patří tenantovi.
+        $vendorId = (int) (((array) ($request->getParsedBody() ?? []))['vendor_id'] ?? 0);
+        if ($vendorId <= 0) {
+            return Json::error($response, 'vendor_required', 'Vyber dodavatele.', 400);
+        }
+        $vchk = $pdo->prepare('SELECT supplier_id FROM clients WHERE id = ?');
+        $vchk->execute([$vendorId]);
+        if ((int) $vchk->fetchColumn() !== $supplierId) {
+            return Json::error($response, 'vendor_not_found', 'Dodavatel neexistuje.', 400);
+        }
+        $pdo->prepare('UPDATE clients SET is_vendor = 1 WHERE id = ? AND is_vendor = 0')->execute([$vendorId]);
+
+        // VS patří do pole varsymbol; vendor_invoice_number (povinné + součást unikátního
+        // klíče uq_pi_vendor_invoice) nesmíme plnit VS — kolidovalo by. Dáme unikátní
+        // placeholder BANK-{txId}, skutečné číslo dokladu doplní uživatel po nahrání PDF.
+        $varsymbol = mb_substr(trim((string) ($tx['variable_symbol'] ?? '')), 0, 20) ?: null;
+        $vendorInvoiceNumber = 'BANK-' . $txId;
+        $descr = trim((string) ($tx['description'] ?? '')) ?: ($name ?: 'Platba z bankovního výpisu');
+
+        // Už existuje koncept z této transakce? (opakované kliknutí) → přátelská hláška místo 500.
+        $dupe = $pdo->prepare(
+            'SELECT id FROM purchase_invoices
+              WHERE supplier_id = ? AND vendor_id = ? AND vendor_invoice_number = ? LIMIT 1'
+        );
+        $dupe->execute([$supplierId, $vendorId, $vendorInvoiceNumber]);
+        if ($existingId = (int) $dupe->fetchColumn()) {
+            return Json::error($response, 'already_exists',
+                'Z této transakce už koncept přijaté faktury existuje (#' . $existingId . ').', 409);
+        }
+
+        $piId = $this->purchaseRepo->createDraft([
+            'vendor_id'             => $vendorId,
+            'vendor_invoice_number' => $vendorInvoiceNumber,
+            'varsymbol'             => $varsymbol,
+            'document_kind'         => 'invoice',
+            'issue_date'            => $postedAt,
+            'tax_date'              => $postedAt,
+            'due_date'              => $postedAt,
+            'received_at'           => $postedAt,
+            'currency_id'           => $currencyId,
+            'note_above_items'      => 'Předvyplněno z bankovního výpisu (tx #' . $txId . '). Zkontroluj DPH + nahraj PDF.',
+        ], $userId, $supplierId);
+
+        // Jedna položka v hrubé částce, sazba 0 % → total = uhrazená částka (po nahrání
+        // PDF uživatel upraví rozpad DPH / položky).
+        $zeroRateId = (int) ($pdo->query('SELECT id FROM vat_rates WHERE rate_percent = 0 ORDER BY id LIMIT 1')->fetchColumn() ?: 0);
+        $this->purchaseRepo->replaceItems($piId, [[
+            'description'            => mb_substr($descr, 0, 255),
+            'quantity'               => 1,
+            'unit'                   => 'ks',
+            'unit_price_without_vat' => $gross,
+            'vat_rate_id'            => $zeroRateId ?: null,
+            'order_index'            => 0,
+        ]]);
+        $this->purCalc->recompute($piId);
+
+        // Spáruj platbu na nově vzniklou přijatou fakturu (manuální, user-initiated klikem).
+        // Draft fakturu neoznačujeme jako paid — to udělá uživatel po finalizaci; jen vazba.
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare(
+                "INSERT INTO payment_matches
+                    (supplier_id, bank_transaction_id, purchase_invoice_id, amount, match_type, matched_by_user_id)
+                 VALUES (?, ?, ?, ?, 'manual', ?)"
+            )->execute([$supplierId, $txId, $piId, $gross, $userId ?: null]);
+            $pdo->prepare(
+                "UPDATE bank_transactions SET match_status = 'manual', matched_at = NOW(), matched_by = ? WHERE id = ?"
+            )->execute([$userId ?: null, $txId]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+
+        $ip = $this->ipMatcher->clientIpFromRequest($request->getServerParams());
+        $this->logger->log('bank.purchase_draft_created', $userId, 'purchase_invoice', $piId, [
+            'bank_transaction_id' => $txId, 'vendor_id' => $vendorId,
+        ], $ip, $request->getHeaderLine('User-Agent'));
+
+        return Json::ok($response, [
+            'purchase_invoice_id' => $piId,
+            'vendor_id'           => $vendorId,
+            'currency'            => $currencyCode,
+        ], 201);
+    }
+
+    /**
+     * Měna dle účtu výpisu (normalizovaný match na currencies.account_number), fallback CZK.
+     *
+     * @return array{0:int, 1:string} [currency_id, code]
+     */
+    private function resolveStatementCurrency(int $supplierId, string $accountNumber): array
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT id, code, account_number FROM currencies WHERE supplier_id = ? AND is_active = 1
+              ORDER BY is_default DESC, id ASC'
+        );
+        $stmt->execute([$supplierId]);
+        $all = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        foreach ($all as $c) {
+            if (!empty($c['account_number'])
+                && \MyInvoice\Service\Bank\AccountNumberNormalizer::equals((string) $c['account_number'], $accountNumber)) {
+                return [(int) $c['id'], (string) $c['code']];
+            }
+        }
+        foreach ($all as $c) {
+            if ($c['code'] === 'CZK') return [(int) $c['id'], 'CZK'];
+        }
+        return $all ? [(int) $all[0]['id'], (string) $all[0]['code']] : [0, 'CZK'];
     }
 
     /**

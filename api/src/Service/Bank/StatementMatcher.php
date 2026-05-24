@@ -60,9 +60,8 @@ final class StatementMatcher
         }
         $vs = $row['variable_symbol'];
         $amount = (float) $row['amount'];
-        if (!$vs) {
-            return ['status' => 'unmatched', 'reason' => 'no_vs'];
-        }
+        // VS může chybět (karetní platby) — řeší se per-směr níže: odchozí přes fuzzy
+        // (částka + podobný název), příchozí stále vyžadují VS.
         // Currency guard: tx currency (preferováno) → statement currency
         // (fallback) → null (backward compat — staré výpisy bez měny matchují
         // jakoukoli fakturu, jak to dělaly před fixem v4.1.0).
@@ -100,7 +99,21 @@ final class StatementMatcher
 
         // ── Outgoing → purchase_invoice (přijaté faktury) ────────────────
         if ($isOutgoing) {
-            return $this->matchPurchase($pdo, $supplierId, $vs, abs($amount), (string) $row['posted_at'], $transactionId, $txCurrency);
+            // 1) přesný match dle VS dodavatele (vendor_invoice_number / varsymbol)
+            if ($vs) {
+                $res = $this->matchPurchase($pdo, $supplierId, (string) $vs, abs($amount), (string) $row['posted_at'], $transactionId, $txCurrency);
+                if (($res['status'] ?? 'unmatched') !== 'unmatched') {
+                    return $res;
+                }
+            }
+            // 2) karetní platby (bez VS) / VS bez shody → fuzzy dle částky + podobného
+            //    názvu protistrany (u karet je název obchodníka odlišný od jména dodavatele).
+            return $this->matchPurchaseFuzzy($pdo, $supplierId, abs($amount), (string) ($row['counterparty_name'] ?? ''), (string) $row['posted_at'], $transactionId, $txCurrency);
+        }
+
+        // Příchozí platby stále vyžadují VS (vystavené faktury se párují na náš VS).
+        if (!$vs) {
+            return ['status' => 'unmatched', 'reason' => 'no_vs'];
         }
 
         // ── Incoming → invoice (vystavené faktury) — existing flow ─────────
@@ -292,5 +305,99 @@ final class StatementMatcher
             ];
         }
         return ['status' => 'unmatched', 'reason' => 'amount_mismatch_purchase', 'expected' => $pi['amount_to_pay'], 'got' => $absAmount];
+    }
+
+    /**
+     * Fuzzy párování ODCHOZÍ platby na přijatou fakturu — pro karetní platby (bez VS),
+     * kde název protistrany ve výpisu (obchodník) bývá odlišný od jména dodavatele.
+     * Pravidlo: shodná částka (v toleranci) + měna + status received/booked. Z těchto
+     * kandidátů vybere ty s podobným názvem (sdílí významný token). Spáruje JEN když je
+     * právě jeden takový — jinak je shoda nejednoznačná a necháme unmatched (radši ručně
+     * než špatně). Confidence 60 + auto_partial = příznak ke kontrole.
+     */
+    private function matchPurchaseFuzzy(\PDO $pdo, int $supplierId, float $absAmount, string $cpName, string $postedAt, int $transactionId, ?string $txCurrency): array
+    {
+        $sql = "SELECT pi.id, COALESCE(pi.amount_to_pay, pi.total_with_vat, 0) AS amount_to_pay,
+                       c.company_name AS vendor_name, cur.code AS currency
+                  FROM purchase_invoices pi
+                  JOIN clients c ON c.id = pi.vendor_id
+             LEFT JOIN currencies cur ON cur.id = pi.currency_id
+                 WHERE pi.supplier_id = ?
+                   AND pi.status IN ('received', 'booked')";
+        $params = [$supplierId];
+        if ($txCurrency !== null) {
+            $sql .= ' AND cur.code = ?';
+            $params[] = $txCurrency;
+        }
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+
+        $similar = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            if (abs($absAmount - (float) $r['amount_to_pay']) > self::EXACT_MATCH_TOLERANCE) {
+                continue; // částka musí sedět
+            }
+            if ($this->nameSimilarity($cpName, (string) $r['vendor_name']) > 0.0) {
+                $similar[] = $r;
+            }
+        }
+        if (count($similar) !== 1) {
+            return ['status' => 'unmatched', 'reason' => empty($similar) ? 'no_fuzzy_match' : 'ambiguous_fuzzy_match'];
+        }
+        $pi = $similar[0];
+
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare("UPDATE purchase_invoices SET status = 'paid', paid_at = ? WHERE id = ? AND status <> 'paid'")
+                ->execute([$postedAt, $pi['id']]);
+            $pdo->prepare(
+                "INSERT INTO payment_matches
+                    (supplier_id, bank_transaction_id, purchase_invoice_id, amount, match_type, match_confidence)
+                 VALUES (?, ?, ?, ?, 'auto', 60)"
+            )->execute([$supplierId, $transactionId, (int) $pi['id'], $absAmount]);
+            $pdo->prepare("UPDATE bank_transactions SET match_status = 'auto_partial', matched_at = NOW() WHERE id = ?")
+                ->execute([$transactionId]);
+            $pdo->commit();
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $e;
+        }
+        return ['status' => 'auto_partial', 'purchase_invoice_id' => (int) $pi['id'], 'fuzzy' => true];
+    }
+
+    /**
+     * Podobnost dvou názvů firem (0..1) — Jaccard překryv normalizovaných tokenů.
+     * Sdílený významný token (např. značka) → > 0.
+     */
+    private function nameSimilarity(string $a, string $b): float
+    {
+        $ta = $this->nameTokens($a);
+        $tb = $this->nameTokens($b);
+        if (!$ta || !$tb) return 0.0;
+        $inter = array_intersect($ta, $tb);
+        $union = array_unique(array_merge($ta, $tb));
+        return count($union) > 0 ? count($inter) / count($union) : 0.0;
+    }
+
+    /**
+     * Normalizace názvu na tokeny: velká písmena, bez diakritiky, jen alfanum, tokeny
+     * délky >= 3, bez právních forem / kódů zemí / častých lokalit.
+     *
+     * @return list<string>
+     */
+    private function nameTokens(string $name): array
+    {
+        $s = mb_strtoupper($name, 'UTF-8');
+        $s = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s) ?: $s;
+        $s = preg_replace('/[^A-Z0-9]+/', ' ', $s) ?? '';
+        $stop = ['SRO', 'AS', 'INC', 'LTD', 'LLC', 'GMBH', 'VOS', 'SPOL', 'THE', 'AND',
+                 'CZ', 'CZE', 'SK', 'SVK', 'DE', 'DEU', 'NL', 'NLD', 'USA', 'GBR', 'AT', 'AUT',
+                 'PRAHA', 'PRAGUE', 'BRNO', 'PLZEN', 'OSTRAVA'];
+        $tokens = [];
+        foreach (preg_split('/\s+/', trim($s)) as $tok) {
+            if (strlen($tok) < 3 || in_array($tok, $stop, true)) continue;
+            $tokens[] = $tok;
+        }
+        return array_values(array_unique($tokens));
     }
 }
