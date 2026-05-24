@@ -1,5 +1,15 @@
 # Tlačítko "Sponsor" v hlavičce GitHub repa.
 # Custom URL ukazuje na sekci "Podpora autora" v README (Partners Banka + QR kód).
-# Viz https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# Block-style list (ne inline `[...]`) — některé parsery jsou na flow syntax
+# alergické, block je univerzálně robustní. Per GitHub docs:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+#
+# Pozn.: GitHub může odfiltrovat custom URL, která vede zpět na ten samý
+# repository (anti self-loop). Pokud Sponsor button nepřibude do několika hodin
+# po commitnutí změny, použij externí URL (např. landing page projektu nebo
+# přímo /donate/ stránku) místo readme fragmentu.
 
-custom: ['https://github.com/radekhulan/myinvoice#podpora-autora']
+custom:
+  - "https://myinvoice.cz/#podpora-autora"
+  - "https://github.com/radekhulan/myinvoice#podpora-autora"
