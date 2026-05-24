@@ -15,7 +15,10 @@ use MyInvoice\Infrastructure\Database\Connection;
  */
 final class VatClassificationMapper
 {
-    public function __construct(private readonly Connection $db) {}
+    public function __construct(
+        private readonly Connection $db,
+        private readonly VatLedgerService $ledger,
+    ) {}
 
     /**
      * Monthly DPH trend za posledních N měsíců (default 12). Z crm_monthly_summary
@@ -95,8 +98,7 @@ final class VatClassificationMapper
      */
     public function aggregateForDphPriznani(int $supplierId, int $year, int $month, string $period = 'monthly'): array
     {
-        $map = $this->loadMap($supplierId);
-        // Quarterly: spočítej kvartál (1-4) z měsíce + rozsah
+        // Období (měsíc / kvartál) → rozsah dat.
         if ($period === 'quarterly') {
             $quarter = (int) ceil($month / 3);
             $qStartMonth = ($quarter - 1) * 3 + 1; // 1, 4, 7, 10
@@ -109,138 +111,37 @@ final class VatClassificationMapper
             $end = (new \DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
         }
 
+        // Projekce kanonických řádků (VatLedgerService) na řádky DPHDP3. Sdílená logika
+        // (klasifikace, CZK, RC samovyměření, rate bucket) žije ve službě; tady jen
+        // agregujeme po dphdp3_line + mirror ř.43 (secondary) + ř.47 (majetek).
         $byLine = [];
-        $invoiceLineSeen = []; // per (table:invId) × line → bool
+        $invoiceLineSeen = []; // per (source:invId) × line → distinct count
+        foreach ($this->ledger->rows($supplierId, $start, $end, includeDrafts: false) as $r) {
+            $primary = $r['dphdp3_line'];
+            if ($r['code'] === null || $primary === null) continue; // bez řádku DPHDP3 → přeskoč
 
-        // Vystavené (revenue side).
-        // Auto-default code přes CASE: pokud chybí vat_classification_code, derivuj z reverse_charge
-        // + vat_rate_snapshot. Tím nepropadají DPH přiznání řádky tichou klasifikační dírou
-        // (historická data + recent imports bez auto-classifier). Per-řádek granularita
-        // kvůli aplikaci exchange_rate (faktury v EUR/USD → základy v CZK pro DPHDP3).
-        $rows = $this->db->pdo()->prepare(
-            "SELECT
-                  i.id                       AS inv_id,
-                  COALESCE(i.exchange_rate, 1) AS rate,
-                  COALESCE(cur.code, 'CZK')  AS currency,
-                  COALESCE(
-                      ii.vat_classification_code,
-                      i.vat_classification_code,
-                      CASE
-                          WHEN i.reverse_charge = 1 THEN '20'  -- EU/RC sale default
-                          WHEN ii.vat_rate_snapshot >= 20.5 THEN '1'   -- 21% tuzemsko
-                          WHEN ii.vat_rate_snapshot > 0     THEN '2'   -- snížená (12% / hist. 15/10%)
-                          WHEN ii.vat_rate_snapshot = 0     THEN '3'   -- osvobozeno
-                          ELSE NULL
-                      END
-                  ) AS code,
-                  COALESCE(ii.total_without_vat, 0) AS base,
-                  COALESCE(ii.total_vat, 0)         AS vat
-             FROM invoices i
-             JOIN invoice_items ii ON ii.invoice_id = i.id
-        LEFT JOIN currencies cur ON cur.id = i.currency_id
-            WHERE i.supplier_id = ?
-              AND i.status NOT IN ('draft', 'cancelled')
-              AND i.invoice_type != 'proforma'
-              AND COALESCE(i.tax_date, i.issue_date) BETWEEN ? AND ?"
-        );
-        $rows->execute([$supplierId, $start, $end]);
-        foreach ($rows->fetchAll(\PDO::FETCH_ASSOC) as $r) {
-            $code = $r['code'];
-            if (!$code) continue;
-            $clsf = $map[$code] ?? null;
-            if ($clsf === null || $clsf['dphdp3_line'] === null) continue;
+            $baseCzk = (float) $r['base_czk'];
+            $vatCzk  = (float) $r['vat_czk'];
+            $label   = (string) $r['label'];
+            // Count distinct faktur per řádek: oddělený namespace sale/purchase.
+            $invId = (int) $r['invoice_id'] * 10 + ($r['source'] === 'sale' ? 1 : 2);
 
-            $rate = ($r['currency'] === 'CZK') ? 1.0 : (float) $r['rate'];
-            $baseCzk = round((float) $r['base'] * $rate, 2);
-            $vatCzk  = round((float) $r['vat']  * $rate, 2);
+            $this->addLine($byLine, $primary, $baseCzk, $vatCzk, $invId, $invoiceLineSeen, $label);
 
-            $this->addLine($byLine, (string) $clsf['dphdp3_line'], $baseCzk, $vatCzk,
-                (int) $r['inv_id'] * 10 + 1 /* "sale" namespace */, $invoiceLineSeen, (string) $clsf['label']);
-        }
-
-        // Přijaté (cost side — nárok na odpočet)
-        //
-        // Per-řádek granularita (ne per-faktura agregace), protože musíme:
-        //   1. Aplikovat invoice.exchange_rate (faktury v EUR/USD → základy v CZK)
-        //   2. Pro reverse-charge (pi.reverse_charge=1) dopočítat samovyměřenou
-        //      daň = base × vat_rate_snapshot/100, protože pii.total_vat=0
-        //      (vendor fakturuje bez DPH, příjemce daň přiznává sám)
-        //   3. Mirrorovat RC plnění do ř. 43 jako odpočet (dphdp3_line_secondary)
-        //   4. Vyčlenit řádky s is_fixed_asset=1 do ř. 47 (doplňující údaj
-        //      k ř. 40 — hodnota majetku § 4 odst. 4 písm. c)
-        $rows = $this->db->pdo()->prepare(
-            "SELECT
-                  pi.id                       AS inv_id,
-                  pi.reverse_charge,
-                  COALESCE(pi.exchange_rate, 1) AS rate,
-                  COALESCE(cur.code, 'CZK')   AS currency,
-                  COALESCE(
-                      pii.vat_classification_code,
-                      pi.vat_classification_code,
-                      CASE
-                          WHEN pi.reverse_charge = 1 THEN '5'   -- RC purchase default
-                          WHEN pii.vat_rate_snapshot >= 20.5 THEN '40' -- 21% nárok
-                          WHEN pii.vat_rate_snapshot > 0     THEN '41' -- snížená (12% / hist. 15/10%)
-                          ELSE NULL
-                      END
-                  ) AS code,
-                  pii.vat_rate_snapshot       AS vat_rate,
-                  COALESCE(pii.total_without_vat, 0) AS base,
-                  COALESCE(pii.total_vat, 0)         AS vat,
-                  (CASE WHEN pii.is_fixed_asset = 1 OR pi.is_fixed_asset = 1
-                        THEN 1 ELSE 0 END)         AS is_fixed_asset
-             FROM purchase_invoices pi
-             JOIN purchase_invoice_items pii ON pii.purchase_invoice_id = pi.id
-        LEFT JOIN currencies cur ON cur.id = pi.currency_id
-            WHERE pi.supplier_id = ?
-              AND pi.status NOT IN ('draft', 'cancelled')
-              AND COALESCE(pi.tax_date, pi.issue_date) BETWEEN ? AND ?"
-        );
-        $rows->execute([$supplierId, $start, $end]);
-
-        foreach ($rows->fetchAll(\PDO::FETCH_ASSOC) as $r) {
-            $code = $r['code'];
-            if (!$code) continue;
-            $clsf = $map[$code] ?? null;
-            if ($clsf === null || $clsf['dphdp3_line'] === null) continue;
-
-            $rate = ($r['currency'] === 'CZK') ? 1.0 : (float) $r['rate'];
-            $baseRaw = (float) $r['base'];
-            $vatRaw  = (float) $r['vat'];
-            $vatRate = (float) $r['vat_rate'];
-
-            // RC: vendor fakturoval bez DPH (pii.total_vat=0), my si daň samovyměříme
-            //     na základ × sazbu. Per memory ([[project_multicurrency_purchase]]):
-            //     EUR base × kurz = CZK base; CZK daň = CZK base × sazba/100.
-            if ($vatRaw == 0.0 && ((bool) $r['reverse_charge'] || (bool) ($clsf['is_reverse_charge'] ?? false))) {
-                $vatRaw = round($baseRaw * $vatRate / 100, 2);
-            }
-
-            $baseCzk = round($baseRaw * $rate, 2);
-            $vatCzk  = round($vatRaw  * $rate, 2);
-
-            $primary = $clsf['dphdp3_line'];
-            $secondary = $clsf['dphdp3_line_secondary'] ?? null;
-            // "purchase" namespace pro count distinct (× 10 + 2), aby se nemíchalo se sale.
-            $invId = (int) $r['inv_id'] * 10 + 2;
-
-            // Primary line (output side u RC, nebo přímý odpočet u tuzemska)
-            $this->addLine($byLine, $primary, $baseCzk, $vatCzk, $invId, $invoiceLineSeen, (string) $clsf['label']);
-
-            // Secondary line (typicky ř. 43 — mirror odpočet u RC)
+            // Secondary (typicky ř.43 — mirror odpočet u RC / dovozu služby).
+            $secondary = $r['dphdp3_line_secondary'];
             if ($secondary !== null && $secondary !== '' && $secondary !== $primary) {
-                $this->addLine($byLine, $secondary, $baseCzk, $vatCzk, $invId, $invoiceLineSeen, (string) $clsf['label']);
+                $this->addLine($byLine, $secondary, $baseCzk, $vatCzk, $invId, $invoiceLineSeen, $label);
             }
 
-            // ř. 47 — doplňující údaj o hodnotě pořízeného majetku.
-            // Patří sem řádky, jejichž odpočet je na ř. 40-45 (tuzemsko 40/41,
-            // dovoz CÚ 42, RC mirror 43). Tedy buď primary, nebo secondary v 40-45.
-            // Hodnota = základ v CZK (XSD `nar_maj` = jediný decimal atribut).
-            $assetEligibleLine = $this->countsAsFixedAssetLine($primary)
-                ? $primary
-                : (($secondary !== null && $this->countsAsFixedAssetLine($secondary)) ? $secondary : null);
-            if ((int) $r['is_fixed_asset'] === 1 && $assetEligibleLine !== null) {
-                $this->addLine($byLine, '47', $baseCzk, $vatCzk, $invId, $invoiceLineSeen, 'Hodnota pořízeného majetku (§ 4 odst. 4 písm. c)');
+            // ř.47 — hodnota pořízeného majetku (doplňující údaj k ř.40-45).
+            if ($r['is_fixed_asset']) {
+                $assetEligibleLine = $this->countsAsFixedAssetLine($primary)
+                    ? $primary
+                    : (($secondary !== null && $this->countsAsFixedAssetLine($secondary)) ? $secondary : null);
+                if ($assetEligibleLine !== null) {
+                    $this->addLine($byLine, '47', $baseCzk, $vatCzk, $invId, $invoiceLineSeen, 'Hodnota pořízeného majetku (§ 4 odst. 4 písm. c)');
+                }
             }
         }
 
