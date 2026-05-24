@@ -27,6 +27,9 @@ aspnet_client
 # Web server configs (Docker uses Apache directly via .htaccess)
 web.config
 
+# Jednorázový externí migrační nástroj (Money S3) — runtime ho nespouští, do image nepatří
+tools/money-s3-import
+
 # Build artefacts
 *.log
 .DS_Store

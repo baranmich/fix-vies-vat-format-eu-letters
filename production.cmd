@@ -145,6 +145,12 @@ if errorlevel 1 (
 REM Force-add gitignored artefakty (na origin nepujdou, jen na production).
 REM -q na commitu = bez "create mode" listu pro vsechny vendor soubory.
 git !GITQ! add -f web/dist manual/generated manual/manual.pdf api/vendor
+
+REM Jednorazovy externi migracni nastroj (Money S3) nepatri na produkci.
+REM export-ignore plati jen pro `git archive`, ne pro `git push` ? odstranime z indexu
+REM throwaway vetve (--cached = working tree zustava, master netknuty).
+git !GITQ! rm -r --cached -q tools/money-s3-import 2>nul
+
 git !GITQ! commit -q -m "Build artifacts: !MSG!" --allow-empty
 
 git !GITQ! push --quiet production !TMP_BRANCH!:master --force
