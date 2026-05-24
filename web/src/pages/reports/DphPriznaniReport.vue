@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { reportsApi, type DphPriznaniPreview, type DphSettings, type DphTrendRow, type DphDraftsPrediction } from '@/api/reports'
 import { apiErrorMessage } from '@/api/errors'
 import { formatMoney } from '@/composables/useFormat'
+import { useYearOptions } from '@/composables/useYearOptions'
 
 const { t, locale } = useI18n()
 
@@ -62,10 +63,8 @@ const monthOptions = computed(() =>
   )
 )
 
-const yearOptions = computed(() => {
-  const cur = now.getFullYear()
-  return [cur, cur - 1, cur - 2, cur - 3]
-})
+// Distinct roky z dat (issue #33).
+const yearOptions = useYearOptions('combined', year)
 
 const quarterOptions = [1, 2, 3, 4]
 

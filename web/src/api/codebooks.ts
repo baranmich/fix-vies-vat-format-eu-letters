@@ -53,4 +53,7 @@ export const codebooksApi = {
   vatRates:   (country = 'CZ') =>
     api.get<VatRate[]>('/codebooks/vat-rates', { params: { country } }).then((r) => r.data),
   units:      () => api.get<Unit[]>('/codebooks/units').then((r) => r.data),
+  years:      () =>
+    api.get<{ invoices: number[]; purchase_invoices: number[]; combined: number[] }>('/codebooks/years')
+      .then((r) => r.data),
 }

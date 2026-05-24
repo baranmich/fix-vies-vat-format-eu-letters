@@ -13,6 +13,7 @@ import { formatMoney, formatDate, formatMonth } from '@/composables/useFormat'
 import { useHotkey } from '@/composables/useHotkey'
 import { useToast } from '@/composables/useToast'
 import { apiErrorMessage } from '@/api/errors'
+import { useYearOptions } from '@/composables/useYearOptions'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 
@@ -199,11 +200,8 @@ function openInvoice(inv: PurchaseInvoiceListItem) {
   router.push(`/purchase-invoices/${inv.id}`)
 }
 
-// Year picker (rozsah 5 let)
-const yearOptions = computed(() => {
-  const cur = new Date().getFullYear()
-  return [cur, cur - 1, cur - 2, cur - 3, cur - 4]
-})
+// Year picker — distinct roky z `purchase_invoices` (issue #33).
+const yearOptions = useYearOptions('purchase_invoices', yearFilter)
 const monthOptions = computed(() => {
   const locStr = locale.value === 'en' ? 'en-US' : 'cs-CZ'
   return Array.from({ length: 12 }, (_, i) =>

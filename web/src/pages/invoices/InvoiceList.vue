@@ -8,6 +8,7 @@ import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { clientsApi, type Client } from '@/api/clients'
 import { codebooksApi, type Currency } from '@/api/codebooks'
+import { useYearOptions } from '@/composables/useYearOptions'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import SearchableSelect from '@/components/ui/SearchableSelect.vue'
@@ -430,10 +431,9 @@ function openWorkReport(id: number) {
   wrModalOpen.value = true
 }
 
-const yearOptions = computed(() => {
-  const y = new Date().getFullYear()
-  return [y, y - 1, y - 2, y - 3, y - 4]
-})
+// Year dropdown — distinct roky z `invoices` aktuálního supplier (issue #33).
+// Composable doplňuje aktuální + minulý rok + aktuálně zvolený rok z URL.
+const yearOptions = useYearOptions('invoices', yearFilter)
 
 // `tm()` vrací raw translation message (pole), kdežto `t()` na poli vrátí stringified verzi.
 // `rt()` zformátuje jednotlivé položky pole (pro případnou interpolaci).

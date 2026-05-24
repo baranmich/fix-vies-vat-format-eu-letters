@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { reportsApi } from '@/api/reports'
 import { apiErrorMessage } from '@/api/errors'
 import { formatMoney } from '@/composables/useFormat'
+import { useYearOptions } from '@/composables/useYearOptions'
 
 const { t } = useI18n()
 
@@ -31,10 +32,10 @@ function downloadXml() {
   window.open(reportsApi.incomeTaxDownloadUrl(year.value, taxpayerType.value), '_blank')
 }
 
-const yearOptions = computed(() => {
-  const cur = now.getFullYear()
-  return [cur - 1, cur - 2, cur - 3, cur - 4]
-})
+// Distinct roky z dat (issue #33) — typicky se podává za uplynulý rok, ale
+// uživatel může chtít zpětně sestavit přiznání za starší roky (kdy přiznání
+// zpoždil / kontroluje archiv).
+const yearOptions = useYearOptions('combined', year)
 
 watch([year, taxpayerType], loadPreview)
 onMounted(loadPreview)

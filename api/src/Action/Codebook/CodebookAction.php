@@ -76,6 +76,53 @@ final class CodebookAction
         ], $rows));
     }
 
+    /**
+     * GET /api/codebooks/years
+     *
+     * Vrací distinct roky podle `issue_date` z `invoices` a `purchase_invoices`
+     * aktuálního supplier — sjednocené, sestupně. Slouží jako zdroj pro year
+     * dropdowny v list page UI (per issue #33: dropdown byl hardcoded na
+     * posledních 5 let → historická data starší než to byla v UI neviditelná).
+     *
+     * Vždy doplníme aktuální rok a předchozí, aby filter nikdy neměl prázdný
+     * dropdown (např. čerstvý setup bez faktur).
+     *
+     * @return array{invoices: list<int>, purchase_invoices: list<int>, combined: list<int>}
+     */
+    public function years(Request $request, Response $response): Response
+    {
+        $sid = (int) $request->getAttribute(SupplierScopeMiddleware::ATTR_CURRENT_ID, 0);
+        if ($sid === 0) {
+            return Json::ok($response, ['invoices' => [], 'purchase_invoices' => [], 'combined' => []]);
+        }
+
+        $pdo = $this->db->pdo();
+
+        $invStmt = $pdo->prepare(
+            'SELECT DISTINCT YEAR(issue_date) AS y FROM invoices WHERE supplier_id = ? ORDER BY y DESC'
+        );
+        $invStmt->execute([$sid]);
+        $invYears = array_map(static fn ($v) => (int) $v, $invStmt->fetchAll(\PDO::FETCH_COLUMN));
+
+        $purStmt = $pdo->prepare(
+            'SELECT DISTINCT YEAR(issue_date) AS y FROM purchase_invoices WHERE supplier_id = ? ORDER BY y DESC'
+        );
+        $purStmt->execute([$sid]);
+        $purYears = array_map(static fn ($v) => (int) $v, $purStmt->fetchAll(\PDO::FETCH_COLUMN));
+
+        // Doplnit aktuální + minulý rok aby dropdown nikdy nebyl prázdný (fresh setup)
+        // a aby uživatel mohl vždy filtrovat na aktuální období i bez existujících dokladů.
+        $currentYear = (int) date('Y');
+        $combined = array_unique(array_merge($invYears, $purYears, [$currentYear, $currentYear - 1]));
+        rsort($combined);
+
+        return Json::ok($response, [
+            'invoices'          => $invYears,
+            'purchase_invoices' => $purYears,
+            'combined'          => array_values($combined),
+        ]);
+    }
+
     public function vatRates(Request $request, Response $response): Response
     {
         $q = $request->getQueryParams();

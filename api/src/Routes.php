@@ -169,6 +169,7 @@ final class Routes
         $app->get('/api/codebooks/currencies', [CodebookAction::class, 'currencies']);
         $app->get('/api/codebooks/vat-rates',  [CodebookAction::class, 'vatRates']);
         $app->get('/api/codebooks/units',      [CodebookAction::class, 'units']);
+        $app->get('/api/codebooks/years',      [CodebookAction::class, 'years']);
         $app->get('/api/codebooks/cnb-rate',   \MyInvoice\Action\Codebook\CnbRateAction::class);
 
         // Expense categories (pro rozpad nákladů v CRM dashboardu)

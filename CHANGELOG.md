@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fakturoid_access_token_enc`, `fakturoid_access_token_expires_at` pro
   OAuth2 flow vedle stávajících BasicAuth polí (migrace 0031).
 
+### Fixed (UI)
+
+- **Year dropdown hardcoded na posledních 5 let** (issue #33) — importovaná
+  historická data (5-10+ let z Fakturoid/iDoklad migrací) byla v UI
+  neviditelná, i když datová vrstva starší roky podporuje. Nový endpoint
+  `GET /api/codebooks/years` vrací distinct roky z `invoices` a
+  `purchase_invoices` aktuálního supplier; composable `useYearOptions()`
+  doplní aktuální + minulý rok (ať dropdown nikdy nebyl prázdný) a aktuálně
+  vybraný rok z URL (ať `?year=2018` byl v dropdownu i bez dat). Opraveno
+  na `/invoices`, `/purchase-invoices` a všech 5 reportech (DPH přiznání,
+  KH, Souhrnné hlášení, Kniha DPH, daň z příjmů).
+
 ## [4.1.0] — 2026-05-24
 
 Dvě regulační opravy DPH výkazů (issue #29, Pavel Třešňák) — reverse charge
