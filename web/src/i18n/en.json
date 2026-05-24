@@ -1077,6 +1077,8 @@
     "delete_confirm": "Really delete statement {name}? Its transactions and invoice matches will be removed; invoice paid status will remain (clear it manually if needed).",
     "delete_done": "Statement deleted.",
     "delete_failed": "Delete failed.",
+    "upload_batch_done": "Batch upload: {ok} imported, {dup} duplicates.",
+    "upload_batch_error": "Batch upload: {ok} imported, {dup} duplicates, {err} errors.",
     "scan_done": "Scan complete: found {scanned}, imported {imported}, duplicates {duplicate}, errors {errors}",
     "scan_failed": "Scan failed",
     "ignore_confirm": "Mark this transaction as Ignored?",

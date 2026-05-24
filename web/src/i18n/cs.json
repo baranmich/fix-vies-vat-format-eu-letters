@@ -1077,6 +1077,8 @@
     "delete_confirm": "Opravdu smazat výpis {name}? Smažou se i jeho transakce a párování s fakturami; status zaplacených faktur zůstane (případně ho zrušte ručně).",
     "delete_done": "Výpis smazán.",
     "delete_failed": "Smazání selhalo.",
+    "upload_batch_done": "Hromadný upload: {ok} importováno, {dup} duplicit.",
+    "upload_batch_error": "Hromadný upload: {ok} importováno, {dup} duplicit, {err} chyb.",
     "scan_done": "Skenování dokončeno: nalezeno {scanned}, importováno {imported}, duplicit {duplicate}, chyb {errors}",
     "scan_failed": "Skenování selhalo",
     "ignore_confirm": "Označit tuto transakci jako Ignorovanou?",

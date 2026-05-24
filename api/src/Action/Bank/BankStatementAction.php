@@ -289,8 +289,18 @@ final class BankStatementAction
         $id = (int) ($args['id'] ?? 0);
         $sid = SupplierGuard::currentId($request);
         // Normalize porovnání account_number — viz `list()` komentář.
+        // POZOR: explicit columns (ne `bs.*`) — file_content je MEDIUMBLOB se surovými
+        // CP1250 bajty GPC souboru a Json::ok() na něj padá s "Malformed UTF-8" když
+        // se to dostane do json_encode. Místo toho exposujeme jen `has_file` flag,
+        // bajty se stahují přes /download endpoint.
         $stmt = $this->db->pdo()->prepare(
-            "SELECT bs.* FROM bank_statements bs
+            "SELECT bs.id, bs.file_name, bs.file_hash, bs.account_number, bs.bank_code,
+                    bs.currency, bs.statement_number, bs.statement_date,
+                    bs.prev_balance, bs.curr_balance, bs.credit_total, bs.debit_total,
+                    bs.transaction_count, bs.matched_count,
+                    bs.imported_at, bs.imported_by,
+                    (bs.file_content IS NOT NULL) AS has_file
+               FROM bank_statements bs
               WHERE bs.id = ?
                 AND EXISTS (
                   SELECT 1 FROM currencies cur
@@ -321,6 +331,7 @@ final class BankStatementAction
             $t['matched_invoice_id'] = $t['matched_invoice_id'] !== null ? (int) $t['matched_invoice_id'] : null;
         }
         $s['id'] = (int) $s['id'];
+        $s['has_file'] = (bool) ($s['has_file'] ?? false);
         $s['transactions'] = $transactions;
         return Json::ok($response, $s);
     }

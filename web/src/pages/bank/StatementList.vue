@@ -55,23 +55,56 @@ async function onDelete(s: BankStatement, ev: MouseEvent) {
 
 async function onFileSelected(e: Event) {
   const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = Array.from(input.files ?? [])
+  if (files.length === 0) return
+
   uploading.value = true
   error.value = ''
-  try {
-    const r = await bankApi.upload(file)
-    lastResult.value = r
-    await load()
-    if (!r.duplicate) {
-      router.push(`/bank/${r.statement_id}`)
+  lastResult.value = null
+
+  // Backend přijímá jeden soubor per request — pro batch upload jen sekvenčně
+  // iterujeme. Sekvenčně (ne paralelně) kvůli `bank_statements.file_hash` dedup:
+  // pokud user nahrál stejný soubor 2× v jednom dropu, druhý vrátí
+  // `duplicate=true` až po commitu prvního. Sumarizovaný report v toast / banneru.
+  let okCount = 0
+  let duplicateCount = 0
+  let errorCount = 0
+  const errors: string[] = []
+  let lastNonDuplicate: ImportResult | null = null
+
+  for (const file of files) {
+    try {
+      const r = await bankApi.upload(file)
+      if (r.duplicate) {
+        duplicateCount++
+      } else {
+        okCount++
+        lastNonDuplicate = r
+      }
+    } catch (e) {
+      errorCount++
+      errors.push(`${file.name}: ${apiErrorMessage(e)}`)
     }
-  } catch (e: any) {
-    error.value = apiErrorMessage(e, 'Upload selhal')
-  } finally {
-    uploading.value = false
-    if (input) input.value = ''
   }
+
+  await load()
+
+  // Single-file mode: zachovat původní UX (redirect na detail nové faktury)
+  if (files.length === 1 && lastNonDuplicate) {
+    lastResult.value = lastNonDuplicate
+    router.push(`/bank/${lastNonDuplicate.statement_id}`)
+  } else {
+    // Batch mode: souhrnný report
+    if (errorCount > 0) {
+      error.value = t('bank.upload_batch_error', { ok: okCount, dup: duplicateCount, err: errorCount })
+        + (errors.length > 0 ? '\n' + errors.slice(0, 5).join('\n') : '')
+    } else if (okCount > 0 || duplicateCount > 0) {
+      toast.success(t('bank.upload_batch_done', { ok: okCount, dup: duplicateCount }))
+    }
+  }
+
+  uploading.value = false
+  if (input) input.value = ''
 }
 </script>
 
@@ -91,7 +124,7 @@ async function onFileSelected(e: Event) {
         <label class="cursor-pointer inline-flex items-center gap-1.5 h-9 px-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           {{ uploading ? '…' : t('bank.upload_gpc') }}
-          <input type="file" accept=".gpc,.txt,*/*" class="hidden" @change="onFileSelected" />
+          <input type="file" accept=".gpc,.txt,*/*" multiple class="hidden" @change="onFileSelected" />
         </label>
       </div>
     </div>
