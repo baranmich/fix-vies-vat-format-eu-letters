@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, RouterLink, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { bankApi, type BankStatementDetail, type BankTransaction } from '@/api/bank'
+import { bankApi, type BankStatementDetail, type BankTransaction, type MatchCandidate } from '@/api/bank'
 import { formatMoney, formatDate } from '@/composables/useFormat'
 import { useHotkey } from '@/composables/useHotkey'
 import { useToast } from '@/composables/useToast'
@@ -20,8 +20,12 @@ const statement = ref<BankStatementDetail | null>(null)
 const loading = ref(true)
 const rematching = ref(false)
 const matchingTx = ref<number | null>(null)
+const matchCtx = ref<BankTransaction | null>(null)
 const matchVarsymbol = ref<string>('')
 const matchError = ref<string>('')
+// Návrhy ke spárování dle částky ±14 dní (vydané i přijaté faktury).
+const matchCandidates = ref<MatchCandidate[]>([])
+const loadingCandidates = ref(false)
 
 // Vytvoření konceptu přijaté faktury z odchozí (záporné) platby.
 const createTx = ref<BankTransaction | null>(null)
@@ -82,9 +86,30 @@ function statusLabel(s: string): string {
 
 function startMatch(tx: BankTransaction) {
   matchingTx.value = tx.id
-  // Prefill VS z transakce — typicky uživatel jen klikne potvrdit
+  matchCtx.value = tx
+  // Prefill VS z transakce — ruční zadání zůstává jako druhá možnost
   matchVarsymbol.value = tx.variable_symbol || ''
   matchError.value = ''
+  // Návrhy dle částky ±14 dní (best-effort — když selže, ruční VS pořád funguje)
+  matchCandidates.value = []
+  loadingCandidates.value = true
+  bankApi.matchCandidates(tx.id)
+    .then(list => { if (matchingTx.value === tx.id) matchCandidates.value = list })
+    .catch(() => {})
+    .finally(() => { loadingCandidates.value = false })
+}
+
+async function confirmCandidate(c: MatchCandidate) {
+  if (!matchingTx.value) return
+  matchError.value = ''
+  try {
+    await bankApi.matchManual(matchingTx.value,
+      c.type === 'invoice' ? { invoiceId: c.id } : { purchaseInvoiceId: c.id })
+    matchingTx.value = null
+    await load()
+  } catch (e: any) {
+    matchError.value = apiErrorMessage(e, t('bank.match_failed'))
+  }
 }
 
 async function confirmMatch() {
@@ -325,27 +350,61 @@ async function rematchStatement() {
       </div>
     </div>
 
-    <!-- Manual match modal — párování přes variabilní symbol faktury -->
+    <!-- Manual match modal — návrhy dle částky + ruční VS jako druhá možnost -->
     <div v-if="matchingTx" class="fixed inset-0 bg-neutral-900/40 z-50 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-lg max-w-md w-full p-5">
-        <h3 class="text-lg font-semibold mb-3">{{ t('bank.manual_match_title') }}</h3>
-        <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank.invoice_vs') }}</label>
-        <input v-model="matchVarsymbol" type="text" inputmode="numeric"
-          placeholder="2603001" autofocus
-          @keyup.enter="confirmMatch"
-          class="w-full h-10 px-3 border border-neutral-300 rounded-md text-sm font-mono mb-2" />
-        <p class="text-xs text-neutral-500 mb-4">
-          {{ t('bank.vs_hint') }}
+        <h3 class="text-lg font-semibold mb-1">{{ t('bank.manual_match_title') }}</h3>
+        <p v-if="matchCtx" class="text-xs text-neutral-500 mb-3 font-mono">
+          {{ matchCtx.amount > 0 ? '+' : '' }}{{ formatMoney(matchCtx.amount, matchCtx.currency ?? statement.currency ?? 'CZK') }}
+          · {{ formatDate(matchCtx.posted_at) }}
+          <span v-if="matchCtx.counterparty_name" class="text-neutral-400"> · {{ matchCtx.counterparty_name }}</span>
         </p>
+
+        <!-- Návrhy ke spárování dle částky (±14 dní) -->
+        <div class="mb-4">
+          <div class="text-sm font-medium text-neutral-700 mb-1.5">{{ t('bank.candidates_title') }}</div>
+          <div v-if="loadingCandidates" class="text-xs text-neutral-500 py-2">{{ t('common.loading') }}</div>
+          <div v-else-if="matchCandidates.length === 0" class="text-xs text-neutral-400 py-2">{{ t('bank.no_candidates') }}</div>
+          <ul v-else class="border border-neutral-200 rounded-md divide-y divide-neutral-100 max-h-56 overflow-auto">
+            <li v-for="c in matchCandidates" :key="`${c.type}-${c.id}`">
+              <button type="button" @click="confirmCandidate(c)"
+                class="w-full text-left px-3 py-2 hover:bg-primary-50 flex items-center justify-between gap-2">
+                <span class="min-w-0">
+                  <span class="text-[10px] uppercase px-1.5 py-0.5 rounded font-semibold"
+                    :class="c.type === 'invoice' ? 'bg-success-50 text-success-600' : 'bg-warning-50 text-warning-600'">
+                    {{ c.type === 'invoice' ? t('bank.candidate_issued') : t('bank.candidate_purchase') }}
+                  </span>
+                  <span class="font-mono text-sm ml-1">{{ c.ref || `#${c.id}` }}</span>
+                  <span v-if="c.party" class="text-xs text-neutral-500 block truncate">{{ c.party }}</span>
+                </span>
+                <span class="text-right whitespace-nowrap shrink-0">
+                  <span class="font-mono text-sm">{{ formatMoney(c.amount, c.currency) }}</span>
+                  <span class="text-xs text-neutral-400 block">{{ formatDate(c.due_date || c.issue_date) }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Druhá možnost: ruční zadání VS -->
+        <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank.match_by_vs') }}</label>
+        <div class="flex gap-2 mb-1">
+          <input v-model="matchVarsymbol" type="text" inputmode="numeric"
+            placeholder="2603001"
+            @keyup.enter="confirmMatch"
+            class="flex-1 h-10 px-3 border border-neutral-300 rounded-md text-sm font-mono" />
+          <button @click="confirmMatch" :disabled="!matchVarsymbol.trim()"
+            class="cursor-pointer px-4 h-10 text-sm bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-medium rounded-md">
+            {{ t('bank.match') }}
+          </button>
+        </div>
+        <p class="text-xs text-neutral-500 mb-4">{{ t('bank.vs_hint') }}</p>
+
         <div v-if="matchError" class="rounded-md bg-danger-50 border border-danger-500/40 px-3 py-2 text-sm text-danger-500 mb-3">
           {{ matchError }}
         </div>
-        <div class="flex justify-end gap-2">
+        <div class="flex justify-end">
           <button @click="matchingTx = null" class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 rounded-md hover:bg-neutral-50">{{ t('common.cancel') }}</button>
-          <button @click="confirmMatch" :disabled="!matchVarsymbol.trim()"
-            class="cursor-pointer px-4 h-9 text-sm bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-300 text-white font-medium rounded-md">
-            {{ t('bank.match') }}
-          </button>
         </div>
       </div>
     </div>

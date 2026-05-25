@@ -42,6 +42,18 @@ export interface BankTransaction {
   matched_at: string | null
 }
 
+/** Kandidát na spárování dle částky + data (±14 dní) — vystavená i přijatá faktura. */
+export interface MatchCandidate {
+  type: 'invoice' | 'purchase_invoice'
+  id: number
+  ref: string | null
+  amount: number
+  issue_date: string
+  due_date: string | null
+  currency: string
+  party: string | null
+}
+
 export interface BankStatementDetail extends BankStatement {
   credit_total: number
   debit_total: number
@@ -65,6 +77,9 @@ export const bankApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data)
   },
+  matchCandidates: (txId: number) =>
+    api.get<{ candidates: MatchCandidate[] }>(`/bank-transactions/${txId}/match-candidates`)
+      .then(r => r.data.candidates),
   matchManual: (txId: number, ref: { invoiceId?: number; purchaseInvoiceId?: number; varsymbol?: string }) =>
     api.post<{ matched: true; paid_at?: string; purchase_invoice_id?: number }>(`/bank-transactions/${txId}/match`, {
       ...(ref.invoiceId ? { invoice_id: ref.invoiceId } : {}),

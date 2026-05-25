@@ -33,6 +33,11 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  */
 final class BankStatementAction
 {
+    /** Tolerance shody částky pro návrh kandidátů (měna faktury). */
+    private const CANDIDATE_AMOUNT_TOLERANCE = 1.0;
+    /** Okno ±N dní kolem data transakce (issue_date nebo due_date faktury). */
+    private const CANDIDATE_DAY_WINDOW = 14;
+
     public function __construct(
         private readonly Connection $db,
         private readonly StatementImporter $importer,
@@ -539,6 +544,91 @@ final class BankStatementAction
         );
         $stmt->execute([$txId, $sid]);
         return $stmt->fetchColumn() !== false;
+    }
+
+    /**
+     * Návrh faktur ke spárování dle částky + data (±14 dní), když transakce nemá
+     * VS nebo VS nesedí. Prohledá vystavené i přijaté faktury — kvůli dobropisům
+     * může příchozí platba patřit k přijaté faktuře a naopak, takže směr (znaménko)
+     * nefiltrujeme. Vrací seznam k výběru; ruční zadání VS zůstává druhou možností.
+     *
+     * GET /api/bank-transactions/{id}/match-candidates → { candidates: [...] }
+     */
+    public function matchCandidates(Request $request, Response $response, array $args): Response
+    {
+        $txId = (int) ($args['id'] ?? 0);
+        if (!$this->txBelongsToCurrentSupplier($request, $txId)) {
+            return Json::error($response, 'not_found', 'Transakce nenalezena.', 404);
+        }
+
+        $sid = SupplierGuard::currentId($request);
+        $pdo = $this->db->pdo();
+
+        $stmt = $pdo->prepare('SELECT amount, posted_at, currency FROM bank_transactions WHERE id = ?');
+        $stmt->execute([$txId]);
+        $tx = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
+        $amount = abs((float) ($tx['amount'] ?? 0));
+        $posted = (string) ($tx['posted_at'] ?? date('Y-m-d'));
+        $cur    = trim((string) ($tx['currency'] ?? ''));
+        if ($amount <= 0.0) {
+            return Json::ok($response, ['candidates' => []]);
+        }
+
+        $tol = self::CANDIDATE_AMOUNT_TOLERANCE;
+        $win = self::CANDIDATE_DAY_WINDOW;
+        // Currency-aware: amount_to_pay je v měně faktury, tx.amount v měně transakce.
+        // Filtrujeme jen když transakce měnu zná (jinak by se srovnávala jablka s hruškami).
+        $curFilter = $cur !== '' ? ' AND cur.code = ?' : '';
+
+        $issued = "SELECT 'invoice' AS mtype, i.id, i.varsymbol AS ref, i.amount_to_pay AS amount,
+                          i.issue_date, i.due_date, cur.code AS currency, c.company_name AS party
+                     FROM invoices i
+                     JOIN currencies cur ON cur.id = i.currency_id
+                     LEFT JOIN clients c ON c.id = i.client_id
+                    WHERE i.supplier_id = ?
+                      AND i.status IN ('issued','sent','reminded')
+                      AND i.invoice_type IN ('invoice','proforma','credit_note')
+                      AND ABS(i.amount_to_pay - ?) <= ?
+                      AND (ABS(DATEDIFF(i.due_date, ?)) <= ? OR ABS(DATEDIFF(i.issue_date, ?)) <= ?)"
+                  . $curFilter;
+
+        $purchase = "SELECT 'purchase_invoice' AS mtype, p.id,
+                            COALESCE(NULLIF(p.vendor_invoice_number,''), p.varsymbol) AS ref, p.amount_to_pay AS amount,
+                            p.issue_date, p.due_date, cur.code AS currency, c.company_name AS party
+                       FROM purchase_invoices p
+                       JOIN currencies cur ON cur.id = p.currency_id
+                       LEFT JOIN clients c ON c.id = p.vendor_id
+                      WHERE p.supplier_id = ?
+                        AND p.status IN ('received','booked')
+                        AND ABS(p.amount_to_pay - ?) <= ?
+                        AND (ABS(DATEDIFF(p.due_date, ?)) <= ? OR ABS(DATEDIFF(p.issue_date, ?)) <= ?)"
+                   . $curFilter;
+
+        // Nejlepší shoda částky první, pak nejnovější splatnost.
+        $sql = "SELECT * FROM ($issued UNION ALL $purchase) cand
+                 ORDER BY ABS(cand.amount - ?) ASC, cand.due_date DESC
+                 LIMIT 25";
+
+        $branch = $cur !== ''
+            ? [$sid, $amount, $tol, $posted, $win, $posted, $win, $cur]
+            : [$sid, $amount, $tol, $posted, $win, $posted, $win];
+        $params = array_merge($branch, $branch, [$amount]);
+
+        $q = $pdo->prepare($sql);
+        $q->execute($params);
+
+        $candidates = array_map(static fn (array $r): array => [
+            'type'       => $r['mtype'],
+            'id'         => (int) $r['id'],
+            'ref'        => ($r['ref'] ?? '') !== '' ? (string) $r['ref'] : null,
+            'amount'     => (float) $r['amount'],
+            'issue_date' => $r['issue_date'],
+            'due_date'   => $r['due_date'],
+            'currency'   => (string) $r['currency'],
+            'party'      => $r['party'] !== null ? (string) $r['party'] : null,
+        ], $q->fetchAll(\PDO::FETCH_ASSOC));
+
+        return Json::ok($response, ['candidates' => $candidates]);
     }
 
     public function manualMatch(Request $request, Response $response, array $args): Response
