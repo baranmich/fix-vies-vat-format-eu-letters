@@ -48,10 +48,15 @@ export interface MatchCandidate {
   id: number
   ref: string | null
   amount: number
+  currency: string
+  /** Částka přepočtená do měny transakce (jen u cross-currency, jinak null). */
+  converted_amount: number | null
+  converted_currency: string | null
   issue_date: string
   due_date: string | null
-  currency: string
   party: string | null
+  /** Faktura je už zaplacená — UI zobrazí varovný štítek (duplicitní/druhá platba). */
+  paid: boolean
 }
 
 export interface BankStatementDetail extends BankStatement {

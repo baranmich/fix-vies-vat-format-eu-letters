@@ -1134,6 +1134,7 @@
     "match_by_vs": "Nebo spárovat ručně dle VS",
     "candidate_issued": "Vydaná",
     "candidate_purchase": "Přijatá",
+    "candidate_paid": "Zaplaceno",
     "vs_hint": "Pokud transakce má VS, je tu předvyplněný. Můžeš ho upravit (např. když klient zadal špatný VS).",
     "import_duplicate": "Tento výpis už byl naimportován (statement #{id}).",
     "import_done": "Importováno: {transactions} transakcí, automaticky spárováno {matched}."

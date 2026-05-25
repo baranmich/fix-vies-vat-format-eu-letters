@@ -1134,6 +1134,7 @@
     "match_by_vs": "Or match manually by VS",
     "candidate_issued": "Issued",
     "candidate_purchase": "Received",
+    "candidate_paid": "Paid",
     "vs_hint": "If the transaction has a VS, it's prefilled. You can edit it (e.g. when the client entered the wrong VS).",
     "import_duplicate": "This statement has already been imported (statement #{id}).",
     "import_done": "Imported: {transactions} transactions, automatically matched {matched}."

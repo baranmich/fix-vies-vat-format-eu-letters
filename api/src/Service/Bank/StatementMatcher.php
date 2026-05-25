@@ -37,11 +37,42 @@ final class StatementMatcher
     private const EXACT_MATCH_TOLERANCE = 0.05;
     /** Tolerance pro auto_partial — vyšší rozdíly už se ručně rozeznají (splátka / přeplatek). */
     private const PARTIAL_MATCH_TOLERANCE = 1.0;
+    /** Účetní (tuzemská) měna — base částky, na kterou přepočítáváme cizoměnové faktury. */
+    private const LOCAL_CURRENCY = 'CZK';
+    /** Relativní tolerance pro cross-currency shodu (tuzemská platba cizoměnové faktury).
+     *  Banka si na převodu bere spread klidně ~2 % a kurz se za pár dní pohne — 4 %
+     *  dává rezervu, aby přepočet přes kurz faktury reálně sednul. */
+    private const FX_MATCH_TOLERANCE_PCT = 0.04;
 
     public function __construct(
         private readonly Connection $db,
         private readonly FinalFromProformaCreator $finalCreator,
     ) {}
+
+    /**
+     * Očekávaná částka faktury vyjádřená v měně transakce + tolerance (exact, partial).
+     * Vrací null, když měny nejdou spolehlivě porovnat (cizoměnový účet × jiná měna faktury
+     * — bez kurzu transakce neumíme převést; raději nepárovat než špatně).
+     *
+     * @return array{expected: float, exact: float, partial: float}|null
+     */
+    private function expectedMatch(float $invoiceAmount, string $invoiceCcy, float $rate, ?string $txCurrency): ?array
+    {
+        // Neznámá měna transakce (legacy výpisy) nebo shodná měna → přímé porovnání.
+        if ($txCurrency === null || strtoupper($txCurrency) === strtoupper($invoiceCcy)) {
+            return ['expected' => $invoiceAmount, 'exact' => self::EXACT_MATCH_TOLERANCE, 'partial' => self::PARTIAL_MATCH_TOLERANCE];
+        }
+        // Tuzemská platba cizoměnové faktury → přepočet kurzem faktury (CZK = částka × kurz).
+        // Relativní tolerance kvůli kurzovému driftu; partial tier zde nemá smysl (= exact).
+        if (strtoupper($txCurrency) === self::LOCAL_CURRENCY) {
+            $r = $rate > 0 ? $rate : 1.0;
+            $czk = $invoiceAmount * $r;
+            $tol = max(self::EXACT_MATCH_TOLERANCE, $czk * self::FX_MATCH_TOLERANCE_PCT);
+            return ['expected' => $czk, 'exact' => $tol, 'partial' => $tol];
+        }
+        // Cizoměnový účet × jiná měna faktury (např. EUR výpis × CZK/USD faktura) — skip.
+        return null;
+    }
 
     public function match(int $transactionId): array
     {
@@ -122,36 +153,34 @@ final class StatementMatcher
         // za zaplacenou ručně (ať ve výpisu nevisí unmatched). Status/paid_at v tom případě
         // ponecháme — netouchujeme stav, který uživatel nastavil ručně.
         // Proformu povolujeme — zaplacená proforma se označí paid a navíc vytvoří DRAFT finální faktury.
-        // Currency-aware match: pokud tx má currency, najdeme jen fakturu se shodnou
-        // měnou. Bez tohohle guardu by EUR výpis na 1000 EUR napároval CZK fakturu
-        // na 1000 Kč (stejný VS+amount, ale měnově totální nesmysl).
-        $sql = "SELECT i.id, i.varsymbol, i.amount_to_pay, i.status, i.invoice_type, cur.code AS currency
+        // Currency-aware match: fakturu hledáme jen dle VS (ne dle měny), částku pak
+        // porovnáváme v měně transakce — u cizoměnové faktury placené z CZK účtu přes
+        // kurz faktury (viz expectedMatch). Nebezpečný případ (EUR výpis × CZK faktura
+        // stejného VS+amount) expectedMatch vrátí null → zůstane unmatched.
+        $sql = "SELECT i.id, i.varsymbol, i.amount_to_pay, i.exchange_rate, i.status, i.invoice_type, cur.code AS currency
                   FROM invoices i
                   JOIN currencies cur ON cur.id = i.currency_id
                  WHERE i.supplier_id = ?
                    AND i.varsymbol = ?
                    AND i.status IN ('issued', 'sent', 'reminded', 'paid')
-                   AND i.invoice_type IN ('invoice', 'proforma')";
-        $params = [$supplierId, $vs];
-        if ($txCurrency !== null) {
-            $sql .= ' AND cur.code = ?';
-            $params[] = $txCurrency;
-        }
-        $sql .= ' LIMIT 1';
+                   AND i.invoice_type IN ('invoice', 'proforma')
+                 LIMIT 1";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute([$supplierId, $vs]);
         $inv = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$inv) {
-            return [
-                'status' => 'unmatched',
-                'reason' => $txCurrency !== null ? 'no_invoice_with_vs_and_currency' : 'no_invoice_with_vs',
-                'tx_currency' => $txCurrency,
-            ];
+            return ['status' => 'unmatched', 'reason' => 'no_invoice_with_vs', 'tx_currency' => $txCurrency];
+        }
+
+        $m = $this->expectedMatch((float) $inv['amount_to_pay'], (string) $inv['currency'], (float) ($inv['exchange_rate'] ?: 0), $txCurrency);
+        if ($m === null) {
+            return ['status' => 'unmatched', 'reason' => 'currency_mismatch',
+                    'tx_currency' => $txCurrency, 'invoice_currency' => $inv['currency']];
         }
 
         $alreadyPaid = ($inv['status'] === 'paid');
-        $diff = abs($amount - (float) $inv['amount_to_pay']);
-        if ($diff <= self::EXACT_MATCH_TOLERANCE) {
+        $diff = abs($amount - $m['expected']);
+        if ($diff <= $m['exact']) {
             // Exact match — pokud faktura ještě není paid, označit ji a (u proformy) vyrobit final draft.
             // Pro již ručně paid fakturu jen navážeme transakci (status/paid_at netknuté).
             $pdo->beginTransaction();
@@ -186,7 +215,7 @@ final class StatementMatcher
             }
             return $result;
         }
-        if ($diff <= self::PARTIAL_MATCH_TOLERANCE) {
+        if ($diff <= $m['partial']) {
             // Partial match — flag, ale nepaint paid (uživatel rozhodne)
             $pdo->prepare(
                 "UPDATE bank_transactions
@@ -196,7 +225,7 @@ final class StatementMatcher
             return ['status' => 'auto_partial', 'invoice_id' => (int) $inv['id'], 'diff' => $diff];
         }
 
-        return ['status' => 'unmatched', 'reason' => 'amount_mismatch', 'expected' => $inv['amount_to_pay'], 'got' => $amount];
+        return ['status' => 'unmatched', 'reason' => 'amount_mismatch', 'expected' => $m['expected'], 'got' => $amount];
     }
 
     /**
@@ -218,32 +247,29 @@ final class StatementMatcher
         // platit pod naším PF-... i pod původním číslem dodavatele.
         $sql = "SELECT pi.id, pi.varsymbol, pi.vendor_invoice_number,
                        COALESCE(pi.amount_to_pay, pi.total_with_vat, 0) AS amount_to_pay,
-                       pi.status, cur.code AS currency
+                       pi.exchange_rate, pi.status, cur.code AS currency
                   FROM purchase_invoices pi
              LEFT JOIN currencies cur ON cur.id = pi.currency_id
                  WHERE pi.supplier_id = ?
                    AND (pi.varsymbol = ? OR pi.vendor_invoice_number = ?)
-                   AND pi.status IN ('received', 'booked', 'paid')";
-        $params = [$supplierId, $vs, $vs];
-        if ($txCurrency !== null) {
-            $sql .= ' AND cur.code = ?';
-            $params[] = $txCurrency;
-        }
-        $sql .= ' LIMIT 1';
+                   AND pi.status IN ('received', 'booked', 'paid')
+                 LIMIT 1";
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute([$supplierId, $vs, $vs]);
         $pi = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$pi) {
-            return [
-                'status' => 'unmatched',
-                'reason' => $txCurrency !== null ? 'no_purchase_with_vs_and_currency' : 'no_purchase_with_vs',
-                'tx_currency' => $txCurrency,
-            ];
+            return ['status' => 'unmatched', 'reason' => 'no_purchase_with_vs', 'tx_currency' => $txCurrency];
+        }
+
+        $m = $this->expectedMatch((float) $pi['amount_to_pay'], (string) ($pi['currency'] ?? self::LOCAL_CURRENCY), (float) ($pi['exchange_rate'] ?: 0), $txCurrency);
+        if ($m === null) {
+            return ['status' => 'unmatched', 'reason' => 'currency_mismatch_purchase',
+                    'tx_currency' => $txCurrency, 'invoice_currency' => $pi['currency']];
         }
 
         $alreadyPaid = ($pi['status'] === 'paid');
-        $diff = abs($absAmount - (float) $pi['amount_to_pay']);
-        if ($diff <= self::EXACT_MATCH_TOLERANCE) {
+        $diff = abs($absAmount - $m['expected']);
+        if ($diff <= $m['exact']) {
             $pdo->beginTransaction();
             try {
                 if (!$alreadyPaid) {
@@ -275,7 +301,7 @@ final class StatementMatcher
             }
             return $result;
         }
-        if ($diff <= self::PARTIAL_MATCH_TOLERANCE) {
+        if ($diff <= $m['partial']) {
             // Partial: zaznam do payment_matches + status na tx, ať UI vidí link
             // (předtím tady byl jen `return` bez zápisu — transakce zůstávaly
             // unmatched, partial match se v UI nikdy nezobrazil).
@@ -304,7 +330,7 @@ final class StatementMatcher
                 'got' => $absAmount,
             ];
         }
-        return ['status' => 'unmatched', 'reason' => 'amount_mismatch_purchase', 'expected' => $pi['amount_to_pay'], 'got' => $absAmount];
+        return ['status' => 'unmatched', 'reason' => 'amount_mismatch_purchase', 'expected' => $m['expected'], 'got' => $absAmount];
     }
 
     /**
@@ -317,25 +343,23 @@ final class StatementMatcher
      */
     private function matchPurchaseFuzzy(\PDO $pdo, int $supplierId, float $absAmount, string $cpName, string $postedAt, int $transactionId, ?string $txCurrency): array
     {
+        // Měnu nefiltrujeme v SQL — částku porovnáváme přes expectedMatch (cizoměnová
+        // faktura placená kartou z CZK účtu se přepočte kurzem faktury).
         $sql = "SELECT pi.id, COALESCE(pi.amount_to_pay, pi.total_with_vat, 0) AS amount_to_pay,
-                       c.company_name AS vendor_name, cur.code AS currency
+                       pi.exchange_rate, c.company_name AS vendor_name, cur.code AS currency
                   FROM purchase_invoices pi
                   JOIN clients c ON c.id = pi.vendor_id
              LEFT JOIN currencies cur ON cur.id = pi.currency_id
                  WHERE pi.supplier_id = ?
                    AND pi.status IN ('received', 'booked')";
-        $params = [$supplierId];
-        if ($txCurrency !== null) {
-            $sql .= ' AND cur.code = ?';
-            $params[] = $txCurrency;
-        }
         $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+        $stmt->execute([$supplierId]);
 
         $similar = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            if (abs($absAmount - (float) $r['amount_to_pay']) > self::EXACT_MATCH_TOLERANCE) {
-                continue; // částka musí sedět
+            $m = $this->expectedMatch((float) $r['amount_to_pay'], (string) ($r['currency'] ?? self::LOCAL_CURRENCY), (float) ($r['exchange_rate'] ?: 0), $txCurrency);
+            if ($m === null || abs($absAmount - $m['expected']) > $m['exact']) {
+                continue; // částka (po přepočtu) musí sedět
             }
             if ($this->nameSimilarity($cpName, (string) $r['vendor_name']) > 0.0) {
                 $similar[] = $r;

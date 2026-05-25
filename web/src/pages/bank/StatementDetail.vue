@@ -374,11 +374,17 @@ async function rematchStatement() {
                     :class="c.type === 'invoice' ? 'bg-success-50 text-success-600' : 'bg-warning-50 text-warning-600'">
                     {{ c.type === 'invoice' ? t('bank.candidate_issued') : t('bank.candidate_purchase') }}
                   </span>
+                  <span v-if="c.paid" class="text-[10px] uppercase px-1.5 py-0.5 rounded font-semibold bg-neutral-200 text-neutral-600 ml-1">
+                    {{ t('bank.candidate_paid') }}
+                  </span>
                   <span class="font-mono text-sm ml-1">{{ c.ref || `#${c.id}` }}</span>
                   <span v-if="c.party" class="text-xs text-neutral-500 block truncate">{{ c.party }}</span>
                 </span>
                 <span class="text-right whitespace-nowrap shrink-0">
                   <span class="font-mono text-sm">{{ formatMoney(c.amount, c.currency) }}</span>
+                  <span v-if="c.converted_amount != null" class="text-xs text-neutral-400 block">
+                    ≈ {{ formatMoney(c.converted_amount, c.converted_currency || 'CZK') }}
+                  </span>
                   <span class="text-xs text-neutral-400 block">{{ formatDate(c.due_date || c.issue_date) }}</span>
                 </span>
               </button>
