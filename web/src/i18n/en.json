@@ -1650,6 +1650,8 @@
       "revenue_hint": "From issued invoices (CZK) in the year",
       "costs_orientacni": "Costs (orientational)",
       "costs_hint": "From received invoices (CZK)",
+      "vat_base_excl": "excl. VAT (VAT payer)",
+      "vat_base_incl": "incl. VAT (non-payer)",
       "profit_orientacni": "Profit (orientational)",
       "profit_hint": "Revenue − costs (NOT accounting)",
       "deadline_hint": "by 1.4. of year+1 (FO without accountant)",

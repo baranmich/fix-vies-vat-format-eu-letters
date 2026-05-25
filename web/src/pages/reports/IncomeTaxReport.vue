@@ -101,14 +101,20 @@ onMounted(loadPreview)
           <div class="text-xl font-bold font-mono text-neutral-900">
             {{ formatMoney(preview.summary.revenue_orientacni, 'CZK') }}
           </div>
-          <div class="text-xs text-neutral-500 mt-1">{{ t('reports.income_tax.revenue_hint') }}</div>
+          <div class="text-xs text-neutral-500 mt-1">
+            {{ t('reports.income_tax.revenue_hint') }} ·
+            {{ preview.summary.is_vat_payer ? t('reports.income_tax.vat_base_excl') : t('reports.income_tax.vat_base_incl') }}
+          </div>
         </div>
         <div class="bg-white border border-neutral-200 rounded-lg shadow-sm p-5">
           <div class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-1">{{ t('reports.income_tax.costs_orientacni') }}</div>
           <div class="text-xl font-bold font-mono text-neutral-900">
             {{ formatMoney(preview.summary.costs_orientacni, 'CZK') }}
           </div>
-          <div class="text-xs text-neutral-500 mt-1">{{ t('reports.income_tax.costs_hint') }}</div>
+          <div class="text-xs text-neutral-500 mt-1">
+            {{ t('reports.income_tax.costs_hint') }} ·
+            {{ preview.summary.is_vat_payer ? t('reports.income_tax.vat_base_excl') : t('reports.income_tax.vat_base_incl') }}
+          </div>
         </div>
         <div class="bg-white border border-neutral-200 rounded-lg shadow-sm p-5">
           <div class="text-xs uppercase tracking-wide text-neutral-500 font-medium mb-1">{{ t('reports.income_tax.profit_orientacni') }}</div>

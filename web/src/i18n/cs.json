@@ -1650,6 +1650,8 @@
       "revenue_hint": "Z vydaných faktur (CZK) za daný rok",
       "costs_orientacni": "Náklady (orientačně)",
       "costs_hint": "Z přijatých faktur (CZK)",
+      "vat_base_excl": "bez DPH (plátce DPH)",
+      "vat_base_incl": "vč. DPH (neplátce)",
       "profit_orientacni": "Hospodářský výsledek (orientačně)",
       "profit_hint": "Tržby − náklady (NE účetní)",
       "deadline_hint": "do 1.4. roku +1 (pro FO bez účetní)",

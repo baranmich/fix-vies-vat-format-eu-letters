@@ -171,6 +171,7 @@ export const reportsApi = {
         profit_orientacni: number
         submission_deadline: string
         currency: string
+        is_vat_payer: boolean
       }
       warnings: string[]
     }>('/reports/income-tax/preview', { params: { year, type } }).then(r => r.data),

@@ -46,7 +46,8 @@ final class IncomeTaxBuilder
         $warnings[] = '⚠ Tento výkaz je POUZE foundation — chybí účetní data (odpisy, ' .
                       'mzdy, vedlejší výdaje). Doplňte ve spolupráci s účetní/poradcem.';
 
-        $totals = $this->loadYearTotals($supplierId, $year);
+        $isVatPayer = (bool) ($supplier['is_vat_payer'] ?? false);
+        $totals = $this->loadYearTotals($supplierId, $year, $isVatPayer);
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->preserveWhiteSpace = false;
@@ -114,22 +115,33 @@ final class IncomeTaxBuilder
                 'profit_orientacni'  => round($totals['revenue'] - $totals['costs'], 2),
                 'submission_deadline' => sprintf('%04d-04-01', $year + 1),  // do 1.4. následujícího roku
                 'currency'          => 'CZK',
+                'is_vat_payer'      => $isVatPayer,  // true → částky bez DPH, false → vč. DPH
             ],
             'warnings' => $warnings,
         ];
     }
 
     /**
+     * Tržby a náklady za rok pro orientační hospodářský výsledek.
+     *
+     * Pro plátce DPH (is_vat_payer) je DPH průběžná položka vypořádaná zvlášť
+     * přiznáním k DPH — do základu daně z příjmů nevstupuje, proto bereme částky
+     * bez DPH (`total_without_vat`). Pro neplátce je DPH součástí ceny a odečíst
+     * ji nelze, proto bereme částky včetně DPH (`total_with_vat`). Stejný vzor jako
+     * StatsRecomputer / migrace 0023_revenue_vat_aware.
+     *
      * @return array{revenue: float, costs: float}
      */
-    private function loadYearTotals(int $supplierId, int $year): array
+    private function loadYearTotals(int $supplierId, int $year, bool $isVatPayer): array
     {
         $start = sprintf('%04d-01-01', $year);
         $end   = sprintf('%04d-12-31', $year);
 
+        $amount = $isVatPayer ? 'total_without_vat' : 'total_with_vat';
+
         // Revenue z vydaných (CZK only — pro DPFO/DPPO výkazy)
         $stmt = $this->db->pdo()->prepare(
-            "SELECT SUM(COALESCE(i.total_with_vat, 0)) AS total
+            "SELECT SUM(COALESCE(i.{$amount}, 0)) AS total
                FROM invoices i
           LEFT JOIN currencies c ON c.id = i.currency_id
               WHERE i.supplier_id = ?
@@ -143,7 +155,7 @@ final class IncomeTaxBuilder
 
         // Costs z přijatých
         $stmt = $this->db->pdo()->prepare(
-            "SELECT SUM(COALESCE(pi.total_with_vat, 0)) AS total
+            "SELECT SUM(COALESCE(pi.{$amount}, 0)) AS total
                FROM purchase_invoices pi
           LEFT JOIN currencies c ON c.id = pi.currency_id
               WHERE pi.supplier_id = ?
@@ -178,7 +190,7 @@ final class IncomeTaxBuilder
         $stmt = $this->db->pdo()->prepare(
             "SELECT s.id, s.company_name, s.street, s.city, s.zip,
                     COALESCE(c.iso2, 'CZ') AS country_iso2,
-                    s.ic, s.dic, s.taxpayer_type, s.financial_office_code,
+                    s.ic, s.dic, s.taxpayer_type, s.is_vat_payer, s.financial_office_code,
                     s.workplace_code, s.data_box_type, s.data_box_id
                FROM supplier s
           LEFT JOIN countries c ON c.id = s.country_id
