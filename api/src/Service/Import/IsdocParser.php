@@ -99,7 +99,17 @@ final class IsdocParser
             $rate = (float) $rateRaw;
         }
 
-        $reverseCharge = strtolower($this->text($xpath, 'i:VATApplicable', $root)) === 'false';
+        // Reverse charge (přenesená daň. povinnost) = ISDOC <LocalReverseChargeFlag>true</…>
+        // na úrovni TaxTotal/TaxSubTotal/TaxCategory. POZOR: <VATApplicable>false</…>
+        // NEZNAMENÁ reverse charge — to je neplátce DPH / plnění mimo DPH (např. faktura
+        // z iDokladu od neplátce, issue #41). RC proto čteme výhradně z LocalReverseChargeFlag.
+        $reverseCharge = false;
+        foreach ($xpath->query('.//i:LocalReverseChargeFlag', $root) ?: [] as $flagEl) {
+            if (strtolower(trim($flagEl->textContent)) === 'true') {
+                $reverseCharge = true;
+                break;
+            }
+        }
 
         // Klient: AccountingCustomerParty/Party
         $partyEl = $xpath->query('i:AccountingCustomerParty/i:Party', $root)->item(0);

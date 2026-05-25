@@ -186,11 +186,9 @@ final class PohodaXmlExporter
             $partner->appendChild($address);
             $hdr->appendChild($partner);
 
-            // Reverse charge
-            if (!empty($invoice['reverse_charge'])) {
-                $this->el($dom, $hdr, self::NS_INV, 'inv:isExecuted', 'true'); // přenesená DPH
-                $this->el($dom, $hdr, self::NS_INV, 'inv:isDeliveryAddress', 'false');
-            }
+            // Reverse charge (přenesená daň. povinnost) je vyjádřen přes <inv:classificationVAT>
+            // = PNAR (viz classifyVat). <inv:isExecuted> se zde NEPOUŽÍVÁ — je to posting
+            // příznak („zlikvidováno"), ne reverse charge (issue #41).
 
             $inv->appendChild($hdr);
 

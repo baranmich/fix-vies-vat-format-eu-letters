@@ -186,7 +186,12 @@ final class IsdocExporter
         if (!empty($invoice['tax_date'])) {
             $this->el($dom, $root, 'TaxPointDate', (string) $invoice['tax_date']);
         }
-        $this->el($dom, $root, 'VATApplicable', empty($invoice['reverse_charge']) ? 'true' : 'false');
+        // VATApplicable = je dodavatel plátce DPH? NEodvozovat z reverse_charge —
+        // reverse charge je plátcovský režim a značí se <LocalReverseChargeFlag> v TaxCategory
+        // (viz níže). Neplátce → false; plátce (vč. reverse charge) → true. Default true (legacy).
+        $supplier = $this->resolveSupplier($invoice);
+        $isVatPayer = !isset($supplier['is_vat_payer']) || !empty($supplier['is_vat_payer']);
+        $this->el($dom, $root, 'VATApplicable', $isVatPayer ? 'true' : 'false');
         // ElectronicPossibilityAgreementReference je povinný (minOccurs=1) — pokud
         // dodavatel nemá explicitní souhlasový dokument, posíláme prázdný string.
         $this->el($dom, $root, 'ElectronicPossibilityAgreementReference', '');
@@ -200,8 +205,7 @@ final class IsdocExporter
         $this->el($dom, $root, 'CurrRate', number_format($rate, 6, '.', ''));
         $this->el($dom, $root, 'RefCurrRate', '1');
 
-        // Supplier (snapshot first, then live)
-        $supplier = $this->resolveSupplier($invoice);
+        // Supplier (snapshot first, then live) — $supplier už vyřešen výše u VATApplicable
         $supParty = $dom->createElementNS(self::NS, 'AccountingSupplierParty');
         $supParty->appendChild($this->buildParty($dom, $supplier));
         $root->appendChild($supParty);
@@ -299,6 +303,11 @@ final class IsdocExporter
             $cat = $dom->createElementNS(self::NS, 'TaxCategory');
             $this->el($dom, $cat, 'Percent', $this->fmt($rate));
             $this->el($dom, $cat, 'TaxScheme', 'VAT');
+            // Tuzemský reverse charge — sekvence dle XSD: Percent, TaxScheme?, VATApplicable?,
+            // LocalReverseChargeFlag. (VATApplicable na úrovni TaxCategory vynecháváme.)
+            if (!empty($invoice['reverse_charge'])) {
+                $this->el($dom, $cat, 'LocalReverseChargeFlag', 'true');
+            }
             $sub->appendChild($cat);
             $taxTotal->appendChild($sub);
         }

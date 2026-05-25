@@ -106,7 +106,11 @@ final class PohodaXmlParser
         $taxDate   = $this->text($xpath, 'inv:dateTax', $hdr) ?: null;
         $dueDate   = $this->text($xpath, 'inv:dateDue', $hdr) ?: $issueDate;
 
-        $reverseCharge = strtolower($this->text($xpath, 'inv:isExecuted', $hdr)) === 'true';
+        // Reverse charge (přenesená daň. povinnost) = Pohoda <inv:classificationVAT> kód PDP
+        // (Pohoda: PN*, náš export: PNAR). <inv:isExecuted> je posting příznak („zlikvidováno"),
+        // NE reverse charge (issue #41). textContent zahrne i vnořené <typ:ids>.
+        $vatClass = strtoupper(trim($this->text($xpath, 'inv:classificationVAT', $hdr)));
+        $reverseCharge = str_starts_with($vatClass, 'PN');
         $noteAbove = $this->text($xpath, 'inv:text', $hdr) ?: null;
         // Pohoda může mít inv:numberOrder (číslo objednávky odběratele) nebo inv:contract/typ:ids
         $projectNumber = $this->text($xpath, 'inv:numberOrder', $hdr) ?: null;

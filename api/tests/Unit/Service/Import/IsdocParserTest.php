@@ -149,15 +149,32 @@ XML;
         self::assertSame('credit_note', $result['invoices'][0]['invoice_type']);
     }
 
-    public function testReverseChargeFlag(): void
+    public function testReverseChargeFromLocalReverseChargeFlag(): void
     {
+        // Reverse charge se čte z <LocalReverseChargeFlag>, ne z <VATApplicable>.
+        $xml = str_replace(
+            '<LocalCurrencyCode>CZK</LocalCurrencyCode>',
+            '<LocalCurrencyCode>CZK</LocalCurrencyCode>'
+            . '<TaxTotal><TaxSubTotal><TaxCategory>'
+            . '<LocalReverseChargeFlag>true</LocalReverseChargeFlag>'
+            . '</TaxCategory></TaxSubTotal></TaxTotal>',
+            $this->minimalIsdoc()
+        );
+        $result = $this->parser->parse($xml);
+        self::assertTrue($result['invoices'][0]['reverse_charge']);
+    }
+
+    public function testVatApplicableFalseIsNotReverseCharge(): void
+    {
+        // issue #41: VATApplicable=false = neplátce DPH / plnění mimo DPH (typicky
+        // faktura z iDokladu od neplátce) — NENÍ to reverse charge.
         $xml = str_replace(
             '<LocalCurrencyCode>CZK</LocalCurrencyCode>',
             '<VATApplicable>false</VATApplicable><LocalCurrencyCode>CZK</LocalCurrencyCode>',
             $this->minimalIsdoc()
         );
         $result = $this->parser->parse($xml);
-        self::assertTrue($result['invoices'][0]['reverse_charge']);
+        self::assertFalse($result['invoices'][0]['reverse_charge']);
     }
 
     // ─── Round-trip se schema-validním ISDOC 6.0.2 (od v3.6.2) ──────────────
