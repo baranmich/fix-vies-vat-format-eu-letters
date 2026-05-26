@@ -112,6 +112,10 @@ final class RecurringTemplateRepository
 
         $limitSql = $perPage > 0 ? ' LIMIT ? OFFSET ?' : '';
 
+        // Součet faktury šablony (base + DPH, per-line rounding jako InvoiceCalculator),
+        // respektuje reverse_charge. Korelovaný subselect přes položky šablony.
+        $totalExpr = self::TEMPLATE_TOTAL_SQL;
+
         $sql = "SELECT t.id, t.supplier_id, t.client_id, t.project_id, t.name,
                        t.frequency, t.day_of_month, t.end_of_month,
                        t.anchor_date, t.end_date, t.next_run_date, t.last_run_date,
@@ -122,7 +126,8 @@ final class RecurringTemplateRepository
                        c.company_name AS client_company_name,
                        p.name AS project_name,
                        cur.code AS currency,
-                       (SELECT COUNT(*) FROM invoices iv WHERE iv.recurring_template_id = t.id) AS invoices_generated_count
+                       (SELECT COUNT(*) FROM invoices iv WHERE iv.recurring_template_id = t.id) AS invoices_generated_count,
+                       $totalExpr AS total_with_vat
                   FROM recurring_invoice_templates t
                   JOIN clients c ON c.id = t.client_id
              LEFT JOIN projects p ON p.id = t.project_id
@@ -141,6 +146,22 @@ final class RecurringTemplateRepository
         $stmt->execute();
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Součet částek per měna přes CELOU filtrovanou množinu (ne jen aktuální stránku) —
+        // pro souhrn v hlavičce. CZK přepočet řeší Action (potřebuje kurzový service).
+        $totStmt = $this->db->pdo()->prepare(
+            "SELECT cur.code AS currency, COALESCE(SUM($totalExpr), 0) AS total
+               FROM recurring_invoice_templates t
+               JOIN currencies cur ON cur.id = t.currency_id
+              WHERE $whereSql
+              GROUP BY cur.code
+              ORDER BY total DESC"
+        );
+        $totStmt->execute($params);
+        $totalsByCurrency = array_map(
+            fn ($r) => ['currency' => (string) $r['currency'], 'total' => (float) $r['total']],
+            $totStmt->fetchAll(PDO::FETCH_ASSOC)
+        );
+
         return [
             'data' => array_map([$this, 'cast'], $rows),
             'meta' => [
@@ -154,9 +175,24 @@ final class RecurringTemplateRepository
                     'paused'  => (int) $statusCounts['paused'],
                     'expired' => (int) $statusCounts['expired'],
                 ],
+                'totals_by_currency' => $totalsByCurrency,
             ],
         ];
     }
+
+    /**
+     * SQL výraz: součet faktury šablony `t` (base + DPH, per-line rounding,
+     * respektuje t.reverse_charge). Použit v list() pro per-řádek i agregaci.
+     */
+    private const TEMPLATE_TOTAL_SQL =
+        "(SELECT COALESCE(SUM(
+                    ROUND(ri.quantity * ri.unit_price_without_vat, 2)
+                  + CASE WHEN t.reverse_charge = 1 THEN 0
+                         ELSE ROUND(ROUND(ri.quantity * ri.unit_price_without_vat, 2) * vr.rate_percent / 100, 2) END
+                 ), 0)
+            FROM recurring_invoice_template_items ri
+            JOIN vat_rates vr ON vr.id = ri.vat_rate_id
+           WHERE ri.template_id = t.id)";
 
     /**
      * Načte šablony, u kterých má dnes cron něco udělat — jsou aktivní a jejich
@@ -457,6 +493,9 @@ final class RecurringTemplateRepository
         }
         if (array_key_exists('invoices_generated_count', $row)) {
             $row['invoices_generated_count'] = (int) $row['invoices_generated_count'];
+        }
+        if (array_key_exists('total_with_vat', $row)) {
+            $row['total_with_vat'] = (float) $row['total_with_vat'];
         }
         return $row;
     }

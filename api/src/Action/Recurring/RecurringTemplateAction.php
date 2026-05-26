@@ -42,6 +42,7 @@ final class RecurringTemplateAction
         private readonly Connection $db,
         private readonly InvoiceRepository $invoices,
         private readonly Config $config,
+        private readonly \MyInvoice\Service\Currency\CnbExchangeRateClient $cnb,
     ) {}
 
     public function list(Request $request, Response $response): Response
@@ -56,8 +57,45 @@ final class RecurringTemplateAction
         $default = (int) $this->config->get('pagination.recurring_per_page', 50);
         $perPage = min(200, max(5, (int) ($q['per_page'] ?? $default)));
 
-        // Repository teď vrací ['data' => ..., 'meta' => ...] — předáme to přímo dál.
-        return Json::ok($response, $this->repo->list($filters, $page, $perPage));
+        $result = $this->repo->list($filters, $page, $perPage);
+        // Souhrn částek do hlavičky: per měna z repo + přepočet na CZK (dnešní ČNB kurz)
+        // pokud je víc měn. Počítá se přes celou filtrovanou množinu (ne jen stránku).
+        $result['meta']['summary'] = $this->buildSummary($result['meta']['totals_by_currency'] ?? []);
+        return Json::ok($response, $result);
+    }
+
+    /**
+     * @param list<array{currency:string,total:float}> $byCurrency
+     * @return array{by_currency:list<array{currency:string,total:float}>, multi_currency:bool, total_czk:float, rates_complete:bool}
+     */
+    private function buildSummary(array $byCurrency): array
+    {
+        $today = new \DateTimeImmutable('today');
+        $totalCzk = 0.0;
+        $ratesComplete = true;
+        foreach ($byCurrency as $row) {
+            $code = strtoupper((string) $row['currency']);
+            $amount = (float) $row['total'];
+            if ($code === 'CZK') {
+                $totalCzk += $amount;
+                continue;
+            }
+            $rate = $this->cnb->getRate($code, $today);
+            if ($rate === null) {
+                $ratesComplete = false; // kurz nedostupný → do CZK součtu nezahrnuto
+                continue;
+            }
+            $totalCzk += $amount * (float) $rate['rate'];
+        }
+        return [
+            'by_currency'    => array_map(
+                fn ($r) => ['currency' => strtoupper((string) $r['currency']), 'total' => round((float) $r['total'], 2)],
+                $byCurrency
+            ),
+            'multi_currency' => count($byCurrency) > 1,
+            'total_czk'      => round($totalCzk, 2),
+            'rates_complete' => $ratesComplete,
+        ];
     }
 
     public function get(Request $request, Response $response, array $args): Response

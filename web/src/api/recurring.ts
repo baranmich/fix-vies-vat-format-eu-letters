@@ -54,6 +54,8 @@ export interface RecurringTemplate {
   status: RecurringStatus
 
   invoices_generated_count?: number
+  /** Součet faktury šablony (base + DPH, respektuje reverse_charge) — vrací list(). */
+  total_with_vat?: number
   created_at: string
   updated_at: string
 
@@ -115,12 +117,29 @@ export interface GeneratedInvoiceRow {
   currency: string
 }
 
+export interface RecurringCurrencyTotal {
+  currency: string
+  total: number
+}
+
+export interface RecurringSummary {
+  by_currency: RecurringCurrencyTotal[]
+  /** Je ve filtru více měn? Pak se v hlavičce zobrazí total_czk. */
+  multi_currency: boolean
+  /** Součet všech částek převedený na CZK (dnešní ČNB kurz). */
+  total_czk: number
+  /** false = u některé měny nebyl dostupný kurz (CZK součet je neúplný). */
+  rates_complete: boolean
+}
+
 export interface RecurringListMeta {
   total: number
   page: number
   per_page: number
   pages: number
   status_counts?: { all: number; active: number; paused: number; expired: number }
+  totals_by_currency?: RecurringCurrencyTotal[]
+  summary?: RecurringSummary
 }
 
 export interface RecurringListResponse {
