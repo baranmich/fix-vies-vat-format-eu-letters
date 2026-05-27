@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.4] — 2026-05-27
+
+Doladění brandingu faktur a e-mailů (issue #43): akcentová barva se propisuje konzistentně i do dosud napevno fialových prvků a přibyl přepínač pro zobrazení názvu firmy vedle loga v PDF.
+
+### Added
+
+- **Přepínač „Zobrazit i název firmy vedle loga"** (*Nastavení → Branding*, výchozí vypnuto, aktivní jen když je nahrané logo). Vhodné pro malá/symbolová loga bez názvu — vedle loga se v PDF faktuře vykreslí obchodní (nebo firemní) název. Varianty „jen logo" a „jen nadpis" zůstávají beze změny. (migrace `0058`)
+- **Světlé pozadí e-mailu dle akcentu** — hlavička i box s částkou v odchozích e-mailech (odeslání, schválení) přebírají světlou variantu akcentové barvy dodavatele (mix s bílou); bez brandingu zůstává původní odstín.
+
+### Changed
+
+- **Akcentová barva v PDF se propisuje i do světlých ploch a linek** — dosud napevno fialové prvky (pilulka ISDOC, podbarvení „K úhradě", tenké linky mezisoučtů/banky/QR) i levý okraj poznámek nyní respektují zvolený akcent. Sémantické barvy (dobropis červená, storno šedá, reverse-charge amber, „uhrazeno" zelená, šedý CZK přepočet) zůstávají záměrně neutrální.
+
+### Fixed
+
+- **Levý okraj poznámek v PDF** nedržel akcentovou barvu (zůstával fialový i při vlastním brandingu).
+
 ## [4.3.3] — 2026-05-27
 
 Daňové uplatnění u přijatých faktur (nárok na odpočet DPH + daňová uznatelnost) a interní číslování přijatých faktur dle daňového typu dokladu.
