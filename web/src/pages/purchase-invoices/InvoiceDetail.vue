@@ -343,6 +343,18 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
           <div v-if="invoice.exchange_rate" class="flex justify-between"><dt class="text-neutral-500">{{ t('purchase_invoice.fields.exchange_rate') }}</dt><dd class="font-mono">{{ invoice.exchange_rate }}</dd></div>
           <div v-if="invoice.exchange_rate_date" class="flex justify-between"><dt class="text-neutral-500">{{ t('purchase_invoice.fields.exchange_rate') }} ({{ t('purchase_invoice.fields.exchange_rate_source') }})</dt><dd class="font-mono text-xs">{{ formatDate(invoice.exchange_rate_date) }} / {{ invoice.exchange_rate_source }}</dd></div>
           <div v-if="invoice.reverse_charge" class="flex justify-between pt-2 border-t border-neutral-100"><dt class="text-neutral-500">{{ t('purchase_invoice.fields.reverse_charge') }}</dt><dd class="text-warning-600 font-medium">✓</dd></div>
+          <div class="flex justify-between pt-2 border-t border-neutral-100">
+            <dt class="text-neutral-500">{{ t('purchase_invoice.classification.vat_deduction') }}</dt>
+            <dd class="font-medium text-right" :class="invoice.vat_deduction === 'none' ? 'text-danger-600' : (invoice.vat_deduction === 'proportional' ? 'text-warning-600' : 'text-neutral-700')">
+              {{ t('purchase_invoice.vat_deduction.' + (invoice.vat_deduction || 'full')) }}<span v-if="invoice.vat_deduction === 'proportional'"> ({{ invoice.vat_deduction_percent }} %)</span>
+            </dd>
+          </div>
+          <div class="flex justify-between">
+            <dt class="text-neutral-500">{{ t('purchase_invoice.classification.tax_deductible') }}</dt>
+            <dd class="font-medium" :class="invoice.tax_deductible === false ? 'text-danger-600' : 'text-success-600'">
+              {{ invoice.tax_deductible === false ? t('common.no') : t('common.yes') }}
+            </dd>
+          </div>
         </dl>
       </div>
 

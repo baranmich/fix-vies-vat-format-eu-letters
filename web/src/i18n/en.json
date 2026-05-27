@@ -236,8 +236,19 @@
       "manage_categories": "Manage categories in Codebooks →",
       "vat_classification": "VAT classification (VAT return)",
       "no_vat_class": "(auto-default by rate)",
-      "vat_classification_hint": "If unset, system auto-assigns code by VAT rate (21%→40, 12%→41, 0%→42, reverse→5)."
+      "vat_classification_hint": "If unset, system auto-assigns code by VAT rate (21%→40, 12%→41, 0%→42, reverse→5).",
+      "vat_deduction": "VAT deduction entitlement",
+      "vat_deduction_hint": "“None” = invoice is excluded from the VAT ledger and DPHDP3/KH (accounting cost only). “Proportional” = partial deduction §75 — enter the % the deduction is reduced to.",
+      "tax_deductible": "Tax-deductible expense",
+      "tax_deductible_hint": "Affects income tax (DPFO/DPPO) only, not VAT. Turn off for non-deductible costs (entertainment…)."
     },
+    "vat_deduction": {
+      "full": "Full deduction",
+      "none": "No deduction",
+      "proportional": "Proportional (§75 partial)"
+    },
+    "vat_deduction_percent": "Deduction %",
+    "vat_deduction_percent_hint": "Percentage the VAT deduction is reduced to (e.g. car 70 % for business). The rest is a non-deductible part.",
     "force_edit": "Edit (force)",
     "force_delete": "Delete (force)",
     "force_edit_hint": "Admin only — edit received/booked/paid invoice. For paid invoices, beware: changing the amount may break matching with the bank transaction. Totals will be recomputed.",

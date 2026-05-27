@@ -236,8 +236,19 @@
       "manage_categories": "Spravovat kategorie v Číselnících →",
       "vat_classification": "VAT klasifikace (DPH přiznání)",
       "no_vat_class": "(auto-default podle sazby)",
-      "vat_classification_hint": "Pokud nevyberete, systém auto-přiřadí kód podle sazby DPH (21%→40, 12%→41, 0%→42, reverse→5)."
+      "vat_classification_hint": "Pokud nevyberete, systém auto-přiřadí kód podle sazby DPH (21%→40, 12%→41, 0%→42, reverse→5).",
+      "vat_deduction": "Nárok na odpočet DPH",
+      "vat_deduction_hint": "„Bez nároku“ = faktura nevstupuje do Knihy DPH ani DPHDP3/KH (jen účetní náklad). „Krácený“ = poměrný odpočet §75 — zadáš %, kterým se odpočet zkrátí.",
+      "tax_deductible": "Daňově uznatelný náklad",
+      "tax_deductible_hint": "Ovlivňuje jen daň z příjmů (DPFO/DPPO), ne DPH. Vypněte u neuznatelných nákladů (reprezentace…)."
     },
+    "vat_deduction": {
+      "full": "Plný nárok",
+      "none": "Bez nároku na odpočet",
+      "proportional": "Krácený nárok (poměrný §75)"
+    },
+    "vat_deduction_percent": "Odpočet %",
+    "vat_deduction_percent_hint": "Procento, kterým se zkrátí odpočet DPH (např. auto 70 % pro ekonomickou činnost). Zbytek je nedaňová část.",
     "force_edit": "Upravit (force)",
     "force_delete": "Smazat (force)",
     "force_edit_hint": "Admin only — úprava received/booked/paid faktury. U zaplacené pozor: po změně částky může přestat sedět s bankovní transakcí. Po uložení se přepočítají sumy.",

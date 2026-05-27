@@ -4192,6 +4192,25 @@ components:
         exchange_rate_date: { type: string, format: date, nullable: true }
         exchange_rate_source: { type: string, enum: [cnb, manual, idoklad, fakturoid] }
         reverse_charge: { type: boolean }
+        vat_deduction:
+          type: string
+          enum: [full, none, proportional]
+          default: full
+          description: |
+            Nárok na odpočet DPH. `none` = faktura NEvstupuje do Knihy DPH ani do
+            DPHDP3 / KH (jen účetní náklad). `proportional` = krácený / poměrný odpočet
+            (§75) — odpočet (základ i daň) se zkrátí o `vat_deduction_percent`.
+        vat_deduction_percent:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 100
+          default: 100
+          description: "Procento odpočtu při `vat_deduction='proportional'` (§75). Pro full/none se ignoruje (drží 100)."
+        tax_deductible:
+          type: boolean
+          default: true
+          description: "Daňová uznatelnost nákladu pro daň z příjmů (DPFO/DPPO); false = nezahrne se do nákladů. Nezávislé na DPH."
         is_fixed_asset:
           type: boolean
           default: false
@@ -4282,6 +4301,9 @@ components:
         exchange_rate_date: { type: string, format: date, nullable: true }
         exchange_rate_source: { type: string, enum: [cnb, manual, idoklad, fakturoid], default: cnb }
         reverse_charge: { type: boolean, default: false }
+        vat_deduction: { type: string, enum: [full, none, proportional], default: full, description: "Nárok na odpočet DPH (none → mimo Knihu DPH/DPHDP3/KH; proportional → krácený §75 dle vat_deduction_percent)." }
+        vat_deduction_percent: { type: number, format: float, minimum: 0, maximum: 100, default: 100, description: "Procento odpočtu pro proportional (§75)." }
+        tax_deductible: { type: boolean, default: true, description: "Daňová uznatelnost pro daň z příjmů (nezávislé na DPH)." }
         is_fixed_asset:
           type: boolean
           default: false

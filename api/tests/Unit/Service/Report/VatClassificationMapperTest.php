@@ -214,6 +214,9 @@ final class VatClassificationMapperTest extends TestCase
             reverse_charge INTEGER NOT NULL DEFAULT 0,
             status TEXT NOT NULL DEFAULT 'received',
             vat_classification_code TEXT NULL,
+            vat_deduction TEXT NOT NULL DEFAULT 'full',
+            vat_deduction_percent REAL NOT NULL DEFAULT 100,
+            tax_deductible INTEGER NOT NULL DEFAULT 1,
             is_fixed_asset INTEGER NOT NULL DEFAULT 0,
             total_with_vat REAL NOT NULL DEFAULT 0
         )");

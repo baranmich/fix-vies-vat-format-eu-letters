@@ -10,6 +10,7 @@ import {
   type PurchaseInvoiceItem,
   type PurchaseDocumentKind,
   type ExchangeRateSource,
+  type VatDeduction,
 } from '@/api/purchaseInvoices'
 import { codebooksApi, type VatRate, type Currency, type Unit } from '@/api/codebooks'
 import { expenseCategoriesApi, type ExpenseCategory } from '@/api/expenseCategories'
@@ -61,6 +62,9 @@ const form = ref<{
   exchange_rate_source: ExchangeRateSource
   reverse_charge: boolean
   is_fixed_asset: boolean
+  vat_deduction: VatDeduction
+  vat_deduction_percent: number
+  tax_deductible: boolean
   language: 'cs' | 'en'
   note_above_items: string
   note_below_items: string
@@ -89,6 +93,9 @@ const form = ref<{
   exchange_rate_source: 'cnb',
   reverse_charge: false,
   is_fixed_asset: false,
+  vat_deduction: 'full',
+  vat_deduction_percent: 100,
+  tax_deductible: true,
   language: 'cs',
   note_above_items: '',
   note_below_items: '',
@@ -288,6 +295,9 @@ function populate(inv: PurchaseInvoice) {
   form.value.exchange_rate_source = inv.exchange_rate_source
   form.value.reverse_charge = inv.reverse_charge
   form.value.is_fixed_asset = (inv as { is_fixed_asset?: boolean }).is_fixed_asset ?? false
+  form.value.vat_deduction = inv.vat_deduction ?? 'full'
+  form.value.vat_deduction_percent = inv.vat_deduction_percent ?? 100
+  form.value.tax_deductible = inv.tax_deductible ?? true
   form.value.language = inv.language
   form.value.note_above_items = inv.note_above_items || ''
   form.value.note_below_items = inv.note_below_items || ''
@@ -440,6 +450,9 @@ async function submit() {
       exchange_rate_source: form.value.exchange_rate_source,
       reverse_charge: form.value.reverse_charge,
       is_fixed_asset: form.value.is_fixed_asset,
+      vat_deduction: form.value.vat_deduction,
+      vat_deduction_percent: form.value.vat_deduction_percent,
+      tax_deductible: form.value.tax_deductible,
       language: form.value.language,
       note_above_items: form.value.note_above_items || null,
       note_below_items: form.value.note_below_items || null,
@@ -903,6 +916,30 @@ function fieldErr(key: string): string | null {
               </option>
             </select>
             <p class="text-xs text-neutral-500 mt-1">{{ t('purchase_invoice.classification.vat_classification_hint') }}</p>
+          </div>
+          <div>
+            <label class="block text-xs text-neutral-500 mb-1">{{ t('purchase_invoice.classification.vat_deduction') }}</label>
+            <select v-model="form.vat_deduction" class="w-full h-10 px-3 border border-neutral-300 rounded-md bg-white text-sm">
+              <option value="full">{{ t('purchase_invoice.vat_deduction.full') }}</option>
+              <option value="none">{{ t('purchase_invoice.vat_deduction.none') }}</option>
+              <option value="proportional">{{ t('purchase_invoice.vat_deduction.proportional') }}</option>
+            </select>
+            <template v-if="form.vat_deduction === 'proportional'">
+              <div class="mt-2 flex items-center gap-2">
+                <input v-model.number="form.vat_deduction_percent" type="number" min="0" max="100" step="0.01"
+                  class="w-24 h-10 px-3 border border-neutral-300 rounded-md bg-white text-sm text-right" />
+                <span class="text-sm text-neutral-600">% {{ t('purchase_invoice.vat_deduction_percent') }}</span>
+              </div>
+              <p class="text-xs text-neutral-500 mt-1">{{ t('purchase_invoice.vat_deduction_percent_hint') }}</p>
+            </template>
+            <p v-else class="text-xs text-neutral-500 mt-1">{{ t('purchase_invoice.classification.vat_deduction_hint') }}</p>
+          </div>
+          <div>
+            <label class="inline-flex items-center gap-2 text-sm mt-6" :title="t('purchase_invoice.classification.tax_deductible_hint')">
+              <input type="checkbox" v-model="form.tax_deductible" class="rounded" />
+              {{ t('purchase_invoice.classification.tax_deductible') }}
+            </label>
+            <p class="text-xs text-neutral-500 mt-1">{{ t('purchase_invoice.classification.tax_deductible_hint') }}</p>
           </div>
         </div>
       </div>

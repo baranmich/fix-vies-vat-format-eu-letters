@@ -6,6 +6,7 @@ namespace MyInvoice\Tests\Integration\Report;
 
 use MyInvoice\Bootstrap;
 use MyInvoice\Infrastructure\Database\Connection;
+use MyInvoice\Repository\PurchaseInvoiceRepository;
 use MyInvoice\Service\Report\DphBookBuilder;
 use MyInvoice\Service\Report\DphPriznaniBuilder;
 use MyInvoice\Service\Report\KontrolniHlaseniBuilder;
@@ -38,6 +39,7 @@ final class KhDphTaxScenariosTest extends TestCase
     private KontrolniHlaseniBuilder $kh;
     private DphPriznaniBuilder $dph;
     private DphBookBuilder $book;
+    private PurchaseInvoiceRepository $piRepo;
 
     private int $supplierId = 0;
     private int $currencyId = 0;
@@ -66,6 +68,7 @@ final class KhDphTaxScenariosTest extends TestCase
             $this->kh   = $container->get(KontrolniHlaseniBuilder::class);
             $this->dph  = $container->get(DphPriznaniBuilder::class);
             $this->book = $container->get(DphBookBuilder::class);
+            $this->piRepo = $container->get(PurchaseInvoiceRepository::class);
         } catch (\Throwable $e) {
             $this->markTestSkipped('DI nedostupné: ' . $e->getMessage());
         }
@@ -265,6 +268,87 @@ final class KhDphTaxScenariosTest extends TestCase
         $this->assertEqualsWithDelta(-3150, $book['totals']['vat_balance'], 0.01);
     }
 
+    /**
+     * Regrese: faktura s vat_deduction='none' (bez nároku na odpočet — reprezentace
+     * apod.) NESMÍ vstoupit do Knihy DPH, DPHDP3 (ř.40) ani KH. Plný nárok ano.
+     */
+    public function testVatDeductionNoneExcludedFromVatReports(): void
+    {
+        $d = fn (int $day) => sprintf('%04d-%02d-%02d', self::YEAR, self::MONTH, $day);
+        $vend = $this->client('Dodavatel reprez.', $this->czId, 'CZ33333339', vendor: true);
+
+        // Plný nárok → vstupuje do DPH (10000 základ, 2100 DPH)
+        $this->purchase('P-2099-100', $vend, '40', false, 'invoice', $d(10), $d(10), [[10000, 2100, 21]]);
+        // Bez nároku (reprezentace) → NESMÍ se objevit nikde v DPH evidenci
+        $this->purchase('P-2099-101', $vend, '40', false, 'invoice', $d(11), $d(11), [[7000, 1470, 21]], vatDeduction: 'none');
+
+        // Kniha DPH — ř.40 jen 10000, none vyloučeno
+        $book = $this->book->build($this->supplierId, self::YEAR, self::MONTH);
+        $sec = [];
+        foreach ($book['sections'] as $s) $sec[$s['key']] = $s;
+        $this->assertArrayHasKey('15.040', $sec);
+        $this->assertEqualsWithDelta(10000, $sec['15.040']['subtotal_base'], 0.01,
+            'Faktura bez nároku (none) nesmí vstoupit do Knihy DPH');
+        $this->assertEqualsWithDelta(2100, $book['totals']['received']['vat'], 0.01,
+            'Odpočet jen z plného nároku (2100), ne z none (1470)');
+
+        // DPHDP3 ř.40 odpočet jen 10000
+        $dphXml = new \SimpleXMLElement($this->dph->build($this->supplierId, self::YEAR, self::MONTH, 'monthly')['xml']);
+        $this->assertSame('10000', (string) $dphXml->DPHDP3->Veta4['pln23'],
+            'ř.40 = jen plný nárok (none vyloučeno)');
+    }
+
+    /**
+     * §75 poměrný odpočet: vat_deduction='proportional' s percentem zkrátí
+     * odpočet (základ i daň) v Knize DPH i DPHDP3 (ř.40) o dané procento.
+     */
+    public function testProportionalDeductionScalesByPercent(): void
+    {
+        $d = fn (int $day) => sprintf('%04d-%02d-%02d', self::YEAR, self::MONTH, $day);
+        $vend = $this->client('Dodavatel auto', $this->czId, 'CZ44444448', vendor: true);
+
+        // Auto 70 % business: základ 10000, DPH 2100 → odpočet jen 7000 / 1470
+        $this->purchase('P-2099-200', $vend, '40', false, 'invoice', $d(10), $d(10), [[10000, 2100, 21]],
+            vatDeduction: 'proportional', vatDeductionPercent: 70.0);
+
+        $book = $this->book->build($this->supplierId, self::YEAR, self::MONTH);
+        $sec = [];
+        foreach ($book['sections'] as $s) $sec[$s['key']] = $s;
+        $this->assertArrayHasKey('15.040', $sec);
+        $this->assertEqualsWithDelta(7000, $sec['15.040']['subtotal_base'], 0.01, 'ř.40 základ × 70 %');
+        $this->assertEqualsWithDelta(1470, $sec['15.040']['subtotal_vat'], 0.01, 'ř.40 daň × 70 %');
+
+        $dphXml = new \SimpleXMLElement($this->dph->build($this->supplierId, self::YEAR, self::MONTH, 'monthly')['xml']);
+        $this->assertSame('7000', (string) $dphXml->DPHDP3->Veta4['pln23'], 'DPHDP3 ř.40 = 7000 (70 %)');
+    }
+
+    /**
+     * Změna daňového uplatnění u už očíslované faktury přepíše PREFIX interního
+     * čísla (varsymbol) na nový typ a zachová číselnou řadu. Ruční číslo neměníme.
+     */
+    public function testReprefixVarsymbolOnTaxTreatmentChange(): void
+    {
+        $d = fn (int $day) => sprintf('%04d-%02d-%02d', self::YEAR, self::MONTH, $day);
+        $vend = $this->client('Dodavatel přečíslo', $this->czId, 'CZ55555556', vendor: true);
+
+        // Faktura bez nároku (none), ale s číslem PF (jako by byla původně plný nárok).
+        $this->purchase('REPFX-1', $vend, '40', false, 'invoice', $d(10), $d(10), [[1000, 210, 21]], vatDeduction: 'none');
+        $id = (int) end($this->purchaseIds);
+        $pdo = $this->db->pdo();
+        // none + neuznatelný (tax_deductible=0) → očekávaný prefix NN.
+        $pdo->prepare('UPDATE purchase_invoices SET varsymbol = ?, tax_deductible = 0 WHERE id = ?')->execute(['PF2099001', $id]);
+
+        $this->piRepo->reprefixVarsymbol($id, $this->supplierId);
+        $vs = (string) $pdo->query("SELECT varsymbol FROM purchase_invoices WHERE id = $id")->fetchColumn();
+        self::assertSame('NN2099001', $vs, 'none + neuznatelný → prefix NN, řada zachována');
+
+        // Ruční (cizí) číslo se NEpřepisuje.
+        $pdo->prepare('UPDATE purchase_invoices SET varsymbol = ? WHERE id = ?')->execute(['FAK-2099/7', $id]);
+        $this->piRepo->reprefixVarsymbol($id, $this->supplierId);
+        $vs2 = (string) $pdo->query("SELECT varsymbol FROM purchase_invoices WHERE id = $id")->fetchColumn();
+        self::assertSame('FAK-2099/7', $vs2, 'ruční číslo se nepřepisuje');
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private function countryId(string $iso2): int
@@ -313,7 +397,7 @@ final class KhDphTaxScenariosTest extends TestCase
     /**
      * @param list<array{0:float,1:float,2:float}> $items [base, vat, vat_rate_snapshot]
      */
-    private function purchase(string $number, int $vendorId, ?string $code, bool $rc, string $kind, string $issue, ?string $tax, array $items, bool $isFixedAsset = false): void
+    private function purchase(string $number, int $vendorId, ?string $code, bool $rc, string $kind, string $issue, ?string $tax, array $items, bool $isFixedAsset = false, string $vatDeduction = 'full', float $vatDeductionPercent = 100.0): void
     {
         [$base, $vat, $with] = $this->sumItems($items);
         $stmt = $this->db->pdo()->prepare(
@@ -321,12 +405,12 @@ final class KhDphTaxScenariosTest extends TestCase
                 (supplier_id, vendor_id, vendor_invoice_number, document_kind, issue_date, tax_date,
                  due_date, received_at, currency_id, reverse_charge, vendor_snapshot,
                  total_without_vat, total_vat, total_with_vat, status, vat_classification_code,
-                 is_fixed_asset, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "{}", ?, ?, ?, "received", ?, ?, ?)'
+                 is_fixed_asset, vat_deduction, vat_deduction_percent, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "{}", ?, ?, ?, "received", ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $this->supplierId, $vendorId, $number, $kind, $issue, $tax, $issue, $issue,
-            $this->currencyId, $rc ? 1 : 0, $base, $vat, $with, $code, $isFixedAsset ? 1 : 0, $this->userId,
+            $this->currencyId, $rc ? 1 : 0, $base, $vat, $with, $code, $isFixedAsset ? 1 : 0, $vatDeduction, $vatDeductionPercent, $this->userId,
         ]);
         $id = (int) $this->db->pdo()->lastInsertId();
         $this->purchaseIds[] = $id;

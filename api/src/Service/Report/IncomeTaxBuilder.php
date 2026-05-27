@@ -160,6 +160,7 @@ final class IncomeTaxBuilder
           LEFT JOIN currencies c ON c.id = pi.currency_id
               WHERE pi.supplier_id = ?
                 AND pi.status NOT IN ('draft', 'cancelled')
+                AND pi.tax_deductible = 1
                 AND COALESCE(c.code, 'CZK') = 'CZK'
                 AND GREATEST(pi.tax_date, pi.issue_date) BETWEEN ? AND ?"
         );

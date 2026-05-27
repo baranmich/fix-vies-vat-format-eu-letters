@@ -57,6 +57,9 @@ export interface VendorSnapshot {
   country_name_en?: string
 }
 
+/** Nárok na odpočet DPH: plný / bez nároku / krácený (poměrný §75, viz vat_deduction_percent). */
+export type VatDeduction = 'full' | 'none' | 'proportional'
+
 export interface PurchaseInvoice {
   id: number
   supplier_id: number
@@ -77,6 +80,12 @@ export interface PurchaseInvoice {
   exchange_rate_source: ExchangeRateSource
   reverse_charge: boolean
   is_fixed_asset: boolean
+  /** Nárok na odpočet DPH (full=plný, none=bez nároku → mimo DPH evidenci, proportional=krácený §75). */
+  vat_deduction: VatDeduction
+  /** Procento odpočtu při vat_deduction='proportional' (§75 poměrný; 0–100, default 100). */
+  vat_deduction_percent: number
+  /** Daňová uznatelnost nákladu pro daň z příjmů (DPFO/DPPO). */
+  tax_deductible: boolean
   language: 'cs' | 'en'
   note_above_items: string | null
   note_below_items: string | null
@@ -192,6 +201,9 @@ export interface PurchaseInvoicePayload {
   exchange_rate_source?: ExchangeRateSource
   reverse_charge?: boolean
   is_fixed_asset?: boolean
+  vat_deduction?: VatDeduction
+  vat_deduction_percent?: number
+  tax_deductible?: boolean
   language?: 'cs' | 'en'
   note_above_items?: string | null
   note_below_items?: string | null

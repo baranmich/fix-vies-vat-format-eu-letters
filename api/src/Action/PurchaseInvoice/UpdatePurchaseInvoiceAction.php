@@ -92,6 +92,9 @@ final class UpdatePurchaseInvoiceAction
         if (array_key_exists('rounding', $body)) {
             $this->repo->setRounding($id, $supplierId, (float) $body['rounding']);
         }
+        // Změna daňového uplatnění u už očíslované faktury → přepiš prefix interního
+        // čísla na odpovídající typ (PF2602001 → NN2602001). No-op u draftu / ručních čísel.
+        $this->repo->reprefixVarsymbol($id, $supplierId);
 
         $ip = $this->ipMatcher->clientIpFromRequest($request->getServerParams());
         $action = ($existing['status'] !== 'draft') ? 'purchase_invoice.force_updated' : 'purchase_invoice.updated';

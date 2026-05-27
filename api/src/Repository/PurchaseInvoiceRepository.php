@@ -15,7 +15,8 @@ use PDO;
  *   - vendor_id místo client_id (vendor = protistrana, řádek v `clients` s is_vendor=1)
  *   - status lifecycle: draft → received → booked → paid (+ cancelled)
  *   - žádný approval / sent / reminder flow
- *   - varsymbol generovaný z purchase_invoice_counters: PF-YYYYMM-NNNN
+ *   - varsymbol generovaný z purchase_invoice_counters: {PP}{YYMM}{CCC} (např.
+ *     PF2602001), kde PP dle daňového typu (PF/PN plný, KU/KN krácený, NU/NN bez nároku)
  *
  * Bezpečnostní pravidla:
  *   - Vždy filtrovat WHERE supplier_id = ? (tenant scope)
@@ -180,7 +181,7 @@ final class PurchaseInvoiceRepository
                        pi.total_without_vat, pi.total_vat, pi.total_with_vat,
                        pi.advance_paid_amount, pi.amount_to_pay,
                        pi.status, pi.booked_at, pi.paid_at, pi.cancelled_at,
-                       pi.extraction_warning,
+                       pi.extraction_warning, pi.vat_deduction, pi.vat_deduction_percent, pi.tax_deductible,
                        c.company_name AS vendor_company_name, c.ic AS vendor_ic,
                        DATE_FORMAT(pi.issue_date, '%Y-%m') AS month_bucket
                        {$selectTotal}
@@ -321,8 +322,8 @@ final class PurchaseInvoiceRepository
              advance_paid_amount,
              payment_currency_id, payment_exchange_rate,
              paid_amount_payment_ccy, paid_amount_invoice_ccy, exchange_diff_base,
-             status, vat_classification_code, is_fixed_asset, expense_category_id, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "draft", ?, ?, ?, ?)';
+             status, vat_classification_code, vat_deduction, vat_deduction_percent, tax_deductible, is_fixed_asset, expense_category_id, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "draft", ?, ?, ?, ?, ?, ?, ?)';
 
         $stmt = $pdo->prepare($sql);
         $stmt->execute([
@@ -354,6 +355,9 @@ final class PurchaseInvoiceRepository
             isset($data['paid_amount_invoice_ccy']) ? (float) $data['paid_amount_invoice_ccy'] : null,
             isset($data['exchange_diff_base']) ? (float) $data['exchange_diff_base'] : null,
             isset($data['vat_classification_code']) ? (string) $data['vat_classification_code'] : null,
+            in_array($data['vat_deduction'] ?? 'full', ['full', 'none', 'proportional'], true) ? (string) $data['vat_deduction'] : 'full',
+            max(0.0, min(100.0, (float) ($data['vat_deduction_percent'] ?? 100))),
+            (array_key_exists('tax_deductible', $data) && !$data['tax_deductible']) ? 0 : 1,
             !empty($data['is_fixed_asset']) ? 1 : 0,
             isset($data['expense_category_id']) && $data['expense_category_id'] ? (int) $data['expense_category_id'] : null,
             $userId,
@@ -400,7 +404,7 @@ final class PurchaseInvoiceRepository
                 advance_paid_amount = ?,
                 payment_currency_id = ?, payment_exchange_rate = ?,
                 paid_amount_payment_ccy = ?, paid_amount_invoice_ccy = ?, exchange_diff_base = ?,
-                vat_classification_code = ?, is_fixed_asset = ?, expense_category_id = ?'
+                vat_classification_code = ?, vat_deduction = ?, vat_deduction_percent = ?, tax_deductible = ?, is_fixed_asset = ?, expense_category_id = ?'
               . ($hasVarsymbol ? ', varsymbol = ?' : '')
               . ' WHERE id = ? AND supplier_id = ?';
 
@@ -427,6 +431,9 @@ final class PurchaseInvoiceRepository
             isset($data['paid_amount_invoice_ccy']) ? (float) $data['paid_amount_invoice_ccy'] : null,
             isset($data['exchange_diff_base']) ? (float) $data['exchange_diff_base'] : null,
             isset($data['vat_classification_code']) ? (string) $data['vat_classification_code'] : null,
+            in_array($data['vat_deduction'] ?? 'full', ['full', 'none', 'proportional'], true) ? (string) $data['vat_deduction'] : 'full',
+            max(0.0, min(100.0, (float) ($data['vat_deduction_percent'] ?? 100))),
+            (array_key_exists('tax_deductible', $data) && !$data['tax_deductible']) ? 0 : 1,
             !empty($data['is_fixed_asset']) ? 1 : 0,
             isset($data['expense_category_id']) && $data['expense_category_id'] ? (int) $data['expense_category_id'] : null,
         ];
@@ -606,16 +613,18 @@ final class PurchaseInvoiceRepository
     }
 
     /**
-     * Vygeneruje další varsymbol PF-YYYYMM-NNNN pro daný tenant + období.
+     * Vygeneruje další varsymbol {PP}{YYMM}{CCC} (např. PF2602001) pro tenant + období.
      * Atomicky inkrementuje counter (FOR UPDATE / INSERT … ON DUPLICATE KEY).
      */
-    public function nextVarsymbol(int $supplierId, ?string $period = null): string
+    public function nextVarsymbol(int $supplierId, ?string $period = null, string $prefix = 'PF'): string
     {
         $period = $period ?? date('Ym');
         $pdo = $this->db->pdo();
 
         // Atomický increment přes INSERT … ON DUPLICATE KEY UPDATE.
         // Pro MariaDB platí, že LAST_INSERT_ID(expr) vrátí nově nastavenou hodnotu.
+        // Counter je sdílený per (supplier, období) napříč prefixy — číslo je tedy
+        // souvislé přes všechny přijaté doklady období, prefix jen značí daňový typ.
         $stmt = $pdo->prepare(
             'INSERT INTO purchase_invoice_counters (supplier_id, period, last_number)
              VALUES (?, ?, 1)
@@ -625,7 +634,62 @@ final class PurchaseInvoiceRepository
         $n = (int) $pdo->lastInsertId();
         if ($n === 0) $n = 1;
 
-        return sprintf('PF-%s-%04d', $period, $n);
+        // Formát {PP}{YYMM}{CCC} bez oddělovačů, např. PF2602001. Counter key je
+        // YYYYMM (period), ve varsymbolu se používá jen dvojčíslí roku (YY).
+        // %03d = min. 3 místa; když by měsíc měl >999 dokladů, počítadlo přirozeně
+        // přeleze na 4+ místa (PF26021000…) — pořadí zůstane korektní.
+        $prefix = preg_match('/^[A-Z]{2}$/', $prefix) ? $prefix : 'PF';
+        return sprintf('%s%s%03d', $prefix, substr($period, 2, 4), $n);
+    }
+
+    /**
+     * Po změně daňového uplatnění (vat_deduction / tax_deductible) přepíše PREFIX
+     * auto-generovaného interního čísla na ten odpovídající novému typu — číselnou
+     * řadu (YYMM+CCC) ponechá. Např. PF2602001 → NN2602001.
+     *
+     * No-op pro: draft (bez varsymbolu), ručně zadaná / cizí čísla (nevypadají jako
+     * auto-generovaná) a když už prefix sedí. Pozná i starý formát PF-YYYYMM-NNNN.
+     */
+    public function reprefixVarsymbol(int $id, int $supplierId): void
+    {
+        $stmt = $this->db->pdo()->prepare(
+            'SELECT varsymbol, vat_deduction, tax_deductible FROM purchase_invoices WHERE id = ? AND supplier_id = ?'
+        );
+        $stmt->execute([$id, $supplierId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row === false) return;
+
+        $vs = (string) ($row['varsymbol'] ?? '');
+        if ($vs === '') return; // draft / bez čísla
+
+        $cur = substr($vs, 0, 2);
+        $rest = substr($vs, 2);
+        // Auto-číslo = známý prefix + buď nový formát (YYMMCCC… = ≥7 číslic),
+        // nebo starý PF-YYYYMM-NNNN. Cokoli jiného (ruční / cizí) neměníme.
+        $isAuto = in_array($cur, ['PF', 'PN', 'KU', 'KN', 'NU', 'NN'], true)
+            && (preg_match('/^\d{7,}$/', $rest) === 1 || preg_match('/^-\d{6}-\d+$/', $rest) === 1);
+        if (!$isAuto) return;
+
+        $expected = self::varsymbolPrefix((string) ($row['vat_deduction'] ?? 'full'), (bool) ($row['tax_deductible'] ?? 1));
+        if ($cur === $expected) return;
+
+        $this->db->pdo()->prepare('UPDATE purchase_invoices SET varsymbol = ? WHERE id = ? AND supplier_id = ?')
+            ->execute([$expected . $rest, $id, $supplierId]);
+    }
+
+    /**
+     * Prefix interního čísla přijaté faktury podle daňového typu:
+     *   plný nárok   → PF (uznatelný) / PN (neuznatelný)
+     *   krácený §75  → KU / KN
+     *   bez nároku   → NU / NN
+     */
+    public static function varsymbolPrefix(string $vatDeduction, bool $taxDeductible): string
+    {
+        return match ($vatDeduction) {
+            'none'         => $taxDeductible ? 'NU' : 'NN',
+            'proportional' => $taxDeductible ? 'KU' : 'KN',
+            default        => $taxDeductible ? 'PF' : 'PN',
+        };
     }
 
     /**
@@ -634,7 +698,7 @@ final class PurchaseInvoiceRepository
     public function ensureVarsymbol(int $id, int $supplierId): string
     {
         $pdo = $this->db->pdo();
-        $stmt = $pdo->prepare('SELECT varsymbol, issue_date FROM purchase_invoices WHERE id = ? AND supplier_id = ?');
+        $stmt = $pdo->prepare('SELECT varsymbol, issue_date, vat_deduction, tax_deductible FROM purchase_invoices WHERE id = ? AND supplier_id = ?');
         $stmt->execute([$id, $supplierId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($row === false) {
@@ -645,7 +709,8 @@ final class PurchaseInvoiceRepository
         }
 
         $period = date('Ym', strtotime((string) $row['issue_date']));
-        $varsymbol = $this->nextVarsymbol($supplierId, $period);
+        $prefix = self::varsymbolPrefix((string) ($row['vat_deduction'] ?? 'full'), (bool) ($row['tax_deductible'] ?? 1));
+        $varsymbol = $this->nextVarsymbol($supplierId, $period, $prefix);
 
         $pdo->prepare('UPDATE purchase_invoices SET varsymbol = ? WHERE id = ? AND supplier_id = ?')
             ->execute([$varsymbol, $id, $supplierId]);
@@ -805,6 +870,9 @@ final class PurchaseInvoiceRepository
         }
         $row['reverse_charge'] = isset($row['reverse_charge']) ? (bool) $row['reverse_charge'] : false;
         $row['is_fixed_asset'] = isset($row['is_fixed_asset']) ? (bool) $row['is_fixed_asset'] : false;
+        $row['tax_deductible'] = !array_key_exists('tax_deductible', $row) || (bool) $row['tax_deductible'];
+        $row['vat_deduction'] = (string) ($row['vat_deduction'] ?? 'full');
+        $row['vat_deduction_percent'] = isset($row['vat_deduction_percent']) ? (float) $row['vat_deduction_percent'] : 100.0;
         foreach ([
             'total_without_vat', 'total_vat', 'total_with_vat', 'rounding',
             'advance_paid_amount', 'amount_to_pay',

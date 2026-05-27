@@ -52,7 +52,7 @@ Limity:
 |---|---|
 | **Dodavatel** | Vyber z dropdownu (autocomplete). Pokud chybí, klikni „+ Vytvořit nového dodavatele" — využije ARES lookup podle IČO. |
 | **Číslo dokladu dodavatele** | Tak jak je vytištěno na originálu (např. `FA-2026-001`). Max 50 znaků. Unique per (dodavatel, datum vystavení) — nelze importovat 2× stejnou. |
-| **Naše interní číslo** | Volitelné. Pokud necháš prázdné, vygeneruje se automaticky `PF-YYYYMM-NNNN` při přechodu na stav Přijatá. |
+| **Naše interní číslo** | Volitelné. Pokud necháš prázdné, vygeneruje se automaticky `{PP}{YYMM}{CCC}` (např. `PF2602001`) při přechodu na stav Přijatá. Prefix `PP` odpovídá daňovému typu (viz 10.2.4): **PF/PN** plný nárok (uznatelný/ne), **KU/KN** krácený, **NU/NN** bez nároku. Počítadlo `CCC` je per měsíc (přeteče na 4+ místa nad 999 dokladů). |
 | **Typ dokladu** | Faktura / Doklad o úhradě / Dobropis / Záloha (pro filtrování v seznamu). |
 | **Datum vystavení** | Z faktury. |
 | **DUZP (datum uskutečnění zdanitelného plnění)** | Klíčové pro DPH období. Default = datum vystavení. |
@@ -75,7 +75,24 @@ Tlačítkem **+ Přidat položku** přidej řádek. Per řádek:
 
 Souhrn dole se přepočítá automaticky po každé změně.
 
-### 10.2.4 Platba v jiné měně (multi-currency)
+### 10.2.4 Daňová uznatelnost a nárok na odpočet
+
+V boxu **Klasifikace** jsou dva nezávislé příznaky řídící, jak faktura vstupuje do daňových výkazů:
+
+| Příznak | Možnosti | Co ovlivňuje |
+|---|---|---|
+| **Nárok na odpočet DPH** | Plný / Bez nároku / Krácený | DPH evidenci |
+| **Daňově uznatelný náklad** | ano / ne | daň z příjmů (DPFO/DPPO) |
+
+- **Nárok na odpočet DPH:**
+  - **Plný** (výchozí) — standardní odpočet, faktura jde do Knihy DPH, DPHDP3 (ř. 40–45) i Kontrolního hlášení.
+  - **Bez nároku** — faktura **vůbec nevstupuje** do DPH evidence (Kniha DPH, DPHDP3, KH); je to jen účetní náklad. Typicky reprezentace, osobní spotřeba.
+  - **Krácený (poměrný §75)** — odpočet jen v poměrné výši (např. auto 70 % pro ekonomickou činnost). Po výběru zadáš **Odpočet %** a o toto procento se zkrátí základ i daň odpočtu v Knize DPH a DPHDP3 (ř. 40–45); zbytek je nedaňová část.
+- **Daňově uznatelný náklad** — řídí pouze daň z příjmů: když je vypnuto, náklad se nezahrne do orientačního hospodářského výsledku (DPFO/DPPO). S DPH to nesouvisí (faktura může mít odpočitatelné DPH a být daňově neuznatelná, i naopak).
+
+Oba příznaky jsou vidět i v **detailu** přijaté faktury (box Měna/DPH).
+
+### 10.2.5 Platba v jiné měně (multi-currency)
 
 Klikni na **„Platba v jiné měně než měna faktury"** pokud máš tento scénář:
 
@@ -173,7 +190,7 @@ purchase (`<pur:purchase>` místo `<inv:invoice>`).
 
 V hlavním menu **Přijaté faktury → Exporty** vyber měsíc + formát:
 
-- **PDF ZIP** — archivované originální PDF od dodavatelů (faktura bez `pdf_path` se skipne s warningem).
+- **PDF ZIP** — preferuje archivovaný **originál** od dodavatele (`Prijata-{vs}-{vendor}.pdf`); pokud originál chybí, doplní se **naše rekonstrukce** z dat faktury (`…-rekonstrukce.pdf`, ať ji účetní pozná). Faktura se přeskočí jen když selže i rekonstrukce.
 - **ISDOC ZIP** — jeden `.isdoc` XML soubor za fakturu, sbaleno do ZIP.
 - **Pohoda XML** — sloučený `<dataPack>` se všemi fakturami za měsíc (přímý import do Pohody, direction = purchase).
 

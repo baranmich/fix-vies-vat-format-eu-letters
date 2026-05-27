@@ -125,7 +125,14 @@ final class VatLedgerService
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-    /** @return list<array<string,mixed>> */
+    /**
+     * Pozn.: faktury s `vat_deduction = 'none'` (bez nároku na odpočet — reprezentace,
+     * osobní spotřeba…) se do DPH evidence VŮBEC nezahrnují (ani Kniha DPH, ani DPHDP3,
+     * ani KH) — jsou jen účetní náklad. `proportional` (krácený nárok §76) zatím
+     * zahrnujeme jako plný nárok; aplikace koeficientu se řeší samostatně (TODO).
+     *
+     * @return list<array<string,mixed>>
+     */
     private function fetchPurchases(int $supplierId, string $start, string $end, bool $includeDrafts): array
     {
         $statusFilter = $includeDrafts ? "pi.status != 'cancelled'" : "pi.status NOT IN ('draft', 'cancelled')";
@@ -135,6 +142,7 @@ final class VatLedgerService
                    COALESCE(pi.tax_date, pi.issue_date) AS tax_date, pi.issue_date,
                    COALESCE(pi.exchange_rate, 1) AS exchange_rate, COALESCE(cur.code, 'CZK') AS currency,
                    pi.total_with_vat AS inv_total, pi.reverse_charge AS rc_flag,
+                   pi.vat_deduction, pi.vat_deduction_percent,
                    c.company_name AS counterparty_name, c.dic AS counterparty_dic,
                    co.iso2 AS country_iso2, COALESCE(co.is_eu, 0) AS country_is_eu,
                    (CASE WHEN pii.is_fixed_asset = 1 OR pi.is_fixed_asset = 1 THEN 1 ELSE 0 END) AS is_fixed_asset,
@@ -158,6 +166,7 @@ final class VatLedgerService
          LEFT JOIN currencies cur ON cur.id = pi.currency_id
              WHERE pi.supplier_id = ?
                AND {$statusFilter}
+               AND pi.vat_deduction <> 'none'
                AND COALESCE(pi.tax_date, pi.issue_date) BETWEEN ? AND ?
           ORDER BY COALESCE(pi.tax_date, pi.issue_date), pi.id, pii.id
         ");
@@ -184,6 +193,15 @@ final class VatLedgerService
         // RC samovyměření jen u přijatých plnění (vendor fakturuje bez DPH).
         if ($source === 'purchase' && $vatRaw == 0.0 && $isRc && $vatRate > 0) {
             $vatRaw = round($baseRaw * $vatRate / 100, 2);
+        }
+
+        // §75 poměrný odpočet — u přijatých s 'proportional' se odpočet (základ i daň)
+        // uplatní jen v poměrné výši (vat_deduction_percent). Zbytek je nedaňová část
+        // mimo DPH přiznání. 'full'/'none' se sem nedostanou (none je odfiltrováno v SQL).
+        if ($source === 'purchase' && ($r['vat_deduction'] ?? 'full') === 'proportional') {
+            $pct = max(0.0, min(100.0, (float) ($r['vat_deduction_percent'] ?? 100))) / 100.0;
+            $baseRaw = round($baseRaw * $pct, 2);
+            $vatRaw  = round($vatRaw * $pct, 2);
         }
 
         return [
