@@ -321,6 +321,8 @@
         </tr>
         {% endif %}
         {% endfor %}
+        {# Souhrn jen při více sazbách; u jediné sazby by jen zopakoval per-sazbové řádky výše #}
+        {% if invoice.vat_breakdown|length > 1 %}
         <tr class="subtotal">
           <td class="tot-label">{{ t('Celkem bez DPH', 'Total without VAT') }}</td>
           <td class="tot-num nowrap">{{ invoice.totals.without_vat|number_format(2, decimal_sep, thousand_sep) }} {{ invoice.currency }}</td>
@@ -329,6 +331,7 @@
           <td class="tot-label">{{ t('DPH celkem', 'Total VAT') }}</td>
           <td class="tot-num nowrap">{{ invoice.totals.vat|number_format(2, decimal_sep, thousand_sep) }} {{ invoice.currency }}</td>
         </tr>
+        {% endif %}
         {% endif %}
         <tr class="grand">
           <td class="tot-label">{{ t('Celkem', 'Total') }}</td>
@@ -383,6 +386,8 @@
   </tr>
   {% endif %}
   {% endfor %}
+  {# Souhrn jen při více sazbách; u jediné sazby by jen zopakoval per-sazbové řádky výše #}
+  {% if invoice.czk_recap.breakdown|length > 1 %}
   <tr class="subtotal">
     <td class="tot-label">{{ t('Celkem bez DPH', 'Total without VAT') }}</td>
     <td class="tot-num nowrap">{{ invoice.czk_recap.total_without_vat_czk|number_format(2, decimal_sep, thousand_sep) }} CZK</td>
@@ -391,6 +396,7 @@
     <td class="tot-label">{{ t('DPH celkem', 'Total VAT') }}</td>
     <td class="tot-num nowrap">{{ invoice.czk_recap.total_vat_czk|number_format(2, decimal_sep, thousand_sep) }} CZK</td>
   </tr>
+  {% endif %}
   {% endif %}
   <tr class="grand">
     <td class="tot-label">{{ t('Celkem', 'Total') }}</td>
