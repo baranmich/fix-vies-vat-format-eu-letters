@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.3] — 2026-05-27
+
+Daňové uplatnění u přijatých faktur (nárok na odpočet DPH + daňová uznatelnost) a interní číslování přijatých faktur dle daňového typu dokladu.
+
+### Added
+
+- **Nárok na odpočet DPH** u přijaté faktury (`vat_deduction`): **Plný** / **Bez nároku** / **Krácený (§75)**.
+  - *Bez nároku* — faktura **nevstupuje** do Knihy DPH ani do DPHDP3 / KH (jen účetní náklad — typicky reprezentace, osobní spotřeba).
+  - *Krácený (§75)* — zadáš **Odpočet %**, o které se zkrátí základ i daň odpočtu (např. auto 70 % pro ekonomickou činnost); zbytek je nedaňová část.
+- **Daňová uznatelnost nákladu** (`tax_deductible`) — nezávislý příznak; neuznatelný náklad se nezahrne do daně z příjmů (DPFO/DPPO). Na DPH nemá vliv (pojmy jsou ortogonální).
+- **Interní číslo přijaté faktury dle daňového typu** — formát `{PP}{YYMM}{CCC}` (např. `PF2602001`). Prefix: **PF/PN** plný nárok (uznatelný/neuznatelný), **KU/KN** krácený, **NU/NN** bez nároku. Počítadlo je per měsíc (nad 999 dokladů přirozeně přeteče na 4+ místa).
+- Oba příznaky jsou vidět v editoru i v detailu přijaté faktury.
+
+### Changed
+
+- **Změna daňového uplatnění** u už očíslované přijaté faktury **přepíše prefix** interního čísla na odpovídající typ (`PF2602001` → `NN2602001`); číselnou řadu i ručně zadaná čísla zachová.
+
 ## [4.3.2] — 2026-05-27
 
 Řazení seznamu pravidelných faktur, číslo účtu v názvu staženého PDF výpisu a aktualizace OpenAPI specifikace.
