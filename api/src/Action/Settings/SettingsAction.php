@@ -202,7 +202,7 @@ final class SettingsAction
             'email_branding_enabled', 'email_accent_color', 'pdf_logo_show_name',
             // Tax settings pro EPO výkazy (migrace 0038, fáze 6)
             'taxpayer_type', 'vat_period', 'financial_office_code', 'workplace_code',
-            'cz_nace_code', 'data_box_type', 'data_box_id',
+            'cz_nace_code', 'data_box_type', 'data_box_id', 'flat_tax_band',
             'sest_jmeno', 'sest_prijmeni', 'sest_telefon', 'sest_email', 'sest_funkce',
             // Doplňky pro DPH/KH XML VetaP (migrace 0043)
             'street_number_pop', 'street_number_orient',
@@ -217,6 +217,29 @@ final class SettingsAction
         if (array_key_exists('vat_period', $body) && $body['vat_period'] !== null
             && !in_array($body['vat_period'], ['monthly', 'quarterly'], true)) {
             return Json::error($response, 'validation_failed', "vat_period musí být 'monthly' nebo 'quarterly'.", 400);
+        }
+        // Paušální daň pásmo — enum + podmínka §7a ZDP: paušalista nesmí být plátce DPH.
+        if (array_key_exists('flat_tax_band', $body)) {
+            $band = trim((string) ($body['flat_tax_band'] ?? ''));
+            if ($band === '') { $band = 'none'; }
+            $body['flat_tax_band'] = $band;
+            if (!in_array($band, ['none', 'band1', 'band2', 'band3'], true)) {
+                return Json::error($response, 'validation_failed', "flat_tax_band musí být 'none', 'band1', 'band2' nebo 'band3'.", 400);
+            }
+            if ($band !== 'none') {
+                // Efektivní plátcovství DPH po této změně (z body, jinak ze současného stavu).
+                if (array_key_exists('is_vat_payer', $body)) {
+                    $vatPayer = (bool) $body['is_vat_payer'];
+                } else {
+                    $stmt = $this->db->pdo()->prepare('SELECT is_vat_payer FROM supplier WHERE id = ?');
+                    $stmt->execute([$id]);
+                    $vatPayer = (bool) $stmt->fetchColumn();
+                }
+                if ($vatPayer) {
+                    return Json::error($response, 'validation_failed',
+                        'Paušální daň lze zvolit jen pro neplátce DPH (§ 7a ZDP).', 422);
+                }
+            }
         }
         // Empty string → null pro tax fields (NULL = nevyplněno)
         foreach (['taxpayer_type', 'vat_period', 'financial_office_code', 'workplace_code',

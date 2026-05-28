@@ -245,6 +245,37 @@ const hasAnyData = computed(() =>
           </div>
         </div>
 
+        <!-- Paušální daň — limit příjmů pro zvolené pásmo (§ 7a ZDP) -->
+        <div v-if="summary.flat_tax_threshold && summary.flat_tax_threshold.applicable && summary.flat_tax_threshold.limit_czk"
+          class="bg-white border rounded-lg p-5 shadow-sm"
+          :class="summary.flat_tax_threshold.status === 'danger' ? 'border-danger-500/40 bg-danger-50/30'
+                : summary.flat_tax_threshold.status === 'warning' ? 'border-warning-500/50 bg-warning-50/30'
+                : 'border-neutral-200'">
+          <div class="text-xs uppercase tracking-wide text-neutral-500 mb-1">
+            {{ t('stats.flat_tax_title', { year: summary.flat_tax_threshold.year }) }}
+          </div>
+          <div class="text-2xl font-semibold text-neutral-900 font-mono">{{ formatMoney(summary.flat_tax_threshold.current_czk, 'CZK') }}</div>
+          <div class="mt-3">
+            <div class="h-2 bg-neutral-100 rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all"
+                :class="summary.flat_tax_threshold.status === 'danger' ? 'bg-danger-500'
+                      : summary.flat_tax_threshold.status === 'warning' ? 'bg-warning-500'
+                      : summary.flat_tax_threshold.status === 'notice' ? 'bg-primary-500'
+                      : 'bg-success-600'"
+                :style="{ width: Math.min(100, summary.flat_tax_threshold.percent || 0) + '%' }"></div>
+            </div>
+            <div class="text-xs mt-1.5"
+              :class="summary.flat_tax_threshold.status === 'danger' ? 'text-danger-500 font-medium'
+                    : summary.flat_tax_threshold.status === 'warning' ? 'text-warning-600' : 'text-neutral-500'">
+              {{ t('stats.flat_tax_status', {
+                pct: summary.flat_tax_threshold.percent,
+                limit: formatMoney(summary.flat_tax_threshold.limit_czk, 'CZK'),
+              }) }}
+            </div>
+            <div class="text-[10px] text-neutral-400 mt-0.5">{{ t('stats.flat_tax_hint') }}</div>
+          </div>
+        </div>
+
         <!-- Obrat tento rok per měna -->
         <div v-for="r in revenueThisYear" :key="`ty-${r.currency}`"
           class="bg-white border border-neutral-200 rounded-lg p-5 shadow-sm">

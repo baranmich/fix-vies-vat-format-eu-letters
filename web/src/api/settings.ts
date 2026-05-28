@@ -48,6 +48,7 @@ export interface Supplier {
   // Tax settings pro EPO výkazy DPH/KH (migrace 0038, fáze 6)
   taxpayer_type?: 'fo' | 'po' | null
   vat_period?: 'monthly' | 'quarterly' | null
+  flat_tax_band?: 'none' | 'band1' | 'band2' | 'band3' | null
   financial_office_code?: string | null
   workplace_code?: string | null
   cz_nace_code?: string | null

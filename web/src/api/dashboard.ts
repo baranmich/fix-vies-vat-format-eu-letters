@@ -169,6 +169,15 @@ export interface DashboardSummary {
   active_recurring_count: number
   active_clients_count: number
   pending_approvals?: { requested: number; overdue: number }
+  flat_tax_threshold?: {
+    applicable: boolean
+    band: 'band1' | 'band2' | 'band3' | null
+    current_czk: number
+    limit_czk: number | null
+    percent: number | null
+    status: 'ok' | 'notice' | 'warning' | 'danger' | null
+    year: number
+  }
   today: string
   year: number
   prev_year: number

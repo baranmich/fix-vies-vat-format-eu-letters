@@ -22,6 +22,17 @@ use Psr\Http\Message\ServerRequestInterface as Request;
  */
 final class SummaryAction
 {
+    /**
+     * Pásma paušální daně (§ 7a ZDP) — roční limit příjmů. Hodnoty jsou stabilní
+     * (zákonné stropy), drží se v kódu mimo DB. Měsíční zálohy se mění ročně a
+     * záměrně je tu nesledujeme (informativní limit příjmů stačí pro varování).
+     */
+    private const FLAT_TAX_BANDS = [
+        'band1' => 1_000_000,
+        'band2' => 1_500_000,
+        'band3' => 2_000_000,
+    ];
+
     public function __construct(private readonly Connection $db) {}
 
     public function __invoke(Request $request, Response $response): Response
@@ -55,6 +66,7 @@ final class SummaryAction
             'active_recurring_count' => $this->activeRecurringCount($pdo, $sid),
             'active_clients_count'   => $this->activeClientsCount($pdo, $sid),
             'pending_approvals'      => $this->pendingApprovals($pdo, $sid),
+            'flat_tax_threshold'     => $this->flatTaxThreshold($pdo, $year, $sid),
             'today'                  => $today->format('Y-m-d'),
             'year'                   => $year,
             'prev_year'              => $prevYear,
@@ -141,6 +153,58 @@ final class SummaryAction
         $stmt = $pdo->prepare('SELECT is_vat_payer FROM supplier WHERE id = ?');
         $stmt->execute([$sid]);
         return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Paušální daň (§ 7a ZDP) — sledování blížícího se ročního limitu příjmů pro
+     * zvolené pásmo. Příjmy = zaplacené vystavené faktury (kasová metoda, paid_at
+     * v aktuálním kalendářním roce), přepočet na CZK. Pokud supplier není v paušálu
+     * (flat_tax_band='none'), vrací applicable=false.
+     *
+     * @return array{applicable: bool, band: ?string, current_czk: float, limit_czk: ?int, percent: ?int, status: ?string, year: int}
+     */
+    private function flatTaxThreshold(\PDO $pdo, int $year, int $sid): array
+    {
+        $stmt = $pdo->prepare('SELECT flat_tax_band FROM supplier WHERE id = ?');
+        $stmt->execute([$sid]);
+        $band = (string) ($stmt->fetchColumn() ?: 'none');
+
+        if (!isset(self::FLAT_TAX_BANDS[$band])) {
+            return ['applicable' => false, 'band' => null, 'current_czk' => 0.0,
+                    'limit_czk' => null, 'percent' => null, 'status' => null, 'year' => $year];
+        }
+
+        $limit = self::FLAT_TAX_BANDS[$band];
+        $stmt = $pdo->prepare(
+            "SELECT COALESCE(SUM(i.total_with_vat * COALESCE(IF(cur.code = 'CZK', 1, i.exchange_rate), 1)), 0) AS sum_czk
+               FROM invoices i
+          LEFT JOIN currencies cur ON cur.id = i.currency_id
+              WHERE i.supplier_id = ?
+                AND i.status = 'paid'
+                AND i.paid_at IS NOT NULL
+                AND i.invoice_type IN ('invoice', 'credit_note')
+                AND YEAR(i.paid_at) = ?"
+        );
+        $stmt->execute([$sid, $year]);
+        $current = round((float) $stmt->fetchColumn(), 2);
+
+        $percent = $limit > 0 ? (int) round($current / $limit * 100) : 0;
+        $status = match (true) {
+            $percent >= 95 => 'danger',
+            $percent >= 80 => 'warning',
+            $percent >= 60 => 'notice',
+            default        => 'ok',
+        };
+
+        return [
+            'applicable'  => true,
+            'band'        => $band,
+            'current_czk' => $current,
+            'limit_czk'   => $limit,
+            'percent'     => $percent,
+            'status'      => $status,
+            'year'        => $year,
+        ];
     }
 
     /** SQL fragment vybírající správný sloupec obratu dle plátcovství DPH. */

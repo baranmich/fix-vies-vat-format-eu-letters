@@ -90,6 +90,7 @@ async function saveSupplier() {
       // Tax settings (EPO výkazy DPH/KH)
       taxpayer_type: (supplier.value as any).taxpayer_type ?? null,
       vat_period: (supplier.value as any).vat_period ?? null,
+      flat_tax_band: (supplier.value as any).flat_tax_band ?? 'none',
       financial_office_code: (supplier.value as any).financial_office_code ?? null,
       workplace_code: (supplier.value as any).workplace_code ?? null,
       cz_nace_code: (supplier.value as any).cz_nace_code ?? null,
@@ -452,6 +453,16 @@ async function removeCurrency(c: CurrencyAccount) {
                 <option value="quarterly">{{ t('settings.vat_quarterly') }}</option>
               </select>
               <p class="text-xs text-neutral-500 mt-1">{{ t('settings.vat_period_hint') }}</p>
+            </div>
+            <div v-if="!supplier.is_vat_payer">
+              <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.flat_tax_band') }}</label>
+              <select v-model="(supplier as any).flat_tax_band" class="w-full h-9 px-3 border border-neutral-300 rounded-md bg-white text-sm">
+                <option value="none">{{ t('settings.flat_tax_none') }}</option>
+                <option value="band1">{{ t('settings.flat_tax_band1') }}</option>
+                <option value="band2">{{ t('settings.flat_tax_band2') }}</option>
+                <option value="band3">{{ t('settings.flat_tax_band3') }}</option>
+              </select>
+              <p class="text-xs text-neutral-500 mt-1">{{ t('settings.flat_tax_hint') }}</p>
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.financial_office_code') }}</label>
