@@ -351,8 +351,9 @@ onMounted(loadAll)
       </div>
 
       <!-- ═══ Headline KPI — aktuální měsíc + YTD (nezávislé na zvoleném období) ═══ -->
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-neutral-500 -mb-1">{{ t('crm.kpi_section') }}</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-600 mb-2">{{ t('crm.kpi_section') }}</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Revenue -->
         <div class="bg-white border border-neutral-200 rounded-lg shadow-sm p-5">
           <div class="flex items-center justify-between mb-1">
@@ -424,6 +425,7 @@ onMounted(loadAll)
           <div class="text-xs text-neutral-400 mt-3 pt-2 border-t border-neutral-100">
             <div>YTD: <span class="font-mono">{{ formatMoney(ytdKpi?.profit || 0, currencyFilter) }}</span></div>
           </div>
+        </div>
         </div>
       </div>
 
