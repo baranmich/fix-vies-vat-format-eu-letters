@@ -312,7 +312,11 @@ final class Config
         // 3) Per-key ENV overrides
         foreach (self::envOverrideMap() as $envName => [$path, $type]) {
             $raw = getenv($envName);
-            if ($raw === false) {
+            // Nepřítomná i prázdná ENV se ignoruje. Docker Compose při mapovém
+            // zápisu `KEY: ${VAR}` dosadí prázdný řetězec i když VAR v .env chybí
+            // — bez tohoto guardu by takový prázdný override přebil hodnotu
+            // z cfg.php (např. SMTP z bind-mountnutého cfg.docker.php → smtp.port=0).
+            if ($raw === false || $raw === '') {
                 continue;
             }
             if (self::isUnresolvedEnvReference($raw)) {
