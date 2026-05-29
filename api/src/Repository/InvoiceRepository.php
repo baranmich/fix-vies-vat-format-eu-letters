@@ -444,6 +444,11 @@ final class InvoiceRepository
             }
         }
 
+        // Typ dokladu lze měnit jen u draftu (faktura/proforma/dobropis) — viz UpdateInvoiceAction,
+        // který u vystavené faktury posílá nezměněný typ. Storno/cancellation se přes update nenastaví.
+        $hasType = array_key_exists('invoice_type', $data)
+            && in_array((string) $data['invoice_type'], ['invoice', 'proforma', 'credit_note'], true);
+
         $sql = 'UPDATE invoices SET
                 client_id = ?, project_id = ?,
                 issue_date = ?, tax_date = ?, due_date = ?,
@@ -453,6 +458,7 @@ final class InvoiceRepository
                 vat_classification_code = ?, revenue_category = ?'
               . ($hasVarsymbol ? ', varsymbol = ?' : '')
               . ($hasPaymentMethod ? ', payment_method = ?' : '')
+              . ($hasType ? ', invoice_type = ?' : '')
               . ' WHERE id = ?';
 
         $params = [
@@ -473,6 +479,7 @@ final class InvoiceRepository
         ];
         if ($hasVarsymbol) $params[] = $manualVarsymbol;
         if ($hasPaymentMethod) $params[] = $paymentMethod;
+        if ($hasType) $params[] = (string) $data['invoice_type'];
         $params[] = $id;
 
         $this->db->pdo()->prepare($sql)->execute($params);
