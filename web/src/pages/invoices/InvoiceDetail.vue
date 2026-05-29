@@ -499,6 +499,9 @@ const isDraft = computed(() => invoice.value?.status === 'draft')
 const isProforma = computed(() => invoice.value?.invoice_type === 'proforma')
 const canIssueFinal = computed(() => isProforma.value && invoice.value?.status === 'paid')
 const isIssued = computed(() => invoice.value && ['issued', 'sent', 'reminded'].includes(invoice.value.status))
+// Admin „force" edit už vystaveného dokladu — viz tlačítko „Upravit (admin)".
+const canAdminEdit = computed(() =>
+  isAdmin.value && !isDraft.value && invoice.value?.invoice_type !== 'cancellation')
 const hasPositiveAmountToPay = computed(() => {
   if (!invoice.value) return false
   if (!['invoice', 'proforma'].includes(invoice.value.invoice_type)) return true
@@ -692,11 +695,11 @@ async function updateApprovalStatus() {
           <svg class="w-4 h-4 text-neutral-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
           {{ t('common.edit') }}
         </RouterLink>
-        <!-- Výkaz: button viditelný pokud:
-             - výkaz už existuje (libovolný status faktury — umožní view/edit, save validuje backend)
-             - nebo je faktura draft + projekt má workflow (umožní vytvořit nový výkaz)
-             Backend SaveWorkReportAction vrátí 409 pokud status != draft (kromě admin ?force=1). -->
-        <button v-if="(workReport || (isDraft && invoice.project_requires_approval)) && auth.canWrite"
+        <!-- Výkaz: jen u draftu (kde se reálně edituje) — buď už výkaz existuje, nebo projekt
+             vyžaduje workflow a jde vytvořit nový. U vystavených/odeslaných dokladů se výkaz
+             needituje (backend SaveWorkReportAction vrátí 409 pro status != draft), proto se
+             tlačítko vůbec nezobrazuje. -->
+        <button v-if="isDraft && (workReport || invoice.project_requires_approval) && auth.canWrite"
           @click="wrModalOpen = true"
           class="cursor-pointer px-3 h-9 text-sm border border-primary-500/40 text-primary-700 hover:bg-primary-50 rounded-md inline-flex items-center gap-1.5"
           :title="t('invoice.wr_btn')">
@@ -1487,7 +1490,7 @@ async function updateApprovalStatus() {
           {{ t('recurring.create_from_invoice') }}
         </RouterLink>
 
-        <button v-if="isAdmin && !isDraft && !['cancellation'].includes(invoice.invoice_type)" @click="editIssued" :disabled="busy !== null"
+        <button v-if="canAdminEdit" @click="editIssued" :disabled="busy !== null"
           class="cursor-pointer px-3 h-9 text-sm border border-warning-500/50 text-warning-600 hover:bg-warning-50 rounded-md inline-flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
           {{ t('invoice.edit_admin') }}
