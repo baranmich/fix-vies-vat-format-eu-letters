@@ -491,8 +491,10 @@ final class PdfSigner
 
     private function pdfDate(): string
     {
-        // D:YYYYMMDDHHmmSS+TZ — bez závislosti na Date (CLI) přes gmdate je OK i ve workflow.
-        return 'D:' . date('YmdHis') . "+00'00'";
+        // D:YYYYMMDDHHmmSS+00'00' — MUSÍ být UTC (gmdate), ne lokální date(): označení
+        // +00'00' deklaruje UTC, takže s date() (Europe/Prague = UTC+2) by Adobe viděl
+        // podpis 2h v budoucnosti → „podepsán v budoucnosti / SigDict invalid".
+        return 'D:' . gmdate('YmdHis') . "+00'00'";
     }
 
     private function pdfString(string $s): string
