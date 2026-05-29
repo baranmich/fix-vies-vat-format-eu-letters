@@ -249,7 +249,7 @@ async function removeLogo() {
   }
 }
 
-// === Podpis PDF certifikátem (PAdES, migrace 0072) ===========================
+// === Podpis PDF certifikátem (PAdES, migrace 0076) ===========================
 const signingCert = ref<SigningCertMeta>({ has_cert: false })
 const certFileInput = ref<HTMLInputElement | null>(null)
 const certUploading = ref(false)
@@ -802,7 +802,7 @@ async function removeCurrency(c: CurrencyAccount) {
         </div>
       </section>
 
-      <!-- Podpis PDF certifikátem (PAdES, migrace 0072) -->
+      <!-- Podpis PDF certifikátem (PAdES, migrace 0076) -->
       <section class="bg-surface border border-neutral-200 rounded-lg p-5 shadow-sm">
         <div class="flex items-center justify-between mb-1">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('settings.signing_title') }}</h2>

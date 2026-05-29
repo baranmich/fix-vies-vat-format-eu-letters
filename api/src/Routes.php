@@ -424,7 +424,7 @@ final class Routes
         // Settings (M6) — aktuální supplier (z X-Supplier-Id)
         $app->get ('/api/settings/supplier',                [SettingsAction::class, 'getSupplier']);
         $app->put ('/api/settings/supplier',                [SettingsAction::class, 'updateSupplier']);
-        // Podpis PDF certifikátem (PAdES, migrace 0072)
+        // Podpis PDF certifikátem (PAdES, migrace 0076)
         $app->post   ('/api/settings/signing-cert',         [SigningCertAction::class, 'upload']);
         $app->delete ('/api/settings/signing-cert',         [SigningCertAction::class, 'remove']);
         $app->get    ('/api/settings/signing-cert',         [SigningCertAction::class, 'metadata']);

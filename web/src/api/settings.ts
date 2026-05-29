@@ -46,7 +46,7 @@ export interface Supplier {
   email_accent_color: string  // #RRGGBB
   pdf_logo_show_name: boolean // vedle loga v PDF zobrazit i název firmy (migrace 0058)
   has_email_logo?: boolean    // server flag (existence storage/supplier-logos/sup-{id}.png)
-  // Podpis PDF certifikátem (PAdES, migrace 0072)
+  // Podpis PDF certifikátem (PAdES, migrace 0076)
   pdf_signing_enabled: boolean
   signing_tsa_url: string | null  // RFC 3161 TSA endpoint; null = PAdES-B bez razítka
   signing_reason: string          // důvod podpisu (default „Faktura")
@@ -183,7 +183,7 @@ export const settingsApi = {
   },
   deleteEmailLogo: () => api.delete('/settings/email-branding/logo').then(r => r.data),
 
-  // Podpis PDF certifikátem (PAdES, migrace 0072)
+  // Podpis PDF certifikátem (PAdES, migrace 0076)
   getSigningCert: () => api.get<SigningCertMeta>('/settings/signing-cert').then(r => r.data),
   uploadSigningCert: (file: File, password: string) => {
     const fd = new FormData()

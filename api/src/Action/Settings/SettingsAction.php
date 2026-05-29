@@ -208,7 +208,7 @@ final class SettingsAction
             // Doplňky pro DPH/KH XML VetaP (migrace 0043)
             'street_number_pop', 'street_number_orient',
             'opr_jmeno', 'opr_prijmeni', 'opr_postaveni',
-            // Podpis PDF certifikátem (migrace 0072) — toggle/TSA/důvod. Cert+heslo se
+            // Podpis PDF certifikátem (migrace 0076) — toggle/TSA/důvod. Cert+heslo se
             // NIKDY nemění mass-assignmentem (jen přes SigningCertAction multipart upload).
             // signing_tsa_password (heslo k TSA) taky NE mass-assign — řešeno níže (encrypt).
             'pdf_signing_enabled', 'signing_tsa_url', 'signing_reason', 'signing_tsa_username',
@@ -433,7 +433,7 @@ final class SettingsAction
         $row['email_accent_color']       = (string) ($row['email_accent_color'] ?? '#3B2D83');
         $row['pdf_logo_show_name']       = (bool) ($row['pdf_logo_show_name'] ?? false);
         $row['has_email_logo']           = is_file(\MyInvoice\Infrastructure\Config\RuntimePaths::storage('supplier-logos') . '/sup-' . $row['id'] . '.png');
-        // Podpis PDF (migrace 0072): heslo k certifikátu NIKDY neposílat do API.
+        // Podpis PDF (migrace 0076): heslo k certifikátu NIKDY neposílat do API.
         $row['pdf_signing_enabled']      = (bool) ($row['pdf_signing_enabled'] ?? false);
         $row['signing_tsa_url']          = $row['signing_tsa_url'] ?? null;
         $row['signing_reason']           = (string) ($row['signing_reason'] ?? '');
