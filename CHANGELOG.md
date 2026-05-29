@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.4] — 2026-05-29
+
+Oprava režimu přenesení daňové povinnosti (reverse charge) na vystavených fakturách.
+
+### Fixed
+
+- **Reverse charge – sazba na faktuře** ukazovala „DPH 0 %" místo nominální sazby. Nově se na RC faktuře zobrazí **nominální sazba (21 %) s daní 0 Kč** a automatická poznámka „Daň odvede zákazník". RC je nově jen hlavičkový příznak (položka drží svou sazbu, daň vynuluje příznak); volba „Reverse charge" zmizela z výběru sazby na řádku (dělá se zaškrtnutím RC).
+- **Reverse charge – zařazení do DPH přiznání.** Tuzemský RC prodej se vykazoval na DPHDP3 ř.20 (dodání zboží do JČS) místo ř.25 (tuzemský režim přenesení §92). Klasifikace je nově **podle země odběratele**: tuzemský → ř.25 + KH A.1, zahraniční z EU → ř.20. (migrace `0072`)
+
 ## [4.5.3] — 2026-05-29
 
 Server-side našeptávač klienta/dodavatele, oprava přepnutí typu nevystavené faktury a čitelný kalendář v tmavém režimu.
