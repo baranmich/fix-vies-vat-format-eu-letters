@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Tmavý režim** — vyšší kontrast tlumeného textu (popisky, placeholdery): `neutral-500` a `-400` zesvětleny, muted text z ~4.3 na ~5.5:1 (WCAG AA). Hlavní text beze změny (záměrně mírně odbílá, aby nezářil).
+
 ## [4.5.0] — 2026-05-29
 
 Tmavý režim (dark mode) s přepínačem **Systém / Světlý / Tmavý** a úpravy dashboardu.

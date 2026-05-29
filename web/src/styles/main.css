@@ -85,8 +85,8 @@
   --color-neutral-100: #1C1A28;   /* subtle tint / hover */
   --color-neutral-200: #2C2840;   /* borders */
   --color-neutral-300: #3B3656;
-  --color-neutral-400: #585173;
-  --color-neutral-500: #837C99;
+  --color-neutral-400: #6B6488;   /* velmi tlumené/disabled — mírně zesvětleno */
+  --color-neutral-500: #968FAD;   /* muted text (popisky/placeholdery) — ~4.3 → ~5.5:1 (AA) */
   --color-neutral-600: #A8A1BE;   /* sekundární text */
   --color-neutral-700: #C6C0DA;
   --color-neutral-800: #E2DEEC;
