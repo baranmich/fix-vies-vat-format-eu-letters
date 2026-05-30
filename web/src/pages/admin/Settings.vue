@@ -252,6 +252,7 @@ async function removeLogo() {
 // === Podpis PDF certifikátem (PAdES, migrace 0076) ===========================
 const signingCert = ref<SigningCertMeta>({ has_cert: false })
 const certFileInput = ref<HTMLInputElement | null>(null)
+const certFile = ref<File | null>(null)
 const certUploading = ref(false)
 const certPassword = ref('')
 const tsaPassword = ref('')  // heslo k TSA (HTTP Basic) — odešle se při uložení, do UI se nevrací
@@ -283,25 +284,25 @@ async function saveSigning(silent = false) {
 watch(() => supplier.value?.pdf_signing_enabled, () => { if (watching) saveSigning(true) })
 
 function pickCert() { certFileInput.value?.click() }
-async function onCertSelected(ev: Event) {
-  const f = (ev.target as HTMLInputElement).files?.[0]
-  if (!f || !supplier.value) return
-  if (!certPassword.value) {
-    toast.error(t('settings.signing_password_required'))
-    if (certFileInput.value) certFileInput.value.value = ''
-    return
-  }
+// Výběr souboru jen uloží referenci — upload až po kliknutí na „Nahrát"
+// (žádná past na pořadí heslo ↔ soubor; tlačítko je disabled dokud nemáš oboje).
+function onCertSelected(ev: Event) {
+  certFile.value = (ev.target as HTMLInputElement).files?.[0] ?? null
+}
+async function uploadCert() {
+  if (!supplier.value || !certFile.value || !certPassword.value) return
   certUploading.value = true
   try {
-    signingCert.value = await settingsApi.uploadSigningCert(f, certPassword.value)
+    signingCert.value = await settingsApi.uploadSigningCert(certFile.value, certPassword.value)
     supplier.value.has_signing_cert = true
     certPassword.value = ''
+    certFile.value = null
+    if (certFileInput.value) certFileInput.value.value = ''
     toast.success(t('settings.signing_cert_uploaded'))
   } catch (e: any) {
     toast.error(e?.response?.data?.error?.message || t('common.error'))
   } finally {
     certUploading.value = false
-    if (certFileInput.value) certFileInput.value.value = ''
   }
 }
 async function removeCert() {
@@ -312,6 +313,8 @@ async function removeCert() {
     signingCert.value = { has_cert: false }
     supplier.value.has_signing_cert = false
     supplier.value.pdf_signing_enabled = false
+    certFile.value = null
+    if (certFileInput.value) certFileInput.value.value = ''
     toast.success(t('settings.signing_cert_removed'))
   } catch (e: any) {
     toast.error(e?.response?.data?.error?.message || t('common.error'))
@@ -806,12 +809,18 @@ async function removeCurrency(c: CurrencyAccount) {
       <section class="bg-surface border border-neutral-200 rounded-lg p-5 shadow-sm">
         <div class="flex items-center justify-between mb-1">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('settings.signing_title') }}</h2>
-          <label class="inline-flex items-center gap-2 cursor-pointer">
-            <input v-model="supplier.pdf_signing_enabled" type="checkbox" :disabled="!supplier.has_signing_cert" class="h-4 w-4 accent-primary-600 disabled:opacity-50" />
-            <span class="text-sm text-neutral-700">{{ t('settings.signing_enabled') }}</span>
+          <label class="inline-flex items-center gap-2"
+            :class="supplier.has_signing_cert ? 'cursor-pointer' : 'cursor-not-allowed'"
+            :title="supplier.has_signing_cert ? '' : t('settings.signing_need_cert')">
+            <input v-model="supplier.pdf_signing_enabled" type="checkbox" :disabled="!supplier.has_signing_cert" class="h-4 w-4 accent-primary-600 disabled:opacity-50 disabled:cursor-not-allowed" />
+            <span class="text-sm" :class="supplier.has_signing_cert ? 'text-neutral-700' : 'text-neutral-400'">{{ t('settings.signing_enabled') }}</span>
           </label>
         </div>
-        <p class="text-xs text-neutral-500 mb-4">{{ t('settings.signing_subtitle') }}</p>
+        <p class="text-xs text-neutral-500 mb-2">{{ t('settings.signing_subtitle') }}</p>
+        <p v-if="!supplier.has_signing_cert" class="text-xs text-warning-600 mb-4 flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 0 0 1.74-3L13.74 4a2 2 0 0 0-3.48 0L3.33 16a2 2 0 0 0 1.74 3z"/></svg>
+          {{ t('settings.signing_need_cert') }}
+        </p>
 
         <div class="space-y-4 max-w-2xl">
           <!-- Certifikát -->
@@ -830,11 +839,19 @@ async function removeCurrency(c: CurrencyAccount) {
               </div>
               <div class="font-mono text-[10px] text-neutral-400 mt-1 break-all">SHA-256: {{ signingCert.fingerprint }}</div>
             </div>
-            <div class="flex items-center gap-3">
+            <!-- Krok 1: vybrat soubor · Krok 2: heslo · Krok 3: nahrát (tlačítko aktivní až s oběma) -->
+            <div class="flex flex-wrap items-center gap-3">
+              <button @click="pickCert" type="button"
+                class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 rounded-md hover:bg-neutral-50">
+                {{ t('settings.signing_cert_choose') }}
+              </button>
+              <span class="text-xs truncate max-w-[14rem]" :class="certFile ? 'text-neutral-700 font-medium' : 'text-neutral-400'">
+                {{ certFile ? certFile.name : t('settings.signing_cert_none_selected') }}
+              </span>
               <input v-model="certPassword" type="password" :placeholder="t('settings.signing_password')"
                 class="h-9 w-48 px-3 border border-neutral-300 rounded-md text-sm" autocomplete="new-password" />
-              <button @click="pickCert" type="button" :disabled="certUploading"
-                class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed">
+              <button @click="uploadCert" type="button" :disabled="!certFile || !certPassword || certUploading"
+                class="cursor-pointer px-3 h-9 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
                 {{ certUploading ? t('common.loading') : (signingCert.has_cert ? t('settings.signing_cert_replace') : t('settings.signing_cert_upload')) }}
               </button>
               <button v-if="signingCert.has_cert" @click="removeCert" type="button"
