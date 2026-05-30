@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.6.1] — 2026-05-30
+
+Elektronický podpis PDF faktur certifikátem (PAdES) a drobná vylepšení UX.
+
 ### Added
 
-- **Podpis PDF faktur certifikátem (PAdES)** — volitelný elektronický podpis PDF vydaných faktur a výkazů víceprací certifikátem, zapínatelný **per dodavatel** (#44). Úroveň **PAdES-B**, volitelně **PAdES-T** s důvěryhodným časovým razítkem (RFC 3161 TSA, vč. HTTP Basic auth k TSA serveru). Implementováno čistě v PHP (`openssl_cms_sign` / CMS RFC 5652, PDF incremental update) bez nové composer závislosti — funguje i na Windows/IIS. V *Nastavení → Podpis PDF* lze nahrát certifikát **P12/PFX** (vč. řetězce CA), zadat heslo (uloženo šifrovaně přes `SecretEncryption`, soubor mimo web root, 0600), volitelně TSA URL + přihlášení a důvod podpisu; zobrazí se metadata certu (CN, vydavatel, platnost, SHA-256 fingerprint). Podpis se aplikuje při generování PDF (download, e-mail, vystavení, ZIP export), ověřeno v Adobe Acrobat (platný, důvěra z EU Trusted Lists, vložené časové razítko). **Měkký fallback** — selhání podpisu (chybějící/expirovaný cert, výpadek TSA) fakturu nezablokuje, vygeneruje se nepodepsané PDF a událost se zaloguje. Veškerá správa i použití certifikátu se auditují do `activity_log` (`signing.cert_uploaded/removed`, `signing.pdf_signed`, `signing.failed`) bez úniku hesla/klíče.
+- **Podpis PDF faktur certifikátem (PAdES)** — volitelný elektronický podpis PDF vydaných faktur a výkazů víceprací certifikátem, zapínatelný **per dodavatel** (#44). Úroveň **PAdES-B**, volitelně **PAdES-T** s důvěryhodným časovým razítkem (RFC 3161 TSA, vč. HTTP Basic auth k TSA serveru). Implementováno čistě v PHP (`openssl_cms_sign` / CMS RFC 5652, PDF incremental update) bez nové composer závislosti — funguje i na Windows/IIS. V *Nastavení → Podpis PDF* se certifikát **P12/PFX** (vč. řetězce CA) nahrává dvoukrokově (vybrat soubor → heslo → nahrát; přepínač „Podepisovat PDF" je zamčený s upozorněním, dokud certifikát chybí); heslo se uloží šifrovaně přes `SecretEncryption`, soubor leží mimo web root (0600), volitelně TSA URL + přihlášení a důvod podpisu; zobrazí se metadata certu (CN, vydavatel, platnost, SHA-256 fingerprint). Podpis se aplikuje při generování PDF (download, e-mail, vystavení, ZIP export), ověřeno v Adobe Acrobat (platný, důvěra z EU Trusted Lists, vložené časové razítko). **Měkký fallback** — selhání podpisu (chybějící/expirovaný cert, výpadek TSA) fakturu nezablokuje, vygeneruje se nepodepsané PDF a událost se zaloguje. Cesta k certifikátu se ukládá nezávisle na umístění data-dir (přesun / Docker volume podpis nevypne) a audit (`signing.pdf_signed`) loguje skutečně dosaženou úroveň (PAdES-B/T). Veškerá správa i použití certifikátu se auditují do `activity_log` (`signing.cert_uploaded/removed`, `signing.pdf_signed`, `signing.failed`) bez úniku hesla/klíče.
+
+### Changed
+
+- **Tlačítko „Výkaz"** v přehledu i detailu faktury — zjednodušená podmínka zobrazení: nově se ukáže u **každého konceptu**, pokud má uživatel právo editace (`auth.canWrite`). Dříve bylo vázáno na workflow projekt / existující výkaz / pravidelnou šablonu; readonly role tlačítko nevidí.
 
 ## [4.6.0] — 2026-05-29
 
