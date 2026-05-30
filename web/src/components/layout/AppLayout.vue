@@ -142,12 +142,12 @@ const navSections = computed<NavSection[]>(() => {
       title: t('nav.section_taxes'),
       accent: 'danger',
       items: [
-        ...(isOsvc ? [{ to: '/tax', label: t('nav.tax_optimizer'), icon: ICONS.tax_optimizer }] : []),
         { to: '/reports/dph',         label: t('nav.reports_dph'),         icon: ICONS.tax_dph },
         { to: '/reports/kh',          label: t('nav.reports_kh'),          icon: ICONS.tax_kh },
         { to: '/reports/dph-book',    label: t('nav.reports_dph_book'),    icon: ICONS.tax_book },
         { to: '/reports/shv',         label: t('nav.reports_shv'),         icon: ICONS.tax_shv },
         { to: '/reports/income-tax',  label: t('nav.reports_income_tax'),  icon: ICONS.tax_income },
+        ...(isOsvc ? [{ to: '/tax', label: t('nav.tax_optimizer'), icon: ICONS.tax_optimizer }] : []),
         { to: '/reports/submissions', label: t('nav.reports_submissions'), icon: ICONS.tax_archive },
         { to: '/reports/monthly-export', label: t('nav.reports_monthly_export'), icon: ICONS.exports },
       ],

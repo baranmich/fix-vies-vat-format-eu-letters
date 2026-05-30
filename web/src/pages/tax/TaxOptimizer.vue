@@ -102,13 +102,16 @@ async function save() {
       <p class="text-sm text-neutral-500">{{ t('tax.subtitle') }}</p>
     </div>
 
-    <!-- Přepínač roku -->
-    <div v-if="analysis" class="inline-flex bg-neutral-100 border border-neutral-200 rounded-lg p-1 mb-6">
-      <button v-for="y in analysis.available_years" :key="y" @click="load(y)"
-        class="px-4 py-1.5 rounded-md text-sm font-medium transition"
-        :class="y === year ? 'bg-surface text-primary-700 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'">
-        {{ y }}
-        <span class="text-[11px] font-normal text-neutral-400 ml-1">
+    <!-- Přepínač roku / režimu -->
+    <div v-if="analysis" class="inline-flex gap-1.5 bg-neutral-100 border border-neutral-200 rounded-xl p-1.5 mb-6">
+      <button v-for="y in analysis.available_years" :key="y" @click="load(y)" type="button"
+        class="flex flex-col items-center min-w-[7.5rem] px-5 py-2 rounded-lg transition cursor-pointer border"
+        :class="y === year
+          ? 'bg-primary-600 border-primary-600 text-white shadow-md'
+          : 'bg-surface border-neutral-200 text-neutral-600 hover:border-primary-300 hover:text-neutral-900'">
+        <span class="text-xl font-bold leading-none tracking-tight">{{ y }}</span>
+        <span class="text-[11px] font-semibold uppercase tracking-wider mt-1"
+          :class="y === year ? 'text-white/85' : 'text-neutral-400'">
           {{ y < new Date().getFullYear() ? t('tax.tag_retro') : t('tax.tag_forecast') }}
         </span>
       </button>
