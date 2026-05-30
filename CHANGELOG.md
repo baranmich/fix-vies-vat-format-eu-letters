@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.6.2] — 2026-05-30
+
+Daňový optimalizátor pro OSVČ (#68) a oprava ukládání nastavení podpisu PDF.
+
+### Added
+
+- **Daňový optimalizátor (OSVČ)** — nová stránka *Daně → Daňový optimalizátor* (jen pro OSVČ) pomáhá rozhodnout, který daňový režim se vyplatí (#68, #71). **Retrospektiva** uzavřeného roku porovná paušální daň vs standardní režim na reálném vyfakturovaném příjmu, s rozpadem *příjem → výdaje → základ → daň → pojistné → čistý příjem + efektivní sazba* a meziročním (YoY) srovnáním. **Predikce** běžícího roku projektuje příjem z tempa a hlídá limity (strop pásma, 2 M paušál/DPH, 2,54 M okamžitý plátce DPH) s radou „odlož fakturu do ledna". Výdaje lze zadat **paušálem (40/60/80 %)** nebo jako **skutečné** (daňová evidence); zohledněny slevy (poplatník, manžel/ka, děti vč. daňového bonusu) i sociální (55 %) a zdravotní (50 %) pojistné s ročními minimy a rozlišením hlavní/vedlejší činnosti. Na dashboardu má OSVČ widget **„čistý příjem"**, podklady jdou exportovat do **CSV**. Roční daňové konstanty jsou ověřené (Finanční správa / ČSSZ / VZP, k 5/2026) a admin je může upravit v *Číselníky → Daňové konstanty* bez nového nasazení. Engine je pokrytý unit testy. Jde o orientační pomůcku, ne daňové přiznání (manuál kap. 25a).
+- **Typ poplatníka u Daně z příjmů** (`Daně → Daň z příjmů`) se nově odvozuje z dodavatele (OSVČ → DPFO, s.r.o. → DPPO) místo ručního přepínače; přidán CSV export podkladů.
+
+### Fixed
+
+- **Uložení nastavení podpisu PDF vracelo 500** — `PUT /api/settings/supplier` s vypnutým podpisem (`pdf_signing_enabled=false`) selhal na strict-mode MariaDB (`''` místo `0` na `tinyint` sloupci). `pdf_signing_enabled` doplněn do bool→int castu (#72, regrese 4.6.1).
+
 ## [4.6.1] — 2026-05-30
 
 Elektronický podpis PDF faktur certifikátem (PAdES) a drobná vylepšení UX.
