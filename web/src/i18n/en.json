@@ -1649,6 +1649,7 @@
     "commercial_register_load_ares": "Load from ARES",
     "commercial_register_loaded": "Commercial register entry loaded from ARES.",
     "commercial_register_not_found": "ARES returned no commercial register entry (legal entities only).",
+    "commercial_register_none_fo": "A sole proprietor has no commercial register entry.",
     "default_due": "Default due (days)",
     "default_due_label": "Default payment due",
     "default_due_preset_7": "7 days",

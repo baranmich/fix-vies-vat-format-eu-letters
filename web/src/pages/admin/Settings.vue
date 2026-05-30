@@ -31,6 +31,10 @@ async function loadCommercialRegister() {
     if (r.found && r.data?.commercial_register && supplier.value) {
       supplier.value.commercial_register = r.data.commercial_register
       toast.success(t('settings.commercial_register_loaded'))
+    } else if (r.found && r.data?.taxpayer_type === 'fo') {
+      // OSVČ (fyzická osoba) není v obchodním rejstříku → spisová značka neexistuje.
+      // Není to chyba (issue #76), jen neutrální info.
+      toast.info(t('settings.commercial_register_none_fo'))
     } else {
       toast.error(t('settings.commercial_register_not_found'))
     }

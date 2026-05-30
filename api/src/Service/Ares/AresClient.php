@@ -158,15 +158,19 @@ final class AresClient
         if (!is_array($list)) {
             return '';
         }
+        // POZN.: kódy sbíráme do listu hodnot, NE jako klíče pole — PHP by numerický
+        // string klíč („620") přetypoval na int a funkce by vrátila int místo string
+        // (TypeError → pád celého normalize, regrese pro subjekty s jedinou NACE, #76b).
         $codes = [];
         foreach ($list as $c) {
             $c = trim((string) $c);
             if ($c === '' || (int) $c === 0) {
                 continue; // přeskoč „00" / prázdné
             }
-            $codes[$c] = true;
+            if (!in_array($c, $codes, true)) {
+                $codes[] = $c;
+            }
         }
-        $codes = array_keys($codes);
         return count($codes) === 1 ? $codes[0] : '';
     }
 

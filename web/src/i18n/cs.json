@@ -1649,6 +1649,7 @@
     "commercial_register_load_ares": "Načíst z ARES",
     "commercial_register_loaded": "Spisová značka načtena z ARES.",
     "commercial_register_not_found": "ARES nevrátil spisovou značku (jen u právnických osob).",
+    "commercial_register_none_fo": "Fyzická osoba (OSVČ) nemá zápis v obchodním rejstříku.",
     "default_due": "Default splatnost (dnů)",
     "default_due_label": "Výchozí splatnost",
     "default_due_preset_7": "7 dnů",
