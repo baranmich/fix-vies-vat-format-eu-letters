@@ -19,6 +19,9 @@ export interface SupplierBrief {
   taxpayer_type: 'fo' | 'po' | null
   default_payment_due_days: number
   default_payment_due_unit: 'days' | 'month'
+  /** Děkovný e-mail za úhradu (issue #57) — řídí checkbox v mark-paid modalu. */
+  payment_thanks_enabled: boolean
+  payment_thanks_default_checked: boolean
 }
 
 export interface SetupStatus {

@@ -55,6 +55,7 @@ final class BankStatementAction
         private readonly FinalFromProformaCreator $finalCreator,
         private readonly \MyInvoice\Repository\PurchaseInvoiceRepository $purchaseRepo,
         private readonly \MyInvoice\Service\Invoice\PurchaseInvoiceCalculator $purCalc,
+        private readonly \MyInvoice\Service\Mail\PaymentThanksMailer $paymentThanks,
     ) {}
 
     public function scan(Request $request, Response $response): Response
@@ -934,10 +935,12 @@ final class BankStatementAction
 
             // Pokud faktura ještě není paid/cancelled, označ ji jako paid s datem z výpisu
             $finalDraftId = null;
+            $markedPaid = false;
             if (in_array($invoice['status'], ['issued', 'sent', 'reminded'], true)) {
                 $pdo->prepare(
                     "UPDATE invoices SET status = 'paid', paid_at = ? WHERE id = ?"
                 )->execute([$postedAt, $invoiceId]);
+                $markedPaid = true;
 
                 // Zaplacená proforma → vytvoř DRAFT finální faktury (daňový doklad k záloze)
                 if (($invoice['invoice_type'] ?? '') === 'proforma') {
@@ -975,9 +978,27 @@ final class BankStatementAction
                 'trigger'          => 'bank_match_manual',
             ], $ip, $request->getHeaderLine('User-Agent'));
         }
+        // Děkovný e-mail za úhradu (issue #57) — jen při autom. označení po párování
+        // a jen pokud má dodavatel zapnuté auto-odesílání. Mimo transakci, best-effort
+        // (service chyby odchytí — selhání e-mailu nesmí rozbít spárování).
+        $thanks = null;
+        if ($markedPaid) {
+            $thanks = $this->paymentThanks->sendForInvoice(
+                $invoiceId,
+                'bank_match',
+                $userId ?: null,
+                $ip,
+                $request->getHeaderLine('User-Agent'),
+                requireUnsent: true,
+            );
+        }
+
         $result = ['matched' => true, 'paid_at' => $postedAt];
         if ($finalDraftId !== null) {
             $result['final_draft_id'] = $finalDraftId;
+        }
+        if ($thanks !== null && ($thanks['status'] ?? '') === 'sent') {
+            $result['payment_thanks_sent'] = true;
         }
         return Json::ok($response, $result);
     }

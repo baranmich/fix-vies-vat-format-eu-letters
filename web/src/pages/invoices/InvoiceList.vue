@@ -7,6 +7,7 @@ import { useHotkey } from '@/composables/useHotkey'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useSupplierStore } from '@/stores/supplier'
 import { clientsApi, type Client } from '@/api/clients'
 import { codebooksApi, type Currency } from '@/api/codebooks'
 import { useYearOptions } from '@/composables/useYearOptions'
@@ -18,6 +19,8 @@ import WorkReportModal from '@/components/modals/WorkReportModal.vue'
 const { t, tm, rt } = useI18n()
 const toast = useToast()
 const auth = useAuthStore()
+const supplierStore = useSupplierStore()
+const thanksEnabled = computed(() => supplierStore.currentSupplier?.payment_thanks_enabled ?? false)
 
 useHotkey('ctrl+n', (e) => { e.preventDefault(); router.push('/invoices/new') })
 
@@ -165,24 +168,37 @@ async function bulkMarkPaid() {
     return
   }
   if (!confirm(t('invoice.bulk_mark_paid_confirm', { n: list.length }))) return
+  // Volitelně i poděkování za úhradu (issue #57) — jen pokud má dodavatel funkci zapnutou.
+  const sendThanks = thanksEnabled.value && confirm(t('invoice.bulk_send_thanks_confirm', { n: list.length }))
   const today = new Date().toISOString().slice(0, 10)
   bulkBusy.value = true
   let okCount = 0
+  let thanksSent = 0
+  let thanksFailed = 0
   const errors: string[] = []
   try {
     for (const inv of list) {
       try {
-        await invoicesApi.markPaid(inv.id, today)
+        const updated = await invoicesApi.markPaid(inv.id, today, sendThanks ? { sendThanks: true, thanksTrigger: 'bulk' } : undefined)
         okCount++
+        const pt = updated.payment_thanks
+        if (pt?.status === 'sent') thanksSent++
+        else if (pt?.status === 'failed') thanksFailed++
       } catch (e: any) {
         errors.push(`${inv.varsymbol || `#${inv.id}`}: ${e?.response?.data?.error?.message || 'chyba'}`)
       }
     }
     selectedIds.value = []
+    let msg = errors.length
+      ? t('invoice.bulk_mark_paid_partial', { ok: okCount, err: errors.length })
+      : t('invoice.bulk_mark_paid_success', { n: okCount })
+    if (sendThanks) {
+      msg += '\n' + t('invoice.bulk_thanks_summary', { sent: thanksSent, failed: thanksFailed })
+    }
     if (errors.length) {
-      toast.warning(t('invoice.bulk_mark_paid_partial', { ok: okCount, err: errors.length }) + '\n' + errors.join('\n'))
+      toast.warning(msg + '\n' + errors.join('\n'))
     } else {
-      toast.success(t('invoice.bulk_mark_paid_success', { n: okCount }))
+      toast.success(msg)
     }
     await load()
   } finally {

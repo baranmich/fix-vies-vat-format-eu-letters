@@ -96,6 +96,8 @@ export interface Invoice {
   pdf_path: string | null
   created_at: string
   updated_at: string
+  /** Výsledek děkovného e-mailu (issue #57) — vrací mark-paid, jen když se odesílalo. */
+  payment_thanks?: { status: 'sent' | 'skipped' | 'failed'; reason?: string; recipients?: string[] } | null
   client_company_name?: string
   client_main_email?: string
   client_ic?: string | null
@@ -310,8 +312,11 @@ export const invoicesApi = {
 
   // Akce nad fakturou
   issue:    (id: number) => api.post<Invoice>(`/invoices/${id}/issue`).then(r => r.data),
-  markPaid: (id: number, paidAt?: string) =>
-    api.post<Invoice>(`/invoices/${id}/mark-paid`, { paid_at: paidAt || new Date().toISOString().slice(0, 10) }).then(r => r.data),
+  markPaid: (id: number, paidAt?: string, opts?: { sendThanks?: boolean; thanksTrigger?: 'manual' | 'bulk' }) =>
+    api.post<Invoice>(`/invoices/${id}/mark-paid`, {
+      paid_at: paidAt || new Date().toISOString().slice(0, 10),
+      ...(opts?.sendThanks ? { send_payment_thanks: true, thanks_trigger: opts.thanksTrigger || 'manual' } : {}),
+    }).then(r => r.data),
   unmarkPaid: (id: number) =>
     api.post<Invoice>(`/invoices/${id}/unmark-paid`, {}).then(r => r.data),
   cancel: (id: number, mode: 'internal' | 'credit_note', reason: string = '') =>

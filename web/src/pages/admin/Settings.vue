@@ -168,6 +168,10 @@ async function saveSupplier() {
       default_payment_due_unit: supplier.value.default_payment_due_unit,
       default_hourly_rate: supplier.value.default_hourly_rate,
       auto_send_reminders: supplier.value.auto_send_reminders,
+      payment_thanks_enabled: supplier.value.payment_thanks_enabled,
+      payment_thanks_auto_send: supplier.value.payment_thanks_auto_send,
+      payment_thanks_default_checked: supplier.value.payment_thanks_default_checked,
+      payment_thanks_attach_paid_pdf: supplier.value.payment_thanks_attach_paid_pdf,
       auto_generate_recurring: supplier.value.auto_generate_recurring,
       embed_isdoc: supplier.value.embed_isdoc,
       pohoda_account_code: supplier.value.pohoda_account_code,
@@ -533,6 +537,27 @@ async function removeCurrency(c: CurrencyAccount) {
               {{ t('settings.auto_send_reminders') }}
             </label>
             <p class="text-xs text-neutral-500 mt-1 ml-6">{{ t('settings.auto_send_reminders_hint') }}</p>
+          </div>
+          <div class="md:col-span-2 border-t border-neutral-200 pt-3">
+            <label class="flex items-center gap-2 text-sm">
+              <input v-model="supplier.payment_thanks_enabled" type="checkbox" class="rounded border-neutral-300 text-primary-600" />
+              <span class="font-medium">{{ t('settings.payment_thanks_enabled') }}</span>
+            </label>
+            <p class="text-xs text-neutral-500 mt-1 ml-6">{{ t('settings.payment_thanks_enabled_hint') }}</p>
+            <div v-if="supplier.payment_thanks_enabled" class="ml-6 mt-2 space-y-2">
+              <label class="flex items-center gap-2 text-sm">
+                <input v-model="supplier.payment_thanks_auto_send" type="checkbox" class="rounded border-neutral-300 text-primary-600" />
+                {{ t('settings.payment_thanks_auto_send') }}
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input v-model="supplier.payment_thanks_default_checked" type="checkbox" class="rounded border-neutral-300 text-primary-600" />
+                {{ t('settings.payment_thanks_default_checked') }}
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input v-model="supplier.payment_thanks_attach_paid_pdf" type="checkbox" class="rounded border-neutral-300 text-primary-600" />
+                {{ t('settings.payment_thanks_attach_paid_pdf') }}
+              </label>
+            </div>
           </div>
           <div class="md:col-span-2">
             <label class="flex items-center gap-2 text-sm">

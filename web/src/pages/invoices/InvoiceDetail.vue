@@ -297,13 +297,30 @@ useHotkey('escape', () => {
   else if (approvalStatusOpen.value) approvalStatusOpen.value = false
 })
 
+// Děkovný e-mail za úhradu (issue #57)
+const sendThanks = ref(false)
+const thanksEnabled = computed(() => supplierStore.currentSupplier?.payment_thanks_enabled ?? false)
+const thanksHasRecipient = computed(() => !!invoice.value?.client_main_email)
+function openMarkPaid() {
+  paidAtInput.value = new Date().toISOString().slice(0, 10)
+  sendThanks.value = thanksEnabled.value && thanksHasRecipient.value
+    && (supplierStore.currentSupplier?.payment_thanks_default_checked ?? false)
+  markPaidOpen.value = true
+}
+
 async function markPaid() {
   if (!invoice.value) return
   busy.value = 'paid'
   try {
-    invoice.value = await invoicesApi.markPaid(invoice.value.id, paidAtInput.value)
+    invoice.value = await invoicesApi.markPaid(invoice.value.id, paidAtInput.value, {
+      sendThanks: thanksEnabled.value && sendThanks.value,
+    })
     markPaidOpen.value = false
     toast.success( t('invoice.marked_paid_at', { date: paidAtInput.value }))
+    const pt = invoice.value.payment_thanks
+    if (pt?.status === 'sent') toast.success(t('invoice.payment_thanks_sent'))
+    else if (pt?.status === 'failed') toast.warning(t('invoice.payment_thanks_failed'))
+    else if (pt?.status === 'skipped' && pt.reason === 'no_recipient') toast.warning(t('invoice.payment_thanks_no_recipient'))
   } catch (e: any) {
     toast.error( e?.response?.data?.error?.message || t('invoice.operation_failed'))
   } finally {
@@ -749,7 +766,7 @@ async function updateApprovalStatus() {
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 0 0-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
           {{ t('invoice.send_reminder') }}
         </button>
-        <button v-if="isIssued && hasPositiveAmountToPay && auth.canWrite" @click="markPaidOpen = true" :disabled="busy !== null"
+        <button v-if="isIssued && hasPositiveAmountToPay && auth.canWrite" @click="openMarkPaid" :disabled="busy !== null"
           class="cursor-pointer px-3 h-9 text-sm border border-success-500/50 text-success-600 hover:bg-success-50 rounded-md inline-flex items-center gap-1.5">
           <svg class="w-4 h-4 text-success-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
           {{ t('invoice.mark_paid') }}
@@ -794,6 +811,13 @@ async function updateApprovalStatus() {
         <h3 class="text-lg font-semibold mb-3">{{ t('invoice.modals.mark_paid_title') }}</h3>
         <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('invoice.modals.mark_paid_date') }}</label>
         <input v-model="paidAtInput" type="date" class="w-full h-10 px-3 border border-neutral-300 rounded-md mb-4" />
+        <label v-if="thanksEnabled" class="flex items-start gap-2 text-sm text-neutral-700 mb-4 cursor-pointer">
+          <input v-model="sendThanks" type="checkbox" :disabled="!thanksHasRecipient" class="mt-0.5 rounded border-neutral-300 text-primary-600 disabled:opacity-50" />
+          <span>
+            {{ t('invoice.send_payment_thanks') }}
+            <span v-if="!thanksHasRecipient" class="block text-xs text-warning-600">{{ t('invoice.send_payment_thanks_no_recipient') }}</span>
+          </span>
+        </label>
         <div class="flex justify-end gap-2">
           <button @click="markPaidOpen = false" class="cursor-pointer px-3 h-9 text-sm border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50">{{ t('common.cancel') }}</button>
           <button @click="markPaid" :disabled="busy !== null"

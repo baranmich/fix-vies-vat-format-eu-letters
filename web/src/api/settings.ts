@@ -54,6 +54,11 @@ export interface Supplier {
   signing_tsa_username: string | null // HTTP Basic auth k TSA serveru
   signing_tsa_password?: string       // jen pro ODESLÁNÍ (uloží se šifrovaně); nikdy se nevrací
   has_tsa_password?: boolean          // server flag (heslo k TSA nastaveno)
+  // Děkovný e-mail za úhradu (issue #57)
+  payment_thanks_enabled: boolean
+  payment_thanks_auto_send: boolean
+  payment_thanks_default_checked: boolean
+  payment_thanks_attach_paid_pdf: boolean
   // Tax settings pro EPO výkazy DPH/KH (migrace 0038, fáze 6)
   taxpayer_type?: 'fo' | 'po' | null
   vat_period?: 'monthly' | 'quarterly' | null

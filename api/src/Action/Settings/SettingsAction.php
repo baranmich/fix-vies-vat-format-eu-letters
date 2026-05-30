@@ -237,6 +237,8 @@ final class SettingsAction
             // NIKDY nemění mass-assignmentem (jen přes SigningCertAction multipart upload).
             // signing_tsa_password (heslo k TSA) taky NE mass-assign — řešeno níže (encrypt).
             'pdf_signing_enabled', 'signing_tsa_url', 'signing_reason', 'signing_tsa_username',
+            // Děkovný e-mail za úhradu (issue #57)
+            'payment_thanks_enabled', 'payment_thanks_auto_send', 'payment_thanks_default_checked', 'payment_thanks_attach_paid_pdf',
         ];
 
         // Validace tax fields
@@ -331,7 +333,7 @@ final class SettingsAction
         foreach ($allowed as $f) {
             if (array_key_exists($f, $body)) {
                 $sets[] = "$f = ?";
-                $params[] = in_array($f, ['is_vat_payer', 'auto_send_reminders', 'auto_generate_recurring', 'embed_isdoc', 'email_branding_enabled', 'pdf_logo_show_name', 'pdf_signing_enabled'], true)
+                $params[] = in_array($f, ['is_vat_payer', 'auto_send_reminders', 'auto_generate_recurring', 'embed_isdoc', 'email_branding_enabled', 'pdf_logo_show_name', 'pdf_signing_enabled', 'payment_thanks_enabled', 'payment_thanks_auto_send', 'payment_thanks_default_checked', 'payment_thanks_attach_paid_pdf'], true)
                     ? ((int) (bool) $body[$f])
                     : $body[$f];
             }
@@ -466,6 +468,10 @@ final class SettingsAction
         $row['has_signing_cert']         = $signingRel !== '' && is_file(\MyInvoice\Service\Pdf\SigningConfig::absCertPath($signingRel));
         $row['signing_tsa_username']     = $row['signing_tsa_username'] ?? null;
         $row['has_tsa_password']         = !empty($row['signing_tsa_password_enc']);
+        $row['payment_thanks_enabled']        = (bool) ($row['payment_thanks_enabled'] ?? false);
+        $row['payment_thanks_auto_send']      = (bool) ($row['payment_thanks_auto_send'] ?? false);
+        $row['payment_thanks_default_checked']= (bool) ($row['payment_thanks_default_checked'] ?? false);
+        $row['payment_thanks_attach_paid_pdf']= (bool) ($row['payment_thanks_attach_paid_pdf'] ?? false);
         unset($row['signing_cert_password_enc'], $row['signing_cert_path'], $row['signing_tsa_password_enc']);
         // Globální cfg fallback pro varsymbol — UI ho použije jako placeholder
         // u prázdných per-supplier polí (aby uživatel viděl, jaká šablona by se
