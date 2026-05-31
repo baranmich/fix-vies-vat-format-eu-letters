@@ -22,6 +22,7 @@ import { useI18n } from 'vue-i18n'
 import { invoicesApi, type WorkReportItem } from '@/api/invoices'
 import { codebooksApi, type Unit } from '@/api/codebooks'
 import { useToast } from '@/composables/useToast'
+import { focusLastRow } from '@/composables/useRowFocus'
 import { apiErrorMessage } from '@/api/errors'
 
 const { t } = useI18n()
@@ -97,6 +98,7 @@ function addItem() {
     rate: defaultRate.value,
     order_index: wrItems.value.length,
   })
+  focusLastRow('[data-row-input="wr-modal"]')
 }
 
 function removeItem(idx: number) {
@@ -247,7 +249,7 @@ onMounted(() => {
                           class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▼</button>
                 </td>
                 <td class="px-3 py-1.5">
-                  <input v-model="it.description" type="text" maxlength="500"
+                  <input v-model="it.description" type="text" maxlength="500" data-row-input="wr-modal"
                          class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
                 </td>
                 <td class="px-3 py-1.5">

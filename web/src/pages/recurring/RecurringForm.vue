@@ -8,6 +8,7 @@ import { projectsApi, type Project } from '@/api/projects'
 import { codebooksApi, type VatRate, type Currency, type Unit } from '@/api/codebooks'
 import { useToast } from '@/composables/useToast'
 import { formatMoney } from '@/composables/useFormat'
+import { focusLastRow } from '@/composables/useRowFocus'
 import SearchableSelect from '@/components/ui/SearchableSelect.vue'
 import ClientFormModal from '@/components/modals/ClientFormModal.vue'
 import ProjectFormModal from '@/components/modals/ProjectFormModal.vue'
@@ -160,6 +161,7 @@ function blankItem(): FormItem {
 
 function addItem() {
   form.value.items.push(blankItem())
+  focusLastRow('[data-row-input="rec-item"]')
 }
 function removeItem(idx: number) {
   form.value.items.splice(idx, 1)
@@ -787,7 +789,7 @@ async function submit() {
           </thead>
           <tbody>
             <tr v-for="(it, idx) in form.items" :key="idx" :class="['border-t border-neutral-200', itemHasBothNegative(it) ? 'bg-danger-50' : '']">
-              <td class="py-1.5 pr-2"><input v-model="it.description" type="text" class="w-full h-8 px-2 border border-neutral-300 rounded" /></td>
+              <td class="py-1.5 pr-2"><input v-model="it.description" type="text" data-row-input="rec-item" class="w-full h-8 px-2 border border-neutral-300 rounded" /></td>
               <td class="py-1.5 pr-2"><input v-model="it.quantity" v-math type="text" inputmode="decimal" :class="['w-full h-8 px-2 border rounded text-right font-mono', itemHasBothNegative(it) ? 'border-danger-400' : 'border-neutral-300']" /></td>
               <td class="py-1.5 pr-2">
                 <select v-model="it.unit" class="w-full h-8 px-1 border border-neutral-300 rounded bg-surface text-sm">
@@ -820,7 +822,7 @@ async function submit() {
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.description') }}</label>
-              <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm" />
+              <input v-model="it.description" type="text" data-row-input="rec-item" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm" />
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>

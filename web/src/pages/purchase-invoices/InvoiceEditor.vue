@@ -18,6 +18,7 @@ import { vatClassificationsApi, type VatClassification } from '@/api/vatClassifi
 import { settingsApi } from '@/api/settings'
 import { formatMoney } from '@/composables/useFormat'
 import { evalMath } from '@/directives/vMath'
+import { focusLastRow } from '@/composables/useRowFocus'
 import { useToast } from '@/composables/useToast'
 import { apiErrorMessage } from '@/api/errors'
 import VendorPicker from '@/components/purchase/VendorPicker.vue'
@@ -401,7 +402,10 @@ function addItem(hideDropzone = true) {
   })
   // user začal editovat (klik na „přidat položku") → schovej dropzone, ať se nepřeplňuje.
   // Automatický seed první položky při mountu posílá hideDropzone=false (viz onMounted).
-  if (hideDropzone) dropzoneVisible.value = false
+  if (hideDropzone) {
+    dropzoneVisible.value = false
+    focusLastRow('[data-row-input="pur-item"]') // jen u user kliku, ne u seedu při mountu
+  }
 }
 
 function removeItem(idx: number) {
@@ -985,7 +989,7 @@ function fieldErr(key: string): string | null {
           <tbody>
             <tr v-for="(it, i) in form.items" :key="i" class="border-t border-neutral-200">
               <td class="py-2 pl-5 pr-2">
-                <input v-model="it.description" type="text" class="w-full h-9 px-2 border rounded text-sm"
+                <input v-model="it.description" type="text" data-row-input="pur-item" class="w-full h-9 px-2 border rounded text-sm"
                        :class="fieldErr(`items.${i}.description`) ? 'border-danger-500/60' : 'border-neutral-300'" />
                 <p v-if="fieldErr(`items.${i}.description`)" class="text-xs text-danger-600 mt-1">{{ fieldErr(`items.${i}.description`) }}</p>
               </td>
@@ -1027,7 +1031,7 @@ function fieldErr(key: string): string | null {
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.description') }}</label>
-              <input v-model="it.description" type="text" class="w-full h-10 px-3 border rounded text-sm"
+              <input v-model="it.description" type="text" data-row-input="pur-item" class="w-full h-10 px-3 border rounded text-sm"
                      :class="fieldErr(`items.${i}.description`) ? 'border-danger-500/60' : 'border-neutral-300'" />
               <p v-if="fieldErr(`items.${i}.description`)" class="text-xs text-danger-600 mt-1">{{ fieldErr(`items.${i}.description`) }}</p>
             </div>

@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { invoicesApi, type Invoice, type InvoicePayload, type InvoiceItem, type WorkReportItem, type InvoiceAttachment } from '@/api/invoices'
 import { useHotkey } from '@/composables/useHotkey'
+import { focusLastRow } from '@/composables/useRowFocus'
 import { useToast } from '@/composables/useToast'
 import { useI18n } from 'vue-i18n'
 
@@ -545,6 +546,7 @@ async function applyProjectDefaults(projectId: number) {
 
 function addItem() {
   form.value.items.push(blankItem())
+  focusLastRow('[data-row-input="inv-item"]')
 }
 
 function removeItem(index: number) {
@@ -745,6 +747,7 @@ function addWrItem() {
     : (previousRate && previousRate > 0) ? previousRate
     : 1500
   wrItems.value.push({ description: '', hours: 1, rate: defaultRate, order_index: wrItems.value.length })
+  focusLastRow('[data-row-input="inv-wr"]')
 }
 function removeWrItem(idx: number) {
   wrItems.value.splice(idx, 1)
@@ -1313,7 +1316,7 @@ async function deleteDraft() {
                 <button type="button" @click="moveDown(i)" :disabled="i === form.items.length - 1" class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▼</button>
               </td>
               <td class="px-3 py-2">
-                <textarea v-model="item.description" rows="1" :placeholder="t('invoice.items_table.description')"
+                <textarea v-model="item.description" rows="1" data-row-input="inv-item" :placeholder="t('invoice.items_table.description')"
                   class="w-full px-2 py-1.5 border border-neutral-300 rounded text-sm resize-y min-h-[36px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
               </td>
               <td class="px-3 py-2">
@@ -1369,7 +1372,7 @@ async function deleteDraft() {
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.description') }}</label>
-              <textarea v-model="item.description" rows="2" :placeholder="t('invoice.items_table.description')"
+              <textarea v-model="item.description" rows="2" data-row-input="inv-item" :placeholder="t('invoice.items_table.description')"
                 class="w-full px-3 py-2 border border-neutral-300 rounded text-sm resize-y min-h-[44px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -1557,7 +1560,7 @@ async function deleteDraft() {
                           class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▼</button>
                 </td>
                 <td class="px-2 py-1.5">
-                  <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
+                  <input v-model="it.description" type="text" data-row-input="inv-wr" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
                 </td>
                 <td class="px-2 py-1.5">
                   <input v-model="it.work_date" type="date" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm font-mono" />
@@ -1622,7 +1625,7 @@ async function deleteDraft() {
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.wr_description') }}</label>
-                <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm bg-surface" />
+                <input v-model="it.description" type="text" data-row-input="inv-wr" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm bg-surface" />
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
