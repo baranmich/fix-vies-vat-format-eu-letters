@@ -1300,7 +1300,7 @@ async function deleteDraft() {
               <th class="px-3 py-2 w-12"></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-100">
+          <tbody class="divide-y divide-neutral-200">
             <tr v-for="(item, i) in form.items" :key="i" :class="itemHasBothNegative(item) ? 'bg-danger-50' : ''">
               <td class="px-2 py-2 text-center text-xs text-neutral-400">
                 <button type="button" @click="moveUp(i)" :disabled="i === 0" class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▲</button>
@@ -1308,31 +1308,31 @@ async function deleteDraft() {
               </td>
               <td class="px-3 py-2">
                 <textarea v-model="item.description" rows="1" :placeholder="t('invoice.items_table.description')"
-                  class="w-full px-2 py-1.5 border border-neutral-200 rounded text-sm resize-y min-h-[36px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
+                  class="w-full px-2 py-1.5 border border-neutral-300 rounded text-sm resize-y min-h-[36px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
               </td>
               <td class="px-3 py-2">
                 <input v-model="item.quantity" v-math type="text" inputmode="decimal"
-                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
+                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-300']" />
               </td>
               <td class="px-3 py-2">
-                <select v-model="item.unit" class="w-full h-9 px-1 border border-neutral-200 rounded text-sm bg-surface">
+                <select v-model="item.unit" class="w-full h-9 px-1 border border-neutral-300 rounded text-sm bg-surface">
                   <option v-for="u in units" :key="u.id" :value="u.code">{{ u.code }}</option>
                   <option v-if="item.unit && !units.some(u => u.code === item.unit)" :value="item.unit">{{ item.unit }}</option>
                 </select>
               </td>
               <td class="px-3 py-2">
                 <input v-model="item.unit_price_without_vat" v-math type="text" inputmode="decimal"
-                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
+                  :class="['w-full h-9 px-2 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-300']" />
               </td>
               <td v-if="supplierIsVatPayer" class="px-3 py-2">
-                <select v-model.number="item.vat_rate_id" class="w-full h-9 px-1 border border-neutral-200 rounded text-sm bg-surface">
+                <select v-model.number="item.vat_rate_id" class="w-full h-9 px-1 border border-neutral-300 rounded text-sm bg-surface">
                   <option v-for="r in selectableVatRates" :key="r.id" :value="r.id">{{ vatRateLabel(r) }}</option>
                 </select>
               </td>
               <td class="px-3 py-2">
                 <input :value="itemTotal(item)" @change="setItemGross(item, ($event.target as HTMLInputElement).value)"
                   type="text" inputmode="decimal" :title="t('invoice.items_table.gross_edit_hint')"
-                  class="w-full h-9 px-2 border border-neutral-200 rounded text-right font-mono text-sm" />
+                  class="w-full h-9 px-2 border border-neutral-300 rounded text-right font-mono text-sm" />
               </td>
               <td class="px-2 py-2 text-center">
                 <button type="button" @click="removeItem(i)" class="text-danger-500 hover:text-danger-600 text-lg leading-none">×</button>
@@ -1348,7 +1348,7 @@ async function deleteDraft() {
         </div>
 
         <!-- Mobile: stack karet (každé pole na vlastním řádku, čitelné inputy) -->
-        <div class="md:hidden divide-y divide-neutral-100">
+        <div class="md:hidden divide-y divide-neutral-200">
           <div v-if="form.items.length === 0" class="px-4 py-6 text-center text-neutral-400 text-sm">
             {{ t('invoice.no_items') }} <button type="button" @click="addItem" class="text-primary-600 hover:underline">{{ t('invoice.add_first') }}</button>
           </div>
@@ -1356,25 +1356,25 @@ async function deleteDraft() {
             <div class="flex items-center justify-between text-xs text-neutral-500">
               <span class="font-mono">#{{ i + 1 }}</span>
               <div class="flex items-center gap-2">
-                <button type="button" @click="moveUp(i)" :disabled="i === 0" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center border border-neutral-200 rounded hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed">▲</button>
-                <button type="button" @click="moveDown(i)" :disabled="i === form.items.length - 1" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center border border-neutral-200 rounded hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed">▼</button>
+                <button type="button" @click="moveUp(i)" :disabled="i === 0" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center border border-neutral-300 rounded hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed">▲</button>
+                <button type="button" @click="moveDown(i)" :disabled="i === form.items.length - 1" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center border border-neutral-300 rounded hover:bg-neutral-50 disabled:opacity-30 disabled:cursor-not-allowed">▼</button>
                 <button type="button" @click="removeItem(i)" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center border border-danger-500/40 text-danger-500 hover:bg-danger-50 rounded text-lg leading-none">×</button>
               </div>
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.description') }}</label>
               <textarea v-model="item.description" rows="2" :placeholder="t('invoice.items_table.description')"
-                class="w-full px-3 py-2 border border-neutral-200 rounded text-sm resize-y min-h-[44px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
+                class="w-full px-3 py-2 border border-neutral-300 rounded text-sm resize-y min-h-[44px] focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"></textarea>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.qty') }}</label>
                 <input v-model="item.quantity" v-math type="text" inputmode="decimal"
-                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
+                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-300']" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.items_table.unit') }}</label>
-                <select v-model="item.unit" class="w-full h-10 px-2 border border-neutral-200 rounded text-sm bg-surface">
+                <select v-model="item.unit" class="w-full h-10 px-2 border border-neutral-300 rounded text-sm bg-surface">
                   <option v-for="u in units" :key="u.id" :value="u.code">{{ u.code }}</option>
                   <option v-if="item.unit && !units.some(u => u.code === item.unit)" :value="item.unit">{{ item.unit }}</option>
                 </select>
@@ -1384,20 +1384,20 @@ async function deleteDraft() {
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ unitPriceHeaderLabel }}</label>
                 <input v-model="item.unit_price_without_vat" v-math type="text" inputmode="decimal"
-                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-200']" />
+                  :class="['w-full h-10 px-3 border rounded text-right font-mono text-sm', itemHasBothNegative(item) ? 'border-danger-400' : 'border-neutral-300']" />
               </div>
               <div v-if="supplierIsVatPayer">
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.totals.vat') }}</label>
-                <select v-model.number="item.vat_rate_id" class="w-full h-10 px-2 border border-neutral-200 rounded text-sm bg-surface">
+                <select v-model.number="item.vat_rate_id" class="w-full h-10 px-2 border border-neutral-300 rounded text-sm bg-surface">
                   <option v-for="r in selectableVatRates" :key="r.id" :value="r.id">{{ vatRateLabel(r) }}</option>
                 </select>
               </div>
             </div>
-            <div class="flex items-baseline justify-between pt-1 border-t border-neutral-100">
+            <div class="flex items-baseline justify-between pt-1 border-t border-neutral-200">
               <span class="text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ supplierIsVatPayer ? t('invoice.items_table.total_incl_vat') : t('invoice.totals.total') }}</span>
               <input :value="itemTotal(item)" @change="setItemGross(item, ($event.target as HTMLInputElement).value)"
                 type="text" inputmode="decimal" :title="t('invoice.items_table.gross_edit_hint')"
-                class="w-32 h-9 px-2 border border-neutral-200 rounded text-right font-mono text-sm font-semibold" />
+                class="w-32 h-9 px-2 border border-neutral-300 rounded text-right font-mono text-sm font-semibold" />
             </div>
           </div>
         </div>
@@ -1449,7 +1449,7 @@ async function deleteDraft() {
             <label for="discount_percent" class="text-sm text-neutral-700">{{ t('invoice.discount.label') }}</label>
             <div class="relative w-28">
               <input id="discount_percent" v-model.number="form.discount_percent" type="number" min="0" max="100" step="0.01"
-                class="w-full h-9 pl-2 pr-7 border border-neutral-200 rounded text-right font-mono text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none" />
+                class="w-full h-9 pl-2 pr-7 border border-neutral-300 rounded text-right font-mono text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none" />
               <span class="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-400 text-sm pointer-events-none">%</span>
             </div>
           </div>
@@ -1551,16 +1551,16 @@ async function deleteDraft() {
                           class="block w-5 h-4 hover:text-neutral-700 disabled:opacity-30">▼</button>
                 </td>
                 <td class="px-2 py-1.5">
-                  <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm" />
+                  <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
                 </td>
                 <td class="px-2 py-1.5">
-                  <input v-model="it.work_date" type="date" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm font-mono" />
+                  <input v-model="it.work_date" type="date" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm font-mono" />
                 </td>
                 <td class="px-2 py-1.5">
-                  <input v-model.number="it.hours" type="number" step="0.25" min="0" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono" />
+                  <input v-model.number="it.hours" type="number" step="0.25" min="0" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
                 </td>
                 <td class="px-2 py-1.5">
-                  <input v-model.number="it.rate" type="number" step="1" min="0" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono" />
+                  <input v-model.number="it.rate" type="number" step="1" min="0" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
                 </td>
                 <td class="px-3 py-1.5 text-right font-mono text-neutral-700">
                   {{ formatMoney((Number(it.hours) || 0) * (Number(it.rate) || 0), form.currency) }}
@@ -1616,22 +1616,22 @@ async function deleteDraft() {
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.wr_description') }}</label>
-                <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-200 rounded text-sm bg-surface" />
+                <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm bg-surface" />
               </div>
               <div class="grid grid-cols-2 gap-2">
                 <div>
                   <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.wr_date') }}</label>
-                  <input v-model="it.work_date" type="date" class="w-full h-10 px-3 border border-neutral-200 rounded text-sm font-mono bg-surface" />
+                  <input v-model="it.work_date" type="date" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm font-mono bg-surface" />
                 </div>
                 <div>
                   <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.wr_hours') }}</label>
-                  <input v-model.number="it.hours" type="number" inputmode="decimal" step="0.25" min="0" class="w-full h-10 px-3 border border-neutral-200 rounded text-right font-mono text-sm bg-surface" />
+                  <input v-model.number="it.hours" type="number" inputmode="decimal" step="0.25" min="0" class="w-full h-10 px-3 border border-neutral-300 rounded text-right font-mono text-sm bg-surface" />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-2 items-end">
                 <div>
                   <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('invoice.wr_rate') }}</label>
-                  <input v-model.number="it.rate" type="number" inputmode="decimal" step="1" min="0" class="w-full h-10 px-3 border border-neutral-200 rounded text-right font-mono text-sm bg-surface" />
+                  <input v-model.number="it.rate" type="number" inputmode="decimal" step="1" min="0" class="w-full h-10 px-3 border border-neutral-300 rounded text-right font-mono text-sm bg-surface" />
                 </div>
                 <div class="text-right pb-2">
                   <div class="text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ t('invoice.wr_total') }}</div>

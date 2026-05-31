@@ -875,30 +875,30 @@ function fieldErr(key: string): string | null {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(it, i) in form.items" :key="i" class="border-t border-neutral-100">
+            <tr v-for="(it, i) in form.items" :key="i" class="border-t border-neutral-200">
               <td class="py-2 pl-5 pr-2">
-                <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm" />
+                <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
               </td>
               <td class="py-2 px-1">
-                <input v-model="it.quantity" v-math type="text" inputmode="decimal" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono" />
+                <input v-model="it.quantity" v-math type="text" inputmode="decimal" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
               </td>
               <td class="py-2 px-1">
-                <select v-model="it.unit" class="w-full h-9 px-1 border border-neutral-200 rounded bg-surface text-sm">
+                <select v-model="it.unit" class="w-full h-9 px-1 border border-neutral-300 rounded bg-surface text-sm">
                   <option v-for="u in units" :key="u.code" :value="u.code">{{ u.code }}</option>
                 </select>
               </td>
               <td class="py-2 px-1">
-                <input v-model="it.unit_price_without_vat" v-math type="text" inputmode="decimal" class="w-full h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono" />
+                <input v-model="it.unit_price_without_vat" v-math type="text" inputmode="decimal" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
               </td>
               <td class="py-2 px-1">
-                <select v-model.number="it.vat_rate_id" class="w-full h-9 px-1 border border-neutral-200 rounded bg-surface text-sm">
+                <select v-model.number="it.vat_rate_id" class="w-full h-9 px-1 border border-neutral-300 rounded bg-surface text-sm">
                   <option v-for="v in vatRates" :key="v.id" :value="v.id">{{ vatRateLabel(v) }}</option>
                 </select>
               </td>
               <td class="py-2 px-1">
                 <input :value="itemTotal(it).with" @change="setItemGross(it, ($event.target as HTMLInputElement).value)"
                   type="text" inputmode="decimal" :title="t('purchase_invoice.items.gross_edit_hint')"
-                  class="w-full h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono" />
+                  class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
               </td>
               <td class="py-2 px-1 pr-3 text-center">
                 <button type="button" @click="removeItem(i)" class="cursor-pointer w-8 h-8 inline-flex items-center justify-center text-neutral-400 hover:text-danger-600 hover:bg-danger-50 rounded" :title="t('purchase_invoice.items.remove')">✕</button>
@@ -909,7 +909,7 @@ function fieldErr(key: string): string | null {
         </div>
 
         <!-- Mobile: stack karet (každé pole na vlastním řádku, čitelné inputy) -->
-        <div v-if="form.items.length > 0" class="md:hidden divide-y divide-neutral-100 border-t border-neutral-100">
+        <div v-if="form.items.length > 0" class="md:hidden divide-y divide-neutral-200 border-t border-neutral-200">
           <div v-for="(it, i) in form.items" :key="`m-${i}`" class="p-3 space-y-2">
             <div class="flex items-center justify-between text-xs text-neutral-500">
               <span class="font-mono">#{{ i + 1 }}</span>
@@ -917,16 +917,16 @@ function fieldErr(key: string): string | null {
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.description') }}</label>
-              <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-200 rounded text-sm" />
+              <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm" />
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.quantity') }}</label>
-                <input v-model="it.quantity" v-math type="text" inputmode="decimal" class="w-full h-10 px-3 border border-neutral-200 rounded text-sm text-right font-mono" />
+                <input v-model="it.quantity" v-math type="text" inputmode="decimal" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm text-right font-mono" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.unit') }}</label>
-                <select v-model="it.unit" class="w-full h-10 px-2 border border-neutral-200 rounded bg-surface text-sm">
+                <select v-model="it.unit" class="w-full h-10 px-2 border border-neutral-300 rounded bg-surface text-sm">
                   <option v-for="u in units" :key="u.code" :value="u.code">{{ u.code }}</option>
                 </select>
               </div>
@@ -934,20 +934,20 @@ function fieldErr(key: string): string | null {
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ unitPriceHeaderLabel }}</label>
-                <input v-model="it.unit_price_without_vat" v-math type="text" inputmode="decimal" class="w-full h-10 px-3 border border-neutral-200 rounded text-sm text-right font-mono" />
+                <input v-model="it.unit_price_without_vat" v-math type="text" inputmode="decimal" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm text-right font-mono" />
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.vat_rate') }}</label>
-                <select v-model.number="it.vat_rate_id" class="w-full h-10 px-2 border border-neutral-200 rounded bg-surface text-sm">
+                <select v-model.number="it.vat_rate_id" class="w-full h-10 px-2 border border-neutral-300 rounded bg-surface text-sm">
                   <option v-for="v in vatRates" :key="v.id" :value="v.id">{{ vatRateLabel(v) }}</option>
                 </select>
               </div>
             </div>
-            <div class="flex items-baseline justify-between pt-1 border-t border-neutral-100">
+            <div class="flex items-baseline justify-between pt-1 border-t border-neutral-200">
               <span class="text-xs font-medium text-neutral-500 uppercase tracking-wide">{{ t('purchase_invoice.items.total_with_vat') }}</span>
               <input :value="itemTotal(it).with" @change="setItemGross(it, ($event.target as HTMLInputElement).value)"
                 type="text" inputmode="decimal" :title="t('purchase_invoice.items.gross_edit_hint')"
-                class="w-32 h-9 px-2 border border-neutral-200 rounded text-sm text-right font-mono font-semibold" />
+                class="w-32 h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono font-semibold" />
             </div>
           </div>
         </div>
