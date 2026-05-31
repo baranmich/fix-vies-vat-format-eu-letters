@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.3] — 2026-05-31
+
+Daňový audit režimu cen „s DPH": opraveny případy, kdy kopírované doklady nedědily režim a totály se nafoukly o DPH.
+
+### Fixed
+
+- **Daňový doklad k záloze, dobropis a kopie faktury** nedědily příznak **„ceny s DPH"** z původního dokladu. U dokladu vytvořeného v tomto režimu (kde řádková cena nese brutto) se pak zkopírovaná brutto cena přepočítala jako cena **bez DPH** a celková částka se **nafoukla o DPH** (např. 1 210 → ~1 464). Opraveno: `FinalFromProformaCreator` (daňový doklad k proformě), `CancelInvoiceAction` (dobropis) i `BulkReissueAction` (kopie/přefakturace) nyní režim přebírají.
+- **Souhrn v seznamu pravidelných fakturací** počítal u šablon v režimu „ceny s DPH" daň zdola (jako by ceny byly bez DPH), takže zobrazený součet byl nafouknutý. Nově respektuje, že brutto už DPH obsahuje.
+
+### Poznámka k daním
+
+Do přiznání DPH, kontrolního hlášení ani knihy DPH `unit_price_without_vat` nevstupuje — daňové výkazy sčítají uložené řádkové základy a DPH (`VatLedgerService`), které byly po celou dobu počítané správně koeficientem. Výše uvedené chyby se týkaly pouze kopírovacích cest, kde se přepočítával celý doklad. Přidána rozsáhlá testová matice (výpočet zhora/zdola, reverse charge v ČR i do zahraničí, plátce/neplátce, dobropis, kopie, generování z pravidelné fakturace).
+
 ## [4.7.2] — 2026-05-31
 
 Oprava importu dobropisů z iDokladu a čitelnější PDF přijaté faktury v režimu cen s DPH.
