@@ -57,25 +57,31 @@ final class PurchaseInvoicePdfRenderer
             'with_vat'    => $invoice['total_with_vat'] ?? 0,
         ];
 
-        // V režimu „ceny s DPH" nese unit_price_without_vat brutto (kvůli haléřově přesnému
-        // výpočtu DPH koeficientem); pro zobrazení dopočítáme skutečné NETTO z řádkového
-        // základu (total_without_vat / množství). V běžném režimu je už netto.
+        // Režim „ceny s DPH": unit_price_without_vat nese BRUTTO (kvůli haléřově přesnému
+        // výpočtu DPH koeficientem). Na dokladu s DPH ukazujeme řádek S DPH (brutto cena/j
+        // i brutto řádkový součet) — odráží, že jde o doklad s cenami včetně DPH a sedí
+        // (množství × cena/j = řádkový součet). V běžném režimu ukazujeme netto.
         $pricesIncludeVat = !empty($invoice['prices_include_vat']);
 
         // Map items na shape co Twig očekává
         $itemsNorm = array_map(function ($it) use ($pricesIncludeVat) {
-            $qty  = (float) ($it['quantity'] ?? 1);
-            $base = (float) ($it['total_without_vat'] ?? 0);
-            $unitNet = ($pricesIncludeVat && $qty != 0.0)
-                ? round($base / $qty, 2)
-                : (float) ($it['unit_price_without_vat'] ?? 0);
+            $qty   = (float) ($it['quantity'] ?? 1);
+            $base  = (float) ($it['total_without_vat'] ?? 0);
+            $gross = (float) ($it['total_with_vat'] ?? 0);
+            $rawUnit = (float) ($it['unit_price_without_vat'] ?? 0); // v režimu s DPH = brutto/ks
+            $unitNet = ($pricesIncludeVat && $qty != 0.0) ? round($base / $qty, 2) : $rawUnit;
             return [
                 'description'            => $it['description'] ?? '',
                 'quantity'               => $qty,
                 'unit'                   => $it['unit'] ?? 'ks',
+                // V režimu s DPH ukaž brutto cena/j (= rawUnit), jinak netto.
+                'unit_price'             => $pricesIncludeVat ? $rawUnit : $unitNet,
                 'unit_price_without_vat' => $unitNet,
                 'vat_rate'               => (float) ($it['vat_rate_snapshot'] ?? $it['vat_rate'] ?? 0),
                 'total_without_vat'      => $base,
+                'total_with_vat'         => $gross,
+                // Řádkový součet zobrazovaný na dokladu (s DPH → brutto, jinak netto).
+                'line_total'             => $pricesIncludeVat ? $gross : $base,
             ];
         }, $items);
 
