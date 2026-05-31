@@ -190,6 +190,36 @@ Doporučení v produkci:
 > deploy. Není v UI **schválně** — v případě omylu by ses zablokoval
 > a nemohl si ho přes UI sundat.
 
+### 20.4.1 Za reverse proxy: `trusted_proxies` (důležité)
+
+Pokud aplikace běží **za reverse proxy** (doporučené produkční nasazení — viz
+kap. 2), vidí všechny požadavky přicházet z IP proxy (např. brána Dockeru
+`172.x.0.1`), ne od reálného klienta. Bez konfigurace pak:
+
+- **IP allowlist** filtruje podle IP proxy — buď zablokuje všechny, nebo (když
+  přidáš proxy do `allow`) pustí všechny → ochrana je neúčinná.
+- **Brute-force lockout** (kap. 20.3) je fakticky **globální** — všechny pokusy
+  vypadají ze stejné IP.
+- **Audit log** loguje IP proxy místo reálného klienta (ztráta forenzní hodnoty).
+
+Proto za reverse proxy uveď proxy do `trusted_proxies` — aplikace pak vezme
+skutečnou klientskou IP z hlavičky `X-Forwarded-For`:
+
+```php
+'ip_allowlist' => [
+    'trusted_proxies' => [
+        '172.16.0.0/12',         // Docker bridge sítě
+        // '10.0.0.0/8',         // nebo konkrétní IP/rozsah tvé proxy
+    ],
+    'header' => 'X-Forwarded-For', // výchozí; odkud číst reálnou IP (jen za trusted proxy)
+],
+```
+
+> ⚠️ Do `trusted_proxies` patří **jen** IP/rozsahy proxy, kterým věříš —
+> klient za nedůvěryhodnou proxy by jinak mohl `X-Forwarded-For` podvrhnout.
+> Aplikace hlavičku respektuje pouze tehdy, když `REMOTE_ADDR` odpovídá
+> `trusted_proxies`.
+
 ## 20.5 RBAC (role-based access)
 
 Tři role. Hierarchie: **admin > accountant > readonly**.
@@ -263,6 +293,23 @@ Viz [19. Nastavení → § 15.6](19_Nastaveni.md) pro UI.
 - **Hesla** — ani staré, ani nové
 - **PII klientů** mimo to, co bylo změněno (jen fields seznam, ne hodnoty)
 - **Bankovní transakce** — log obsahuje jen ID importovaného výpisu
+
+### 20.7.2 Jak se do logu zapisuje IP adresa
+
+Aplikace bere IP klienta z **IP síťového spojení** (`REMOTE_ADDR`). Když běží
+**za reverse proxy** (Docker, nginx, Cloudflare…), je tím spojením proxy — bez
+konfigurace by se proto do auditu zapisovala **IP proxy**, ne reálného klienta
+(typicky uvidíš pořád stejnou IP, např. bránu Dockeru `172.x.0.1`).
+
+Reálnou IP přečte aplikace z hlavičky `X-Forwarded-For` **pouze tehdy**, když
+`REMOTE_ADDR` odpovídá rozsahu v `cfg.ip_allowlist.trusted_proxies` (viz
+§ 20.4.1). Z hlavičky se bere **první** adresa (původní klient). Bez nastavené
+`trusted_proxies` se `X-Forwarded-For` ignoruje (ochrana proti podvržení).
+
+> 🛈 Stejná logika se zjišťování IP používá i pro **brute-force lockout**
+> (kap. 20.3). Za reverse proxy bez `trusted_proxies` proto lockout počítá
+> pokusy podle IP proxy = fakticky globálně. Po nastavení `trusted_proxies`
+> začnou audit log i lockout pracovat s reálnou klientskou IP.
 
 ## 20.8 DKIM podpis e-mailů
 
