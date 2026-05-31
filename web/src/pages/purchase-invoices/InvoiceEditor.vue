@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 // RouterLink se používá i v Add Currency modalu — import už pokrývá
 import { useI18n } from 'vue-i18n'
@@ -295,9 +295,10 @@ onMounted(async () => {
       form.value.vendor_id = qVendor
       void fetchVendorVatStatus(qVendor, true)
     }
-    // Default první prázdná položka pro nový draft (user feedback: UX, méně klikání)
+    // Default první prázdná položka pro nový draft (user feedback: UX, méně klikání).
+    // Seed NEsmí schovat dropzone — jinak by upload PDF u nové faktury nikdy nebyl vidět.
     if (form.value.items.length === 0) {
-      addItem()
+      addItem(false)
     }
   }
   loaded.value = true
@@ -367,6 +368,11 @@ function populate(inv: PurchaseInvoice) {
   form.value.vat_classification_code = inv.vat_classification_code ?? null
   form.value.items = inv.items.length > 0 ? inv.items : []
   extractionWarning.value = inv.extraction_warning ?? null
+  // Ruční rekapitulace DPH dle dokladu (§ 73) → naplň override mapu.
+  vatOverrides.value = {}
+  for (const o of inv.vat_overrides ?? []) {
+    vatOverrides.value[String(o.rate)] = { base: o.base, vat: o.vat }
+  }
   // Existující faktura: zobraz plátcovství dodavatele (jen příznak, NEpřepisuj uloženou
   // volbu vat_deduction). Při ruční změně dodavatele/checkboxu se enforce zapne.
   form.value.vendor_is_vat_payer = (inv as { vendor_is_vat_payer?: boolean }).vendor_is_vat_payer ?? true
@@ -384,7 +390,7 @@ function populate(inv: PurchaseInvoice) {
   }
 }
 
-function addItem() {
+function addItem(hideDropzone = true) {
   form.value.items.push({
     description: '',
     quantity: 1,
@@ -393,8 +399,9 @@ function addItem() {
     vat_rate_id: vatRates.value.find(v => v.is_default)?.id || vatRates.value[0]?.id || 1,
     order_index: form.value.items.length,
   })
-  // user začal editovat → schovej dropzone, ať se nepřeplňuje
-  dropzoneVisible.value = false
+  // user začal editovat (klik na „přidat položku") → schovej dropzone, ať se nepřeplňuje.
+  // Automatický seed první položky při mountu posílá hideDropzone=false (viz onMounted).
+  if (hideDropzone) dropzoneVisible.value = false
 }
 
 function removeItem(idx: number) {
@@ -448,12 +455,71 @@ function vatRateLabel(r: VatRate): string {
   return t('invoice.vat_rate_label.exempt')
 }
 
-const totals = computed(() => {
-  let base = 0, vat = 0
+// ── Rekapitulace DPH per sazba + ruční override dle dokladu (§ 73 ZDPH) ──
+// Vypočtená rekapitulace (per sazba) ze součtu řádků — default hodnoty.
+const computedRecap = computed(() => {
+  const map = new Map<number, { rate: number; base: number; vat: number }>()
   for (const it of form.value.items) {
     const t = itemTotal(it)
-    base += t.base; vat += t.vat
+    const rate = form.value.reverse_charge ? 0 : (vatRates.value.find(v => v.id === it.vat_rate_id)?.rate_percent ?? 0)
+    const cur = map.get(rate) ?? { rate, base: 0, vat: 0 }
+    cur.base = round2(cur.base + t.base)
+    cur.vat = round2(cur.vat + t.vat)
+    map.set(rate, cur)
   }
+  return [...map.values()].sort((a, b) => b.rate - a.rate)
+})
+
+// Ruční overridy per sazba (klíč = sazba jako string). Prázdné = počítat standardně.
+const vatOverrides = ref<Record<string, { base: number; vat: number }>>({})
+
+// Řádky pro UI: merge vypočtené rekapitulace s overridy (+ příznak „ručně upraveno").
+const recapRows = computed(() => computedRecap.value.map(r => {
+  const ov = vatOverrides.value[String(r.rate)]
+  return {
+    rate: r.rate,
+    base: ov ? ov.base : r.base,
+    vat: ov ? ov.vat : r.vat,
+    computedBase: r.base,
+    computedVat: r.vat,
+    overridden: !!ov,
+  }
+}))
+
+function setRecapBase(rate: number, raw: string): void {
+  const v = evalMath(raw)
+  if (v === null) return
+  const key = String(rate)
+  const row = computedRecap.value.find(r => r.rate === rate)
+  const cur = vatOverrides.value[key] ?? { base: row?.base ?? 0, vat: row?.vat ?? 0 }
+  vatOverrides.value = { ...vatOverrides.value, [key]: { ...cur, base: round2(v) } }
+}
+function setRecapVat(rate: number, raw: string): void {
+  const v = evalMath(raw)
+  if (v === null) return
+  const key = String(rate)
+  const row = computedRecap.value.find(r => r.rate === rate)
+  const cur = vatOverrides.value[key] ?? { base: row?.base ?? 0, vat: row?.vat ?? 0 }
+  vatOverrides.value = { ...vatOverrides.value, [key]: { ...cur, vat: round2(v) } }
+}
+function resetRecapRate(rate: number): void {
+  const next = { ...vatOverrides.value }
+  delete next[String(rate)]
+  vatOverrides.value = next
+}
+const hasVatOverride = computed(() => Object.keys(vatOverrides.value).length > 0)
+
+// Payload pro server — jen sazby, které na faktuře stále existují.
+function buildVatOverridesPayload(): Array<{ rate: number; base: number; vat: number }> {
+  return Object.entries(vatOverrides.value)
+    .filter(([key]) => computedRecap.value.some(r => String(r.rate) === key))
+    .map(([key, v]) => ({ rate: Number(key), base: v.base, vat: v.vat }))
+}
+
+// Součty z (případně přepsané) rekapitulace → všechny totály dole sedí na doklad.
+const totals = computed(() => {
+  let base = 0, vat = 0
+  for (const r of recapRows.value) { base += r.base; vat += r.vat }
   return { without_vat: round2(base), vat: round2(vat), with_vat: round2(base + vat) }
 })
 
@@ -464,8 +530,15 @@ async function onPdfDropped(file: File) {
     await uploadPdfToInvoice(invoiceId.value, file)
   } else {
     pendingPdfFile.value = file
+    dropzoneVisible.value = false
     toast.success(t('purchase_invoice.pdf.pending_upload', { name: file.name }))
   }
+}
+
+// Odebrání souboru připraveného k nahrání (u nové faktury, před uložením).
+function clearPendingPdf() {
+  pendingPdfFile.value = null
+  dropzoneVisible.value = true
 }
 
 const pendingPdfFile = ref<File | null>(null)
@@ -556,6 +629,8 @@ async function submit() {
       exchange_diff_base: form.value.exchange_diff_base,
       expense_category_id: form.value.expense_category_id,
       vat_classification_code: form.value.vat_classification_code,
+      // Ruční rekapitulace DPH dle dokladu (§ 73) — [] vyčistí případný starý override.
+      vat_overrides: buildVatOverridesPayload(),
       items: form.value.items.map((it, i) => ({
         description: it.description,
         quantity: Number(it.quantity || 0),
@@ -591,6 +666,11 @@ async function submit() {
       fieldErrors.value = data.fields
     }
     error.value = apiErrorMessage(e)
+    // Toast + scroll k bannéru — uživatel může být odscrollovaný dole u tlačítka Uložit
+    // a jinak by validační chybu vůbec neviděl (jen tichý 422).
+    toast.error(error.value)
+    await nextTick()
+    document.querySelector('[data-error-banner]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   } finally {
     submitting.value = false
   }
@@ -613,7 +693,7 @@ function fieldErr(key: string): string | null {
       </RouterLink>
     </header>
 
-    <div v-if="error" class="p-3 bg-danger-50 border border-danger-500/40 text-danger-600 rounded-md text-sm">
+    <div v-if="error" data-error-banner class="p-3 bg-danger-50 border border-danger-500/40 text-danger-600 rounded-md text-sm">
       {{ error }}
     </div>
 
@@ -646,6 +726,34 @@ function fieldErr(key: string): string | null {
         <p class="text-xs text-neutral-500 mt-2">
           {{ t('purchase_invoice.extraction.ai_pending') }}
         </p>
+      </div>
+
+      <!-- Soubor připravený k nahrání u nové faktury (nahraje se po prvním uložení) -->
+      <div v-if="!isEdit && pendingPdfFile" class="bg-success-50 border border-success-500/40 rounded-lg shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-4 py-3 gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <svg class="w-7 h-8 shrink-0" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#dc2626" d="M4 2h16l8 8v22a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z"/>
+              <path fill="#ffffff" opacity="0.35" d="M20 2v8h8z"/>
+              <text x="16" y="26" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="8" font-weight="700" text-anchor="middle" letter-spacing="0.3">PDF</text>
+            </svg>
+            <div class="min-w-0">
+              <div class="font-medium text-sm truncate">{{ pendingPdfFile.name }}</div>
+              <div class="text-xs text-success-700 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                {{ t('purchase_invoice.pdf.pending_badge') }}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            @click="clearPendingPdf"
+            class="cursor-pointer px-3 h-9 text-sm border border-danger-500/50 text-danger-500 hover:bg-danger-50 rounded-md inline-flex items-center gap-1.5 shrink-0"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            {{ t('common.remove') }}
+          </button>
+        </div>
       </div>
 
       <!-- Existující PDF na detail/edit (s inline preview, stejný pattern jako InvoiceDetail.vue) -->
@@ -853,7 +961,7 @@ function fieldErr(key: string): string | null {
       <div class="bg-surface border border-neutral-200 rounded-lg shadow-sm">
         <header class="flex items-center justify-between px-5 py-3 border-b border-neutral-100">
           <h2 class="text-sm font-medium text-neutral-700">{{ t('purchase_invoice.items.title') }}</h2>
-          <button type="button" @click="addItem" class="cursor-pointer px-3 h-8 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium">
+          <button type="button" @click="addItem()" class="cursor-pointer px-3 h-8 text-sm bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium">
             {{ t('purchase_invoice.items.add') }}
           </button>
         </header>
@@ -877,7 +985,9 @@ function fieldErr(key: string): string | null {
           <tbody>
             <tr v-for="(it, i) in form.items" :key="i" class="border-t border-neutral-200">
               <td class="py-2 pl-5 pr-2">
-                <input v-model="it.description" type="text" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm" />
+                <input v-model="it.description" type="text" class="w-full h-9 px-2 border rounded text-sm"
+                       :class="fieldErr(`items.${i}.description`) ? 'border-danger-500/60' : 'border-neutral-300'" />
+                <p v-if="fieldErr(`items.${i}.description`)" class="text-xs text-danger-600 mt-1">{{ fieldErr(`items.${i}.description`) }}</p>
               </td>
               <td class="py-2 px-1">
                 <input v-model="it.quantity" v-math type="text" inputmode="decimal" class="w-full h-9 px-2 border border-neutral-300 rounded text-sm text-right font-mono" />
@@ -917,7 +1027,9 @@ function fieldErr(key: string): string | null {
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-600 mb-1">{{ t('purchase_invoice.items.description') }}</label>
-              <input v-model="it.description" type="text" class="w-full h-10 px-3 border border-neutral-300 rounded text-sm" />
+              <input v-model="it.description" type="text" class="w-full h-10 px-3 border rounded text-sm"
+                     :class="fieldErr(`items.${i}.description`) ? 'border-danger-500/60' : 'border-neutral-300'" />
+              <p v-if="fieldErr(`items.${i}.description`)" class="text-xs text-danger-600 mt-1">{{ fieldErr(`items.${i}.description`) }}</p>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
@@ -984,6 +1096,57 @@ function fieldErr(key: string): string | null {
               <td class="text-right font-mono pt-1.5">{{ formatMoney(totals.with_vat + (form.rounding || 0) - (form.advance_paid_amount || 0), currencyCode) }}</td>
             </tr>
           </table>
+        </div>
+      </div>
+
+      <!-- Box 2b: Rekapitulace DPH — editovatelná dle dokladu dodavatele (§ 73 ZDPH).
+           Pod reverse-charge se skrývá (na dokladu zahr. dodavatele není česká DPH). -->
+      <div v-if="form.items.length > 0 && !form.reverse_charge" class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-neutral-100 flex items-center justify-between gap-3">
+          <h2 class="text-sm font-medium text-neutral-700">{{ t('purchase_invoice.vat_recap.title') }}</h2>
+          <button v-if="hasVatOverride" type="button" @click="vatOverrides = {}"
+            class="cursor-pointer text-xs text-primary-700 hover:underline">
+            {{ t('purchase_invoice.vat_recap.reset_all') }}
+          </button>
+        </div>
+        <div class="px-5 py-3">
+          <p class="text-xs text-neutral-500 mb-3">{{ t('purchase_invoice.vat_recap.hint') }}</p>
+          <table class="w-full sm:w-auto text-sm">
+            <thead>
+              <tr class="text-xs text-neutral-500">
+                <th class="text-left font-normal py-1 pr-6">{{ t('purchase_invoice.vat_recap.rate') }}</th>
+                <th class="text-right font-normal py-1 px-2">{{ t('purchase_invoice.vat_recap.base') }}</th>
+                <th class="text-right font-normal py-1 px-2">{{ t('purchase_invoice.vat_recap.vat') }}</th>
+                <th class="w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in recapRows" :key="r.rate" class="border-t border-neutral-100">
+                <td class="py-1.5 pr-6 text-neutral-700 font-medium">{{ r.rate }} %</td>
+                <td class="py-1.5 px-2">
+                  <input :value="r.base" @change="setRecapBase(r.rate, ($event.target as HTMLInputElement).value)"
+                    type="text" inputmode="decimal"
+                    class="w-32 h-8 px-2 border rounded text-sm text-right font-mono"
+                    :class="r.overridden ? 'border-warning-500/60 bg-warning-50' : 'border-neutral-300'" />
+                </td>
+                <td class="py-1.5 px-2">
+                  <input :value="r.vat" @change="setRecapVat(r.rate, ($event.target as HTMLInputElement).value)"
+                    type="text" inputmode="decimal"
+                    class="w-32 h-8 px-2 border rounded text-sm text-right font-mono"
+                    :class="r.overridden ? 'border-warning-500/60 bg-warning-50' : 'border-neutral-300'" />
+                </td>
+                <td class="py-1.5 pl-1 text-right">
+                  <button v-if="r.overridden" type="button" @click="resetRecapRate(r.rate)"
+                    :title="t('purchase_invoice.vat_recap.reset')"
+                    class="cursor-pointer text-neutral-400 hover:text-primary-700 text-base leading-none">↺</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-if="hasVatOverride" class="text-xs text-warning-700 mt-3 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            {{ t('purchase_invoice.vat_recap.overridden_note') }}
+          </p>
         </div>
       </div>
 

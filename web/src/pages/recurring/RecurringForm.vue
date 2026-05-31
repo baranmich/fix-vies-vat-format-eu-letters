@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { recurringApi, type RecurringTemplate, type RecurringTemplatePayload, type Frequency } from '@/api/recurring'
@@ -560,6 +560,10 @@ async function submit() {
     router.push({ name: 'recurring' })
   } catch (e: any) {
     error.value = e?.response?.data?.error?.message ?? 'Error'
+    // Toast + scroll k bannéru — uživatel může být odscrollovaný dole u tlačítka Uložit.
+    toast.error(error.value)
+    await nextTick()
+    document.querySelector('[data-error-banner]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   } finally {
     submitting.value = false
   }
@@ -902,7 +906,7 @@ async function submit() {
         </label>
       </div>
 
-      <div v-if="error" class="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded text-sm">{{ error }}</div>
+      <div v-if="error" data-error-banner class="p-3 bg-danger-50 border border-danger-200 text-danger-700 rounded text-sm">{{ error }}</div>
 
       <div class="flex justify-end gap-3">
         <button type="button" @click="router.push({ name: 'recurring' })"

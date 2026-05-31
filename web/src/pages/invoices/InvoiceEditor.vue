@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { invoicesApi, type Invoice, type InvoicePayload, type InvoiceItem, type WorkReportItem, type InvoiceAttachment } from '@/api/invoices'
 import { useHotkey } from '@/composables/useHotkey'
@@ -584,7 +584,8 @@ const computed_totals = computed(() => {
       base = round2(amount - vat)
     } else {
       base = amount
-      vat = round2(base * (vatRate / 100))
+      // base*rate/100 (dělit až nakonec), shodně s backendem InvoiceMath — viz issue #82.
+      vat = round2(base * vatRate / 100)
     }
 
     if (!breakdown.has(vatRate)) {
@@ -676,7 +677,8 @@ function itemTotal(item: InvoiceItem): number {
   const vatRate = (form.value.reverse_charge || !supplierIsVatPayer.value)
     ? 0
     : (vatRates.value.find(v => v.id === item.vat_rate_id)?.rate_percent ?? 0)
-  return round2(amount + round2(amount * (vatRate / 100)))
+  // base*rate/100 (dělit až nakonec), shodně s backendem InvoiceMath — viz issue #82.
+  return round2(amount + round2(amount * vatRate / 100))
 }
 
 /**
@@ -1048,6 +1050,10 @@ async function submit() {
     router.push(`/invoices/${saved.id}`)
   } catch (e: any) {
     error.value = apiErrorMessage(e, t('common.save_failed'))
+    // Toast + scroll k bannéru — uživatel může být odscrollovaný dole u tlačítka Uložit.
+    toast.error(error.value)
+    await nextTick()
+    document.querySelector('[data-error-banner]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   } finally {
     submitting.value = false
   }
@@ -1718,7 +1724,7 @@ async function deleteDraft() {
         </div>
       </div>
 
-      <div v-if="error" class="rounded-md bg-danger-50 border border-danger-500/40 px-3 py-2 text-sm text-danger-500">
+      <div v-if="error" data-error-banner class="rounded-md bg-danger-50 border border-danger-500/40 px-3 py-2 text-sm text-danger-500">
         {{ error }}
       </div>
 

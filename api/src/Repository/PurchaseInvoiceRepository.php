@@ -1080,6 +1080,38 @@ final class PurchaseInvoiceRepository
     }
 
     /**
+     * Uloží (nebo vyčistí) ruční rekapitulaci DPH dle dokladu (§ 73 ZDPH).
+     * Sanitizuje vstup na list `{rate, base, vat}` (čísla zaokrouhlená na 2 des. místa);
+     * prázdné/`null` → NULL (žádný override, kalkulátor počítá standardně).
+     *
+     * @param list<array{rate?: float|int, base?: float|int|null, vat?: float|int|null}>|null $overrides
+     */
+    public function setVatOverrides(int $id, int $supplierId, ?array $overrides): void
+    {
+        $clean = [];
+        foreach ($overrides ?? [] as $o) {
+            if (!is_array($o) || !isset($o['rate']) || !is_numeric($o['rate'])) {
+                continue;
+            }
+            $entry = ['rate' => round((float) $o['rate'], 2)];
+            if (array_key_exists('base', $o) && $o['base'] !== null && is_numeric($o['base'])) {
+                $entry['base'] = round((float) $o['base'], 2);
+            }
+            if (array_key_exists('vat', $o) && $o['vat'] !== null && is_numeric($o['vat'])) {
+                $entry['vat'] = round((float) $o['vat'], 2);
+            }
+            // Override bez base i vat nemá smysl (= žádná změna pro tu sazbu).
+            if (array_key_exists('base', $entry) || array_key_exists('vat', $entry)) {
+                $clean[] = $entry;
+            }
+        }
+        $json = $clean === [] ? null : json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->db->pdo()->prepare(
+            'UPDATE purchase_invoices SET vat_overrides = ? WHERE id = ? AND supplier_id = ?'
+        )->execute([$json, $id, $supplierId]);
+    }
+
+    /**
      * Zapíše (nebo vyčistí) diagnostický popis problému z AI extrakce.
      * UI ho zobrazí jako žluté upozornění, aby si uživatel data ověřil
      * (typicky: AI sečetla subtotaly jako další položky).
@@ -1241,6 +1273,12 @@ final class PurchaseInvoiceRepository
                 $decoded = json_decode($row[$f], true);
                 if (is_array($decoded)) $row[$f] = $decoded;
             }
+        }
+        // Ruční rekapitulace DPH dle dokladu (§ 73). NULL/prázdné → null (žádný override).
+        if (array_key_exists('vat_overrides', $row)) {
+            $raw = $row['vat_overrides'];
+            $decoded = (is_string($raw) && $raw !== '') ? json_decode($raw, true) : null;
+            $row['vat_overrides'] = (is_array($decoded) && $decoded !== []) ? $decoded : null;
         }
         return $row;
     }

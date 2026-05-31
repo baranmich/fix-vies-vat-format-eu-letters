@@ -94,6 +94,11 @@ final class UpdatePurchaseInvoiceAction
             return Json::error($response, 'integrity_violation', $e->getMessage(), 400);
         }
         $this->repo->replaceItems($id, (array) ($body['items'] ?? []));
+        // Ruční rekapitulace DPH dle dokladu (§ 73) — uložit PŘED recompute, aby ji
+        // kalkulátor zapekl do řádkových totálů.
+        if (array_key_exists('vat_overrides', $body)) {
+            $this->repo->setVatOverrides($id, $supplierId, is_array($body['vat_overrides']) ? $body['vat_overrides'] : null);
+        }
         $this->calc->recompute($id);
         // Rounding override z body (uživatel může ručně upravit v editoru)
         if (array_key_exists('rounding', $body)) {

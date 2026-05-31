@@ -87,6 +87,19 @@ final class InvoiceMathTest extends TestCase
         self::assertSame(8.78, $r['totals']['with_vat']);
     }
 
+    public function testBottomUp21PctRoundsHalfUpMathematically(): void
+    {
+        // Issue #82: 151,50 × 21 % = přesně 31,815 → matematicky půl nahoru → 31,82.
+        // Dělit až nakonec (base*rate/100), aby float reprezentace 0,21 nesrazila
+        // výsledek na 31,81. Frontend (JS) počítá identicky.
+        $r = InvoiceMath::compute([
+            ['quantity' => 1, 'unit_price_without_vat' => 151.50, 'vat_rate_snapshot' => 21],
+        ]);
+        self::assertSame(151.50, $r['totals']['without_vat']);
+        self::assertSame(31.82,  $r['totals']['vat']);
+        self::assertSame(183.32, $r['totals']['with_vat']);
+    }
+
     public function testDecimalQuantity(): void
     {
         // Hodiny: 1.5 × 1500 Kč/h = 2250
@@ -348,6 +361,94 @@ final class InvoiceMathTest extends TestCase
         // Invariant per sazba (klíčové pro KH/přiznání).
         self::assertSame(17.18, $r['vat_breakdown'][0]['vat']);
         self::assertSame(10.71, $r['vat_breakdown'][1]['vat']);
+    }
+
+    // ─── Override rekapitulace DPH per sazba (přijaté faktury, § 73 ZDPH) ────────
+
+    public function testVatOverrideMatchesSupplierDocument(): void
+    {
+        // Issue #82 / Alza: vypočtené DPH 31,82, ale doklad uvádí 31,81. Override DPH
+        // té sazby srovná řádek i totály přesně na doklad.
+        $items = [['quantity' => 1, 'unit_price_without_vat' => 151.50, 'vat_rate_snapshot' => 21]];
+        $r = InvoiceMath::compute($items, false, false, [
+            ['rate' => 21, 'base' => 151.50, 'vat' => 31.81],
+        ]);
+        self::assertSame(151.50, $r['totals']['without_vat']);
+        self::assertSame(31.81,  $r['totals']['vat']);
+        self::assertSame(183.31, $r['totals']['with_vat']);
+        self::assertSame(31.81,  $r['items'][0]['vat']);
+        self::assertSame(183.31, $r['items'][0]['with']);
+        self::assertSame(31.81,  $r['vat_breakdown'][0]['vat']);
+    }
+
+    public function testVatOverrideDistributesResidualToHeaviestLine(): void
+    {
+        // Víc řádků téže sazby: override cílí součet sazby, reziduum padne na nejsilnější
+        // řádek (max |base|). 100 + 51,50 base; vypočtené vat 21,00 + 10,82 = 31,82.
+        // Override vat=31,81 → reziduum −0,01 na řádku s base 100.
+        $items = [
+            ['quantity' => 1, 'unit_price_without_vat' => 100.00, 'vat_rate_snapshot' => 21], // base 100, vat 21,00
+            ['quantity' => 1, 'unit_price_without_vat' => 51.50,  'vat_rate_snapshot' => 21], // base 51,50, vat 10,82
+        ];
+        $r = InvoiceMath::compute($items, false, false, [
+            ['rate' => 21, 'vat' => 31.81],
+        ]);
+        self::assertSame(31.81, $r['totals']['vat']);
+        self::assertSame(20.99, $r['items'][0]['vat']); // reziduum na nejsilnějším řádku
+        self::assertSame(10.82, $r['items'][1]['vat']);
+        self::assertSame(31.81, $r['vat_breakdown'][0]['vat']);
+    }
+
+    public function testVatOverrideMultipleRatesIndependently(): void
+    {
+        // Multi-rate doklad: override 21 % i 12 % zvlášť dle rekapitulace dokladu.
+        $items = [
+            ['quantity' => 1, 'unit_price_without_vat' => 151.50, 'vat_rate_snapshot' => 21], // vat 31,82
+            ['quantity' => 1, 'unit_price_without_vat' => 87.50,  'vat_rate_snapshot' => 12], // vat 10,50
+        ];
+        $r = InvoiceMath::compute($items, false, false, [
+            ['rate' => 21, 'base' => 151.50, 'vat' => 31.81],
+            ['rate' => 12, 'base' => 87.50,  'vat' => 10.49],
+        ]);
+        self::assertSame(42.30, $r['totals']['vat']); // 31,81 + 10,49
+        self::assertSame(239.00, $r['totals']['without_vat']);
+        self::assertSame(281.30, $r['totals']['with_vat']);
+        // Breakdown DESC: 21 %, 12 %
+        self::assertSame(31.81, $r['vat_breakdown'][0]['vat']);
+        self::assertSame(10.49, $r['vat_breakdown'][1]['vat']);
+    }
+
+    public function testVatOverrideCanAdjustBaseToo(): void
+    {
+        // Override umí přepsat základ i daň (potvrzeno uživatelem).
+        $items = [['quantity' => 1, 'unit_price_without_vat' => 151.50, 'vat_rate_snapshot' => 21]];
+        $r = InvoiceMath::compute($items, false, false, [
+            ['rate' => 21, 'base' => 151.49, 'vat' => 31.81],
+        ]);
+        self::assertSame(151.49, $r['totals']['without_vat']);
+        self::assertSame(31.81,  $r['totals']['vat']);
+        self::assertSame(183.30, $r['totals']['with_vat']);
+        self::assertSame(151.49, $r['items'][0]['base']);
+    }
+
+    public function testEmptyVatOverridesLeaveComputationUnchanged(): void
+    {
+        $items = [['quantity' => 1, 'unit_price_without_vat' => 151.50, 'vat_rate_snapshot' => 21]];
+        $base = InvoiceMath::compute($items);
+        $withEmpty = InvoiceMath::compute($items, false, false, []);
+        self::assertSame($base['totals'], $withEmpty['totals']);
+        self::assertSame(31.82, $withEmpty['totals']['vat']); // beze změny = matematická hodnota
+    }
+
+    public function testVatOverrideIgnoredUnderReverseCharge(): void
+    {
+        // RC: na dokladu zahraničního dodavatele není česká DPH → override se ignoruje.
+        $items = [['quantity' => 1, 'unit_price_without_vat' => 1000.00, 'vat_rate_snapshot' => 21]];
+        $r = InvoiceMath::compute($items, true, false, [
+            ['rate' => 21, 'vat' => 210.00],
+        ]);
+        self::assertSame(0.00,    $r['totals']['vat']);
+        self::assertSame(1000.00, $r['totals']['without_vat']);
     }
 
     public function testTopDownCreditNoteNegativeQuantity(): void

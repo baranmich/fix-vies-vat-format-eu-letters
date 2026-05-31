@@ -217,7 +217,8 @@
       "rate": "Rate",
       "base": "Base",
       "vat": "VAT",
-      "with_vat": "Total"
+      "with_vat": "Total",
+      "per_document": "per document"
     },
     "payment_currency": {
       "toggle": "Paying in different currency than invoice",
@@ -259,6 +260,16 @@
       "success_paid": "Invoice marked as paid.",
       "success_cancelled": "Invoice cancelled."
     },
+    "vat_recap": {
+      "title": "VAT recapitulation",
+      "hint": "Values are derived from the line items. If the supplier document states a different base or VAT (rounding), override them here — they will be stored exactly as on the document (§ 73 VAT Act).",
+      "rate": "Rate",
+      "base": "Base",
+      "vat": "VAT",
+      "reset": "Compute automatically",
+      "reset_all": "Compute all automatically",
+      "overridden_note": "Recapitulation manually adjusted to the document — VAT is not recomputed."
+    },
     "pdf": {
       "title": "Vendor original PDF",
       "dropzone_hint": "Drag a PDF or photo here (or click to pick)",
@@ -275,6 +286,7 @@
       "delete_success": "PDF deleted",
       "uploaded": "PDF uploaded",
       "pending_upload": "{name} will be uploaded after saving the invoice",
+      "pending_badge": "Will be uploaded after saving the invoice",
       "download": "Download PDF",
       "replace": "Replace",
       "no_pdf": "No archived PDF for this invoice.",

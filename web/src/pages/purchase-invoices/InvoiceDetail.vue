@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LinkedDocumentsPanel from '@/components/documents/LinkedDocumentsPanel.vue'
+import PdfDropzone from '@/components/purchase/PdfDropzone.vue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -185,6 +186,28 @@ async function deletePdf() {
   } catch (e) {
     toast.error(apiErrorMessage(e))
   }
+}
+
+// Nahrání PDF přímo z detailu, když u faktury žádné archivované není.
+// Faktura už má ID → upload jde rovnou (na rozdíl od editoru u nové faktury).
+const pdfUploading = ref(false)
+
+async function onPdfDropped(file: File) {
+  if (!invoice.value || pdfUploading.value) return
+  pdfUploading.value = true
+  try {
+    await purchaseInvoicesApi.uploadPdf(invoice.value.id, file)
+    toast.success(t('purchase_invoice.pdf.uploaded'))
+    await load()
+  } catch (e) {
+    toast.error(apiErrorMessage(e))
+  } finally {
+    pdfUploading.value = false
+  }
+}
+
+function onPdfError(_code: string, message: string) {
+  toast.error(message)
 }
 
 async function transition(target: PurchaseInvoiceStatus) {
@@ -561,7 +584,14 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
     <!-- ═══ Totals + VAT breakdown ═══ -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div class="bg-surface border border-neutral-200 rounded-lg p-5 shadow-sm">
-        <h3 class="text-sm font-medium text-neutral-700 mb-3">{{ t('purchase_invoice.vat_breakdown.title') }}</h3>
+        <h3 class="text-sm font-medium text-neutral-700 mb-3 flex items-center gap-2">
+          {{ t('purchase_invoice.vat_breakdown.title') }}
+          <span v-if="invoice.vat_overrides && invoice.vat_overrides.length"
+            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-warning-50 text-warning-700 border border-warning-500/40"
+            :title="t('purchase_invoice.vat_recap.overridden_note')">
+            {{ t('purchase_invoice.vat_breakdown.per_document') }}
+          </span>
+        </h3>
         <table class="w-full text-sm">
           <thead>
             <tr class="text-xs uppercase tracking-wide text-neutral-500 border-b border-neutral-100">
@@ -734,7 +764,8 @@ function transitionLabel(target: PurchaseInvoiceStatus): string {
     </div>
     <div v-else class="bg-surface border border-neutral-200 rounded-lg p-5 shadow-sm">
       <h3 class="text-sm font-medium text-neutral-700 mb-3">{{ t('purchase_invoice.pdf.title') }}</h3>
-      <p class="text-sm text-neutral-500">{{ t('purchase_invoice.pdf.no_pdf') }}</p>
+      <PdfDropzone v-if="auth.canWrite" :uploading="pdfUploading" @file-dropped="onPdfDropped" @error="onPdfError" />
+      <p v-else class="text-sm text-neutral-500">{{ t('purchase_invoice.pdf.no_pdf') }}</p>
     </div>
 
     <!-- ═══ Poznámky (jen pokud existují) ═══ -->

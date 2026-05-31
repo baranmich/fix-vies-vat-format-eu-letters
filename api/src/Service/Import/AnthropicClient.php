@@ -203,6 +203,9 @@ JSON schema:
   "total_without_vat": number|null,
   "total_with_vat": number|null,
   "total_with_vat_rounded": number|null,
+  "vat_recap": [
+    { "rate": number, "base": number, "vat": number }
+  ],
   "already_paid": boolean,
   "advance_reference": string|null
 }
@@ -287,6 +290,24 @@ DŮLEŽITÉ k zaokrouhlení:
   zaokrouhlení (např. "229.00 Kč", "K úhradě: 229").
 - Rozdíl (229 - 228.69 = 0.31) půjde do pole `rounding` faktury.
 - Pokud na PDF NENÍ explicitní zaokrouhlení, vrať `total_with_vat_rounded: null`.
+
+DŮLEŽITÉ k poli `vat_recap` (rekapitulace DPH po sazbách):
+- Opiš REKAPITULACI / REKAPITULACI DPH z dokladu — tabulku, kde je pro každou
+  sazbu DPH uveden základ daně a daň. Typicky dole na faktuře:
+  „Rekapitulace DPH" / „Rozpis DPH" / „DPH rozpis" / „VAT summary" se sloupci
+  Sazba | Základ | DPH.
+- Pro KAŽDOU sazbu vrať jeden objekt `{ "rate": sazba_v_%, "base": základ_bez_DPH,
+  "vat": částka_DPH }` — VŠE jako kladná čísla TAK JAK JSOU NA DOKLADU (nepřepočítávej).
+- Příklad rekapitulace na dokladu:
+    Sazba   Základ      DPH
+    21 %    1 000,00    210,00
+    12 %      500,00     60,00
+  → `vat_recap`: [{"rate":21,"base":1000.00,"vat":210.00},{"rate":12,"base":500.00,"vat":60.00}]
+- Klíčové je věrně opsat hodnoty DPH dle dokladu (kvůli § 73 ZDPH — odpočet ve výši
+  daně uvedené na dokladu); haléřové rozdíly oproti přepočtu jsou očekávané.
+- U DOBROPISU vrať kladná čísla (sign aplikuje importér).
+- Pokud doklad rekapitulaci DPH po sazbách NEMÁ (jednoduchá účtenka, neplátce,
+  reverse-charge bez DPH) → vrať `vat_recap: []` (prázdné pole). Nevymýšlej hodnoty.
 
 DŮLEŽITÉ k řádkům faktury (`items`):
 - Vrať POUZE listové (atomické) položky — konkrétní práce, materiál, zboží.

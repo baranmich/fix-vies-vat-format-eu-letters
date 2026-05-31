@@ -30,6 +30,16 @@ export interface PurchaseVatBreakdownRow {
   with_vat: number
 }
 
+/**
+ * Ruční override rekapitulace DPH dle dokladu dodavatele (§ 73 ZDPH).
+ * Per sazba lze přepsat základ i daň; kalkulátor reziduum zapeče do řádkových totálů.
+ */
+export interface PurchaseVatOverride {
+  rate: number
+  base: number
+  vat: number
+}
+
 export interface PurchaseInvoiceTotals {
   without_vat: number
   vat: number
@@ -166,6 +176,8 @@ export interface PurchaseInvoice {
   vendor_dic?: string | null
   vendor_main_email?: string
   vendor_language?: 'cs' | 'en'
+  /** Ruční rekapitulace DPH dle dokladu (§ 73). NULL = počítá se standardně. */
+  vat_overrides: PurchaseVatOverride[] | null
   // Related
   items: PurchaseInvoiceItem[]
   vat_breakdown: PurchaseVatBreakdownRow[]
@@ -247,6 +259,8 @@ export interface PurchaseInvoicePayload {
   exchange_diff_base?: number | null
   vat_classification_code?: string | null
   expense_category_id?: number | null
+  /** Ruční rekapitulace DPH dle dokladu (§ 73). null/[] = počítat standardně. */
+  vat_overrides?: PurchaseVatOverride[] | null
   items: Array<{
     description: string
     quantity: number

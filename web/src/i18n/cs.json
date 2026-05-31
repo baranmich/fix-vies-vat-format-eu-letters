@@ -217,7 +217,8 @@
       "rate": "Sazba",
       "base": "Základ",
       "vat": "DPH",
-      "with_vat": "Celkem"
+      "with_vat": "Celkem",
+      "per_document": "dle dokladu"
     },
     "payment_currency": {
       "toggle": "Platba v jiné měně než měna faktury",
@@ -259,6 +260,16 @@
       "success_paid": "Faktura označena jako uhrazená.",
       "success_cancelled": "Faktura stornována."
     },
+    "vat_recap": {
+      "title": "Rekapitulace DPH",
+      "hint": "Hodnoty dopočítané ze řádků. Pokud doklad dodavatele uvádí jiný základ nebo DPH (zaokrouhlení), přepiš je tady — uloží se přesně dle dokladu (§ 73 ZDPH).",
+      "rate": "Sazba",
+      "base": "Základ",
+      "vat": "DPH",
+      "reset": "Spočítat automaticky",
+      "reset_all": "Spočítat vše automaticky",
+      "overridden_note": "Rekapitulace ručně upravena dle dokladu — DPH se nepřepočítává."
+    },
     "pdf": {
       "title": "Originální PDF od dodavatele",
       "dropzone_hint": "Sem přetáhni PDF nebo fotku faktury (nebo klikni pro výběr)",
@@ -275,6 +286,7 @@
       "delete_success": "PDF smazáno",
       "uploaded": "PDF nahráno",
       "pending_upload": "{name} bude nahráno po uložení faktury",
+      "pending_badge": "Nahraje se po uložení faktury",
       "download": "Stáhnout PDF",
       "replace": "Nahradit",
       "no_pdf": "K této faktuře není archivovaný PDF dokument.",
