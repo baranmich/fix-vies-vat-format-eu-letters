@@ -478,9 +478,14 @@ final class InvoiceRepository
         if (!empty($filters['unpaid_only'])) {
             $where[] = "i.status IN ('issued','sent','reminded')";
             $where[] = 'i.invoice_type IN ("invoice","credit_note")';
+            // Finální daňový doklad k zaplacené proformě má amount_to_pay = 0 by design
+            // (záloha pokryla celek) — není nezaplacený, jen status zůstal 'issued'.
+            // Dobropisy (záporný total) ponecháváme. Zrcadlí dashboard a InvoiceAmountPolicy.
+            $where[] = "(i.invoice_type NOT IN ('invoice','proforma') OR i.amount_to_pay > 0)";
         }
         if (!empty($filters['overdue'])) {
             $where[] = "i.status IN ('issued','sent','reminded') AND i.due_date <= CURDATE()";
+            $where[] = "(i.invoice_type NOT IN ('invoice','proforma') OR i.amount_to_pay > 0)";
         }
         if (!empty($filters['q'])) {
             // Escape % a _ wildcards aby uživatelský input nedělal slow-query DoS / nečekanou shodu
