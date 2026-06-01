@@ -2057,9 +2057,11 @@
   },
   "sent_emails": {
     "title": "Sent emails",
-    "subtitle": "Overview of all e-mails sent from the app — manual and automatic (reminders, thank-you notes). Admin only.",
+    "subtitle": "Overview of all e-mails sent from the app — manual and automatic (reminders, thank-you notes), including failed attempts. Admin only.",
     "all_types": "All types",
+    "all_statuses": "All statuses",
     "refresh": "Refresh",
+    "failed_badge": "Failed: {n}",
     "total": "{n} emails · page {p} / {tp}",
     "no_records": "No e-mail has been sent yet.",
     "time": "Time",
@@ -2068,6 +2070,10 @@
     "recipients": "Recipient",
     "sender": "Sent by",
     "sender_system": "System (automatic)",
+    "status": {
+      "sent": "Sent",
+      "failed": "Failed"
+    },
     "types": {
       "invoice_sent": "Invoice sent",
       "reminder_sent": "Reminder",
