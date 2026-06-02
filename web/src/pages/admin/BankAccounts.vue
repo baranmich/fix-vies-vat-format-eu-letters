@@ -553,13 +553,13 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
 
     <div v-else class="space-y-5">
       <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
-        <header class="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
-          <div>
+        <header class="px-5 py-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.currencies_title') }}</h2>
             <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.currencies_subtitle') }}</p>
           </div>
           <button type="button" @click="startNewCurrencyAccount()"
-            class="cursor-pointer h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
+            class="cursor-pointer shrink-0 self-start sm:self-auto whitespace-nowrap h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
             {{ t('bank_accounts.new_account') }}
           </button>
         </header>
@@ -665,13 +665,13 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
       </div>
 
       <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
-        <header class="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
-          <div>
+        <header class="px-5 py-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.mappings_title') }}</h2>
             <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.mappings_subtitle') }}</p>
           </div>
           <button type="button" @click="saveMappings"
-            class="cursor-pointer h-9 px-4 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md">
+            class="cursor-pointer shrink-0 self-start sm:self-auto whitespace-nowrap h-9 px-4 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md">
             {{ t('bank_accounts.save_mappings') }}
           </button>
         </header>
@@ -736,13 +736,13 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
       </section>
 
       <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
-        <header class="px-5 py-3 border-b border-neutral-200 flex items-center justify-between gap-3">
-          <div>
+        <header class="px-5 py-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.imap_title') }}</h2>
             <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.imap_subtitle') }}</p>
           </div>
           <button type="button" @click="startNewImapAccount"
-            class="cursor-pointer h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
+            class="cursor-pointer shrink-0 self-start sm:self-auto whitespace-nowrap h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
             {{ t('bank_accounts.new_imap') }}
           </button>
         </header>
@@ -901,13 +901,13 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
       </section>
 
       <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
-        <header class="px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
-          <div>
+        <header class="px-5 py-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.providers_title') }}</h2>
             <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.providers_subtitle') }}</p>
           </div>
           <button type="button" @click="startNewRegexProvider"
-            class="cursor-pointer h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
+            class="cursor-pointer shrink-0 self-start sm:self-auto whitespace-nowrap h-9 px-3 bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
             {{ t('bank_accounts.new_regex_provider') }}
           </button>
         </header>
@@ -990,13 +990,13 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
       </section>
 
       <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
-        <header class="px-5 py-3 border-b border-neutral-200 flex items-center justify-between">
-          <div>
+        <header class="px-5 py-3 border-b border-neutral-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
             <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.messages_title') }}</h2>
             <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.messages_subtitle') }}</p>
           </div>
           <button type="button" @click="runScan" :disabled="scanning"
-            class="cursor-pointer h-9 px-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md disabled:opacity-50">
+            class="cursor-pointer shrink-0 self-start sm:self-auto whitespace-nowrap h-9 px-3 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium rounded-md disabled:opacity-50">
             {{ scanning ? '…' : t('bank_accounts.run_scan') }}
           </button>
         </header>
