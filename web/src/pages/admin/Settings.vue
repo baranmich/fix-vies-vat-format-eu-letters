@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { settingsApi, type Supplier } from '@/api/settings'
 import { clientsApi } from '@/api/clients'
@@ -788,15 +787,6 @@ async function removeLogo() {
             <iframe :srcdoc="previewHtml" sandbox="allow-same-origin" class="w-full h-[420px] border border-neutral-200 rounded-md bg-neutral-50" />
           </div>
         </div>
-      </section>
-
-      <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm p-5">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('settings.currencies_banks') }}</h2>
-        <p class="text-sm text-neutral-500 mt-1">{{ t('settings.currencies_moved') }}</p>
-        <RouterLink to="/admin/bank-accounts"
-          class="inline-flex mt-3 h-9 px-3 items-center bg-surface border border-neutral-300 rounded-md text-sm hover:bg-neutral-50">
-          {{ t('settings.open_bank_accounts') }}
-        </RouterLink>
       </section>
     </div>
   </div>

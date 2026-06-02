@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   settingsApi,
@@ -35,6 +34,7 @@ const currencyFormOpen = ref(false)
 const imapFormOpen = ref(false)
 const editingImapId = ref<number | null>(null)
 const providerFormOpen = ref(false)
+const emailNoticesOpen = ref(false)
 const parserText = ref('')
 const parserSender = ref('info@rb.cz')
 const parserSubject = ref('Pohyb na účtě')
@@ -76,12 +76,6 @@ interface RegexProviderDraft {
   normalizer_config_json: string
 }
 const providerDraft = reactive<RegexProviderDraft>(defaultRegexProviderDraft())
-// Jen měny, které dodavatel reálně má (nová měna se zakládá v Číselníku).
-const availableCurrencyCodes = computed(() => {
-  const codes = new Set<string>()
-  for (const currency of currencies.value) codes.add(currency.code)
-  return [...codes].sort()
-})
 
 function defaultImapDraft(): Partial<BankEmailImapSettings> & { password?: string } {
   return {
@@ -133,10 +127,6 @@ function fieldLabel(key: RegexFieldKey): string {
   return t(`bank_accounts.field_${key}`)
 }
 
-function autoLabel(code: string): string {
-  return t('bank_accounts.default_account_label', { code })
-}
-
 async function load() {
   loading.value = true
   try {
@@ -160,6 +150,10 @@ async function load() {
       providers.value = overview.providers
       imapAccounts.value = overview.imap_accounts ?? (overview.imap?.id ? [overview.imap] : [])
       messages.value = overview.messages
+      // Rozbal jen když už něco existuje; jinak nech sbalené s dotazem.
+      emailNoticesOpen.value = imapAccounts.value.length > 0
+        || messages.value.length > 0
+        || mappings.value.some(m => m.enabled)
     } else {
       bankEmailLoadError.value = apiErrorMessage(overviewResult.reason, t('bank_accounts.load_config_failed'))
       mappings.value = []
@@ -198,23 +192,33 @@ async function saveCurrency() {
     await settingsApi.updateCurrency(editingCurrency.value, payload)
     toast.success(t('bank_accounts.account_saved'))
   } else {
-    await settingsApi.createCurrency({ ...payload, code: currencyDraft.code })
+    await settingsApi.createCurrency({
+      ...payload,
+      code: String(currencyDraft.code || '').toUpperCase(),
+      symbol: currencyDraft.symbol,
+      name_cs: currencyDraft.name_cs,
+      name_en: currencyDraft.name_en,
+      decimals: currencyDraft.decimals,
+    })
     toast.success(t('bank_accounts.account_added'))
   }
   closeCurrencyForm()
   await load()
 }
 
-function startNewCurrencyAccount(preferred?: string) {
-  const code = preferred ?? availableCurrencyCodes.value[0] ?? 'CZK'
-  const isFirstForCode = !currencies.value.some(c => c.code === code)
+function startNewCurrencyAccount() {
   bankDraftMsg.value = null
   bankDraftAccounts.value = []
   Object.assign(currencyDraft, {
-    code,
-    label: autoLabel(code),
+    id: undefined,
+    code: '',
+    label: '',
+    symbol: '',
+    name_cs: '',
+    name_en: '',
+    decimals: 2,
     is_active: true,
-    is_default: isFirstForCode,
+    is_default: false,
     account_number: null,
     bank_code: null,
     bank_name: null,
@@ -224,18 +228,6 @@ function startNewCurrencyAccount(preferred?: string) {
   editingCurrency.value = null
   editingCurrencyLabel.value = ''
   currencyFormOpen.value = true
-}
-
-function applyNewCurrencyCode() {
-  const code = String(currencyDraft.code || 'CZK').toUpperCase()
-  currencyDraft.code = code
-  // Přepíšeme jen pokud label dosud nikdo neměnil (je prázdný nebo je to auto-label nějaké měny).
-  const label = String(currencyDraft.label || '')
-  const isAuto = label === '' || availableCurrencyCodes.value.some(c => label === autoLabel(c))
-  if (isAuto) {
-    currencyDraft.label = autoLabel(code)
-  }
-  currencyDraft.is_default = !currencies.value.some(c => c.code === code)
 }
 
 function closeCurrencyForm() {
@@ -621,6 +613,21 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
         </div>
       </section>
 
+      <!-- E-mailová bankovní avíza (IMAP) — sbalené, dokud uživatel nezapne -->
+      <section class="bg-surface border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
+        <button type="button" @click="emailNoticesOpen = !emailNoticesOpen"
+          class="cursor-pointer w-full px-5 py-3 flex items-center justify-between gap-3 text-left hover:bg-neutral-50">
+          <div>
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-neutral-500">{{ t('bank_accounts.email_notices_title') }}</h2>
+            <p class="text-xs text-neutral-500 mt-0.5">{{ t('bank_accounts.email_notices_question') }}</p>
+          </div>
+          <svg class="w-5 h-5 text-neutral-400 shrink-0 transition" :class="{ 'rotate-180': emailNoticesOpen }" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </section>
+
+      <div v-if="emailNoticesOpen" class="space-y-5">
       <div v-if="bankEmailLoadError" class="bg-warning-50 border border-warning-200 text-warning-700 rounded-lg px-4 py-3 text-sm">
         {{ bankEmailLoadError }}
       </div>
@@ -998,23 +1005,44 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
           </table>
         </div>
       </section>
+      </div>
     </div>
 
     <div v-if="currencyFormOpen" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div class="bg-surface rounded-xl shadow-lg max-w-md w-full p-5">
         <h3 class="text-lg font-semibold mb-3">{{ editingCurrency === null ? t('bank_accounts.new_account') : t('bank_accounts.edit_account_title', { label: editingCurrencyLabel }) }}</h3>
         <div class="space-y-3">
-          <div v-if="editingCurrency === null">
-            <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.currency') }}</label>
-            <select v-model="currencyDraft.code" @change="applyNewCurrencyCode"
-              class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm">
-              <option v-for="code in availableCurrencyCodes" :key="code" :value="code">{{ code }}</option>
-            </select>
-            <p class="text-xs text-neutral-500 mt-1">
-              {{ t('bank_accounts.new_currency_hint') }}
-              <RouterLink to="/admin/codebooks" class="text-primary-600 hover:underline">{{ t('bank_accounts.open_codebook') }}</RouterLink>
-            </p>
-          </div>
+          <template v-if="editingCurrency === null">
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.currency_code') }} *</label>
+                <input v-model="currencyDraft.code" type="text" maxlength="3"
+                  class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm font-mono uppercase" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.symbol') }}</label>
+                <input v-model="currencyDraft.symbol" type="text"
+                  class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.decimals') }}</label>
+                <input v-model.number="currencyDraft.decimals" type="number" min="0" max="6"
+                  class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm font-mono" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.name_cs') }}</label>
+                <input v-model="currencyDraft.name_cs" type="text"
+                  class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.name_en') }}</label>
+                <input v-model="currencyDraft.name_en" type="text"
+                  class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm" />
+              </div>
+            </div>
+          </template>
           <div v-else>
             <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.currency') }}</label>
             <div class="h-10 px-3 flex items-center bg-neutral-50 border border-neutral-200 rounded-md text-sm font-mono">
