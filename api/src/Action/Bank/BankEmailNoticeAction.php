@@ -30,6 +30,7 @@ final class BankEmailNoticeAction
 
     public function overview(Request $request, Response $response): Response
     {
+        if (!$this->admin($request, $response, $err)) return $err;
         $sid = $this->supplierId($request);
         try {
             return Json::ok($response, [
@@ -237,6 +238,7 @@ final class BankEmailNoticeAction
 
     public function messages(Request $request, Response $response): Response
     {
+        if (!$this->admin($request, $response, $err)) return $err;
         return Json::ok($response, $this->repo->processedMessages($this->supplierId($request), 200));
     }
 
