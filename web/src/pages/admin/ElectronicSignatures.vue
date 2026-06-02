@@ -667,23 +667,23 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.signing_profile_name') }}</label>
               <input v-model="signingProfileDraft.name" type="text" maxlength="120" required
-                class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm" />
+                class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm" />
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.signing_profile_code') }}</label>
               <input v-model="signingProfileDraft.code" type="text" maxlength="80" required pattern="[A-Za-z0-9_.-]+"
-                class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm font-mono" />
+                class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm font-mono" />
             </div>
             <div>
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.signing_profile_backend') }}</label>
-              <select v-model="signingProfileDraft.default_backend" class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm">
+              <select v-model="signingProfileDraft.default_backend" class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm">
                 <option value="native">native</option>
               </select>
             </div>
             <div v-if="isAdmin">
               <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.signing_profile_owner_mode') }}</label>
               <select v-model="signingProfileOwnerMode" :disabled="editingSigningProfile !== null"
-                class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm disabled:bg-neutral-50 disabled:text-neutral-500">
+                class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm disabled:bg-neutral-50 disabled:text-neutral-500">
                 <option value="supplier">{{ t('settings.signing_profile_owner_mode_supplier') }}</option>
                 <option value="current_user">{{ t('settings.signing_profile_owner_mode_current_user') }}</option>
                 <option value="other_user">{{ t('settings.signing_profile_owner_mode_other_user') }}</option>
@@ -694,7 +694,7 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
               <input v-model.number="signingProfileDraft.owner_user_id" type="number" min="1" required
                 :disabled="editingSigningProfile !== null"
                 :placeholder="t('settings.signing_profile_owner_user_id')"
-                class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm disabled:bg-neutral-50 disabled:text-neutral-500" />
+                class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm disabled:bg-neutral-50 disabled:text-neutral-500" />
             </div>
             <div class="sm:col-span-2">
               <label class="block text-xs font-medium text-neutral-700 mb-2">{{ t('settings.signing_profile_usages') }}</label>
@@ -726,22 +726,22 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
                 <div v-if="signingProfileTsaEnabled" class="mt-2 space-y-2">
                   <p class="text-xs text-neutral-500">{{ t('settings.signing_tsa_hint') }}</p>
                   <input v-model="signingProfileDraft.pdf_tsa_url" type="text" required placeholder="http://tsa.cesnet.cz:3161/tsa"
-                    class="h-10 w-full max-w-3xl px-3 border border-neutral-300 rounded-md text-sm font-mono" />
+                    class="h-10 w-full max-w-3xl px-3 border border-neutral-300 rounded-md bg-surface text-sm font-mono" />
                   <p class="text-xs text-neutral-500">{{ t('settings.signing_tsa_auth_hint') }}</p>
                   <div class="flex flex-wrap items-center gap-2">
                     <input v-model="signingProfileDraft.pdf_tsa_username" type="text" :placeholder="t('settings.signing_tsa_user')" autocomplete="off"
-                      class="h-9 w-44 px-3 border border-neutral-300 rounded-md text-sm" />
+                      class="h-9 w-44 px-3 border border-neutral-300 rounded-md bg-surface text-sm" />
                     <input v-model="signingProfileDraft.pdf_tsa_password" type="password"
                       :placeholder="editingSigningProfile !== null && signingProfiles.find(profile => profile.id === editingSigningProfile)?.has_pdf_tsa_password ? t('settings.signing_tsa_pass_set') : t('settings.signing_tsa_pass')"
                       autocomplete="new-password"
-                      class="h-9 w-44 px-3 border border-neutral-300 rounded-md text-sm" />
+                      class="h-9 w-44 px-3 border border-neutral-300 rounded-md bg-surface text-sm" />
                   </div>
                 </div>
               </div>
               <div>
                 <label class="block text-xs font-medium text-neutral-700 mb-1">{{ t('settings.signing_reason') }}</label>
                 <input v-model="signingProfileDraft.pdf_reason" type="text" :placeholder="t('settings.signing_reason_ph')"
-                  class="h-10 w-full max-w-3xl px-3 border border-neutral-300 rounded-md text-sm" />
+                  class="h-10 w-full max-w-3xl px-3 border border-neutral-300 rounded-md bg-surface text-sm" />
               </div>
             </div>
             <div class="sm:col-span-2 border-t border-neutral-100 pt-3">
@@ -782,8 +782,8 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
                 </span>
                 <input v-model="signingProfileCertPassword" type="password" :placeholder="t('settings.signing_password')"
                   autocomplete="new-password"
-                  class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm" />
-                <select v-model="signingProfileCertPolicy" class="h-9 w-full px-3 border border-neutral-300 rounded-md text-sm">
+                  class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm" />
+                <select v-model="signingProfileCertPolicy" class="h-9 w-full px-3 border border-neutral-300 rounded-md bg-surface text-sm">
                   <option value="encrypted_store">{{ t('settings.signing_profile_cert_policy_encrypted_store') }}</option>
                   <option value="passphrase_file">{{ t('settings.signing_profile_cert_policy_passphrase_file') }}</option>
                 </select>
@@ -793,7 +793,7 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
               </p>
               <input v-if="signingProfileCertPolicy === 'passphrase_file'" v-model="signingProfileCertPassphraseProfileId"
                 type="text" :placeholder="t('settings.signing_profile_cert_passphrase_profile_id')"
-                class="mt-2 h-9 w-full max-w-sm px-3 border border-neutral-300 rounded-md text-sm font-mono" />
+                class="mt-2 h-9 w-full max-w-sm px-3 border border-neutral-300 rounded-md bg-surface text-sm font-mono" />
               <input ref="signingProfileCertFileInput" @change="onSigningProfileCertSelected" type="file" accept=".p12,.pfx,application/x-pkcs12" class="hidden" />
             </div>
           </div>
@@ -891,7 +891,7 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
                   </td>
                   <td class="px-3 py-2">
                     <div class="flex items-center gap-2">
-                      <select v-model="setting.selection_source" @change="normalizePdfOutputAdminProfile(setting)" class="h-8 w-44 px-2 border border-neutral-300 rounded-md text-xs">
+                      <select v-model="setting.selection_source" @change="normalizePdfOutputAdminProfile(setting)" class="h-8 w-44 px-2 border border-neutral-300 rounded-md bg-surface text-xs">
                         <option value="admin_profile_settings">{{ t('settings.signing_output_source_admin_profile_settings') }}</option>
                         <option value="logged_in_user">{{ t('settings.signing_output_source_logged_in_user') }}</option>
                       </select>
@@ -905,7 +905,7 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
                   </td>
                   <td class="px-3 py-2">
                     <select v-model="setting.default_profile_id" :disabled="!outputUsesAdminProfile(setting)"
-                      class="h-8 w-44 px-2 border border-neutral-300 rounded-md text-xs disabled:bg-neutral-50 disabled:text-neutral-500">
+                      class="h-8 w-44 px-2 border border-neutral-300 rounded-md bg-surface text-xs disabled:bg-neutral-50 disabled:text-neutral-500">
                       <option :value="null">{{ outputUsesAdminProfile(setting) ? t('settings.signing_output_profile_none') : signingProfileName(setting.default_profile_id) }}</option>
                       <option v-for="profile in adminSigningProfilesForOutput(setting.output_type)" :key="profile.id" :value="profile.id">
                         {{ profile.name }} ({{ profile.code }})
@@ -913,14 +913,14 @@ async function testPdfOutputSetting(setting: PdfSignatureOutputSetting) {
                     </select>
                   </td>
                   <td class="px-3 py-2">
-                    <select v-model="setting.user_profile_fallback" @change="normalizePdfOutputAdminProfile(setting)" class="h-8 w-44 px-2 border border-neutral-300 rounded-md text-xs">
+                    <select v-model="setting.user_profile_fallback" @change="normalizePdfOutputAdminProfile(setting)" class="h-8 w-44 px-2 border border-neutral-300 rounded-md bg-surface text-xs">
                       <option value="admin_profile_settings">{{ t('settings.signing_output_fallback_admin_profile_settings') }}</option>
                       <option value="fallback_unsigned">{{ t('settings.signing_output_fallback_unsigned') }}</option>
                       <option value="fail_closed">{{ t('settings.signing_output_fallback_fail_closed') }}</option>
                     </select>
                   </td>
                   <td class="px-3 py-2">
-                    <select v-model="setting.failure_policy" class="h-8 w-40 px-2 border border-neutral-300 rounded-md text-xs">
+                    <select v-model="setting.failure_policy" class="h-8 w-40 px-2 border border-neutral-300 rounded-md bg-surface text-xs">
                       <option value="fallback_unsigned">{{ t('settings.signing_output_policy_fallback_unsigned') }}</option>
                       <option value="fail_closed">{{ t('settings.signing_output_policy_fail_closed') }}</option>
                       <option value="skip_when_unconfigured">{{ t('settings.signing_output_policy_skip_when_unconfigured') }}</option>
