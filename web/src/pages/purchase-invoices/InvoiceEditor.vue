@@ -939,7 +939,7 @@ function fieldErr(key: string): string | null {
             <label class="block text-sm text-neutral-700 mb-1">{{ t('purchase_invoice.fields.varsymbol') }}</label>
             <input v-model="form.varsymbol" type="text" maxlength="20"
                    class="w-full h-10 px-3 border border-neutral-300 rounded-md text-sm font-mono"
-                   placeholder="PF-202605-NNNN" />
+                   placeholder="PF2605001" />
             <p class="text-xs text-neutral-500 mt-1">{{ t('purchase_invoice.fields.varsymbol_hint') }}</p>
           </div>
         </div>

@@ -183,7 +183,7 @@
       "vendor_invoice_number": "Vendor invoice number",
       "vendor_invoice_number_hint": "As written on the original (e.g. FA-2026-001)",
       "varsymbol": "Our internal number",
-      "varsymbol_hint": "Optional — auto-generated as PF-YYYYMM-NNNN on receipt",
+      "varsymbol_hint": "Optional — auto-generated as PF2605001 (prefix by tax type) on receipt",
       "document_kind": "Document type",
       "issue_date": "Issue date",
       "tax_date": "Tax point date (DUZP)",
