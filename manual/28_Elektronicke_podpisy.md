@@ -1,4 +1,4 @@
-# 21. Elektronické podpisy
+# 28. Elektronické podpisy
 
 Sekce **Systém -> Elektronické podpisy** slouží ke správě certifikátů,
 podpisových profilů a pravidel, který profil se použije pro konkrétní výstup.
@@ -14,7 +14,7 @@ Když je výkaz práce vložený jako další stránka PDF faktury, podpis výst
 Podepisování používá PAdES podpis v PDF. Bez časového razítka jde o úroveň
 **PAdES-B**, s nastaveným TSA serverem o **PAdES-T**.
 
-## 21.1 Základní pojmy
+## 28.1 Základní pojmy
 
 | Pojem | Význam |
 |---|---|
@@ -24,7 +24,7 @@ Podepisování používá PAdES podpis v PDF. Bez časového razítka jde o úro
 | Konfigurace podpisů | Admin nastavení, které určuje, zda se výstup podepisuje a odkud se bere podpisový profil. |
 | Mapování podpisových profilů | Uživatelské výchozí profily pro výstupy, kde admin zvolil strategii **Přihlášený uživatel**. |
 
-## 21.2 Oprávnění
+## 28.2 Oprávnění
 
 | Role | Co může |
 |---|---|
@@ -36,7 +36,7 @@ Admin povolí uživatelské profily přepínačem **Povolit uživatelům správu
 vlastních podpisových profilů**. Pokud není zapnutý, účetní v menu sekci
 elektronických podpisů nevidí.
 
-## 21.3 Založení podpisového profilu
+## 28.3 Založení podpisového profilu
 
 1. Otevři **Systém -> Elektronické podpisy**.
 2. V sekci **Podpisové profily** klikni **Nový profil**.
@@ -54,7 +54,7 @@ elektronických podpisů nevidí.
 7. Nech profil aktivní, pokud se má dát použít při podepisování.
 8. Ulož profil.
 
-## 21.4 Certifikát P12/PFX
+## 28.4 Certifikát P12/PFX
 
 Ke každému profilu se nahrává certifikát pro konkrétní použití. Pro PDF podpis
 musí profil obsahovat **PDF certifikát profilu**.
@@ -77,7 +77,7 @@ Certifikát bez privátního klíče nestačí. Pokud import selže s chybou šp
 hesla nebo neplatného PKCS#12, zkontroluj, že P12/PFX opravdu obsahuje privátní
 klíč a že zadáváš správnou passphrase.
 
-## 21.5 Politika hesla k certifikátu
+## 28.5 Politika hesla k certifikátu
 
 | Politika | Kdy použít | Chování |
 |---|---|---|
@@ -122,7 +122,7 @@ Do pole **ID hesla v passphrase file** v profilu zadej například
 `owner_jurka`. Soubor musí být čitelný procesem aplikace a neměl by být
 součástí webového rootu ani gitu.
 
-## 21.6 TSA a důvod podpisu
+## 28.6 TSA a důvod podpisu
 
 V profilu je volitelná část **PDF nastavení profilu**:
 
@@ -136,7 +136,7 @@ V profilu je volitelná část **PDF nastavení profilu**:
 Bez TSA se dokument podepíše jako PAdES-B. Pokud je TSA nastavená a dostupná,
 přidá se důvěryhodné časové razítko a výsledkem je PAdES-T.
 
-## 21.7 Konfigurace podpisů pro výstupy
+## 28.7 Konfigurace podpisů pro výstupy
 
 Sekci **Konfigurace podpisů** vidí admin. Každý řádek nastavuje jeden typ
 výstupu.
@@ -181,7 +181,7 @@ Tlačítko **Otestovat** v řádku konfigurace vytvoří dočasné PDF a zkusí 
 podepsat podle stejného mapování. Výsledek zobrazí stav, použitý profil a
 vlastníka certifikátu (CN), pokud ho backend zjistí.
 
-## 21.8 Mapování podpisových profilů uživatele
+## 28.8 Mapování podpisových profilů uživatele
 
 Sekce **Mapování podpisových profilů** slouží pro osobní výchozí profily
 přihlášeného uživatele.
@@ -193,7 +193,7 @@ uživatelský profil se ignoruje a UI na to upozorní.
 Pro každý výstup vyber vlastní aktivní profil, který podporuje stejné použití
 jako výstup. Pro PDF výstupy musí profil podporovat použití **PDF**.
 
-## 21.9 Výběr podpisu na konkrétním dokladu
+## 28.9 Výběr podpisu na konkrétním dokladu
 
 Na detailu faktury je pro uživatele s právem zápisu sekce
 **Elektronický podpis dokumentu**. Umožňuje přepsat výchozí konfiguraci pro
@@ -210,7 +210,7 @@ vygenerovalo s aktuálním podpisem. U uživatelských profilů cache závisí n
 který uživatel PDF generuje, takže stejný doklad může být podepsaný jiným
 profilem podle přihlášeného uživatele.
 
-## 21.10 Ověření podepsaného PDF
+## 28.10 Ověření podepsaného PDF
 
 Po stažení můžeš PDF ověřit v běžné PDF čtečce nebo na serveru například přes
 `pdfsig`:
@@ -224,7 +224,7 @@ vydavatel certifikátu je neznámý, znamená to obvykle chybějící důvěryho
 certifikační řetězec v prostředí ověřovatele. Samotný kryptografický podpis
 může být přesto validní.
 
-## 21.11 Audit a řešení problémů
+## 28.11 Audit a řešení problémů
 
 Správa i použití podpisů se zapisuje do activity logu. Typické události:
 
@@ -249,7 +249,7 @@ Správa i použití podpisů se zapisuje do activity logu. Typické události:
 | Background job nepodepisuje uživatelským profilem | Background job nemá přihlášeného uživatele. Pro tyto scénáře použij fallback na profil dodavatele nebo passphrase file. |
 | Po změně konfigurace se stále vrací staré PDF | Zkontroluj PDF historii a cache. Změna konfigurace podpisů faktury cache invaliduje, ale starší archivované verze zůstávají jako auditní záznam. |
 
-## 21.12 Poznámka k REST API
+## 28.12 Poznámka k REST API
 
 Podpisové endpointy jsou interní administrační endpointy používané SPA
 aplikací (`/api/settings/...` a `/api/documents/.../signature-selection`).
