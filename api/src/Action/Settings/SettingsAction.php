@@ -531,7 +531,7 @@ final class SettingsAction
         $code = (string) $row['code'];
 
         $body = (array) ($request->getParsedBody() ?? []);
-        $allowed = ['label', 'symbol', 'name_cs', 'name_en', 'decimals', 'is_active', 'is_default', 'account_number', 'bank_code', 'bank_name', 'iban', 'bic'];
+        $allowed = ['label', 'symbol', 'decimals', 'is_active', 'is_default', 'account_number', 'bank_code', 'bank_name', 'iban', 'bic'];
         $sets = [];
         $params = [];
         foreach ($allowed as $f) {
@@ -541,8 +541,8 @@ final class SettingsAction
                     $params[] = (int) (bool) $body[$f];
                 } elseif ($f === 'decimals') {
                     $params[] = max(0, min(6, (int) $body[$f]));
-                } elseif (in_array($f, ['symbol', 'name_cs', 'name_en'], true)) {
-                    // NOT NULL sloupce — prázdné ulož jako '' (ne null).
+                } elseif ($f === 'symbol') {
+                    // NOT NULL sloupec — prázdné ulož jako '' (ne null).
                     $params[] = (string) $body[$f];
                 } else {
                     $params[] = ($body[$f] === '' || $body[$f] === null) ? null : $body[$f];

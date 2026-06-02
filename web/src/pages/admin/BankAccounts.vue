@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   settingsApi,
@@ -48,6 +48,8 @@ const folderOptions = ref<string[]>([])
 const bankDraftLoading = ref(false)
 const bankDraftMsg = ref<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null)
 const bankDraftAccounts = ref<CrpDphAccount[]>([])
+// Lookup z registru DPH má smysl jen když dodavatel má vyplněné DIČ (8–10 číslic).
+const supplierHasDic = computed(() => /^\d{8,10}$/.test((supplier.value?.dic || '').replace(/\D/g, '')))
 
 const currencyDraft = reactive<Partial<CurrencyAccount>>({})
 const imapDraft = reactive<Partial<BankEmailImapSettings> & { password?: string }>(defaultImapDraft())
@@ -183,8 +185,6 @@ async function saveCurrency() {
   const payload: Partial<CurrencyAccount> = {
     label: currencyDraft.label,
     symbol: currencyDraft.symbol,
-    name_cs: currencyDraft.name_cs,
-    name_en: currencyDraft.name_en,
     decimals: currencyDraft.decimals,
     is_active: currencyDraft.is_active,
     is_default: currencyDraft.is_default,
@@ -221,8 +221,6 @@ function startNewCurrencyAccount() {
     code: '',
     label: '',
     symbol: '',
-    name_cs: '',
-    name_en: '',
     decimals: 2,
     is_active: true,
     is_default: false,
@@ -1099,19 +1097,7 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
                 class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm font-mono" />
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.name_cs') }}</label>
-              <input v-model="currencyDraft.name_cs" type="text"
-                class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('bank_accounts.name_en') }}</label>
-              <input v-model="currencyDraft.name_en" type="text"
-                class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm" />
-            </div>
-          </div>
-          <div class="flex items-center justify-end">
+          <div v-if="supplierHasDic" class="flex items-center justify-end">
             <button type="button" @click="loadBankToDraft" :disabled="bankDraftLoading"
               class="cursor-pointer h-8 px-3 text-xs bg-surface border border-primary-300 text-primary-700 rounded-md hover:bg-primary-50 disabled:opacity-50 inline-flex items-center gap-1.5">
               <span v-if="bankDraftLoading">…</span>
