@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MyInvoice\Tests\Unit\Bank;
 
 use MyInvoice\Service\Bank\EmailNotice\BankEmailNoticeMessage;
+use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeProvider;
 use MyInvoice\Service\Bank\EmailNotice\Parser\RegexBankEmailNoticeParser;
 use PHPUnit\Framework\TestCase;
 
@@ -26,15 +27,23 @@ final class RegexBankEmailNoticeParserCsTest extends TestCase
         ];
     }
 
-    private function csProvider(): array
+    private function csProvider(): BankEmailNoticeProvider
     {
-        return [
-            'parser_type' => 'regex',
-            'sender_whitelist' => '',
-            'subject_pattern' => '',
-            'body_pattern' => '',
-            'field_patterns' => $this->csFieldPatterns(),
-        ];
+        return new BankEmailNoticeProvider(
+            id: null,
+            supplierId: null,
+            providerRef: 'test:regex-cs',
+            code: 'regex_cs',
+            name: 'Regex ČS test',
+            parserType: 'regex',
+            enabled: true,
+            senderWhitelist: null,
+            subjectPattern: null,
+            bodyPattern: null,
+            fieldPatterns: $this->csFieldPatterns(),
+            normalizerConfig: [],
+            system: false,
+        );
     }
 
     private function csMessage(string $body): BankEmailNoticeMessage

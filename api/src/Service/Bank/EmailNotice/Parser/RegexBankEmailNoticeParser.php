@@ -17,29 +17,36 @@ final class RegexBankEmailNoticeParser implements BankEmailNoticeParserInterface
         $this->normalizer = $normalizer ?? new EmailNoticeTextNormalizer();
     }
 
-    public function supports(BankEmailNoticeMessage $message, array $provider): bool
+    public function key(): string
     {
-        if (!$this->senderAllowed($message->sender, (string) ($provider['sender_whitelist'] ?? ''))) {
+        return 'regex';
+    }
+
+    public function defaultProvider(): ?BankEmailNoticeProvider
+    {
+        return null;
+    }
+
+    public function supports(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): bool
+    {
+        if (!$this->senderAllowed($message->sender, (string) ($provider->senderWhitelist ?? ''))) {
             return false;
         }
-        $subjectPattern = trim((string) ($provider['subject_pattern'] ?? ''));
+        $subjectPattern = trim((string) ($provider->subjectPattern ?? ''));
         if ($subjectPattern !== '' && !preg_match('~' . $subjectPattern . '~iu', $message->subject)) {
             return false;
         }
-        $bodyPattern = trim((string) ($provider['body_pattern'] ?? ''));
+        $bodyPattern = trim((string) ($provider->bodyPattern ?? ''));
         if ($bodyPattern !== '' && !preg_match('~' . $bodyPattern . '~iu', $this->normalizer->normalize($message->text))) {
             return false;
         }
         return true;
     }
 
-    public function parse(BankEmailNoticeMessage $message, array $provider): ParsedBankEmailNotice
+    public function parse(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): ParsedBankEmailNotice
     {
         $text = $this->normalizer->normalize($message->text);
-        $patterns = $provider['field_patterns'] ?? [];
-        if (!is_array($patterns)) {
-            throw new \RuntimeException('Provider nemá validní field_patterns.');
-        }
+        $patterns = $provider->fieldPatterns;
 
         $data = [];
         foreach ($patterns as $field => $pattern) {

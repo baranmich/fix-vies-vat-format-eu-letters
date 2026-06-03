@@ -178,7 +178,8 @@ final class Config
      */
     /**
      * Baseline defaults aplikované **před** cfg.php — jen pro non-secret veřejné
-     * konstanty (URLs třetích stran, timeouty, TTL cache). Vše, co je opravdu
+     * konstanty a statické registry služeb (URLs třetích stran, timeouty,
+     * TTL cache, výchozí parser class names). Vše, co je opravdu
      * tajné nebo per-instance (DB credentials, pepper, SMTP host, ...), tady
      * NESMÍ být — to musí přijít z cfg.php / ENV.
      *
@@ -207,6 +208,14 @@ final class Config
                 'endpoint'  => 'https://adisrws.mfcr.cz/adistc/axis2/services/rozhraniCRPDPH.rozhraniCRPDPHSOAP',
                 'cache_ttl' => 86400,
                 'timeout'   => 8,
+            ],
+            'bank_email' => [
+                'notice_parsers' => [
+                    'regex' => \MyInvoice\Service\Bank\EmailNotice\Parser\RegexBankEmailNoticeParser::class,
+                    'raiffeisenbank' => \MyInvoice\Service\Bank\EmailNotice\Parser\RaiffeisenbankEmailNoticeParser::class,
+                    'unicredit' => \MyInvoice\Service\Bank\EmailNotice\Parser\UnicreditBankEmailNoticeParser::class,
+                    'csob' => \MyInvoice\Service\Bank\EmailNotice\Parser\CsobBankEmailNoticeParser::class,
+                ],
             ],
         ];
     }

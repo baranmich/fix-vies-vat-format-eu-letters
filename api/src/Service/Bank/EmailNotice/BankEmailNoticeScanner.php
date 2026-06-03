@@ -6,6 +6,7 @@ namespace MyInvoice\Service\Bank\EmailNotice;
 
 use MyInvoice\Repository\BankEmailNoticeRepository;
 use MyInvoice\Service\Bank\StatementMatcher;
+use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeProvider;
 use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserRepository;
 
 final class BankEmailNoticeScanner
@@ -207,8 +208,8 @@ final class BankEmailNoticeScanner
             $mapping = $resolved['mapping'];
             if ($mapping === null) {
                 $this->repo->recordMessage($base + [
-                    'provider_id' => $provider['id'] ?? null,
-                    'provider_code' => $provider['code'] ?? null,
+                    'provider_id' => $provider->id,
+                    'provider_code' => $provider->code,
                     'status' => 'match_failed',
                     'parsed_payload' => $notice->toArray(),
                     'error_message' => 'Cílový účet avíza není namapovaný na bankovní účet dodavatele.',
@@ -237,8 +238,8 @@ final class BankEmailNoticeScanner
                 $postError = $this->safePostProcess($settings, $message, 'failure');
             }
             $recordId = $this->repo->recordMessage($base + [
-                'provider_id' => $provider['id'] ?? null,
-                'provider_code' => $provider['code'] ?? null,
+                'provider_id' => $provider->id,
+                'provider_code' => $provider->code,
                 'status' => $status,
                 'parsed_payload' => $notice->toArray() + ['match_result' => $match],
                 'bank_statement_id' => $tx['statement_id'],
@@ -282,7 +283,7 @@ final class BankEmailNoticeScanner
     }
 
     /**
-     * @return array{provider:array<string,mixed>,notice:ParsedBankEmailNotice,mapping:array<string,mixed>|null}
+     * @return array{provider:BankEmailNoticeProvider,notice:ParsedBankEmailNotice,mapping:array<string,mixed>|null}
      */
     private function parseAndResolveMapping(int $supplierId, int $imapAccountId, BankEmailNoticeMessage $message): array
     {
@@ -290,9 +291,9 @@ final class BankEmailNoticeScanner
         $fallback = null;
         $lastError = null;
 
-        foreach ($this->preferredProviderIds($supplierId, $imapAccountId) as $providerId) {
+        foreach ($this->preferredProviderRefs($supplierId, $imapAccountId) as $providerRef) {
             try {
-                $parsed = $this->parsers->parse($message, $providerId, $supplierId);
+                $parsed = $this->parsers->parse($message, $providerRef, $supplierId);
             } catch (\Throwable $e) {
                 $lastError = $e;
                 continue;
@@ -300,11 +301,12 @@ final class BankEmailNoticeScanner
 
             $provider = $parsed['provider'];
             $notice = $parsed['parsed'];
+            $providerRef = $provider->providerRef;
             $mapping = $this->repo->mappingForRecipientAccount(
                 $supplierId,
                 $notice->recipientAccount,
                 $imapFilter,
-                (int) $provider['id'],
+                $providerRef,
             );
             $resolved = ['provider' => $provider, 'notice' => $notice, 'mapping' => $mapping];
             if ($mapping !== null) {
@@ -324,7 +326,7 @@ final class BankEmailNoticeScanner
                     $supplierId,
                     $notice->recipientAccount,
                     $imapFilter,
-                    isset($provider['id']) ? (int) $provider['id'] : null,
+                    $provider->providerRef,
                 ),
             ];
         } catch (\Throwable $e) {
@@ -336,20 +338,20 @@ final class BankEmailNoticeScanner
     }
 
     /**
-     * @return list<int>
+     * @return list<string>
      */
-    private function preferredProviderIds(int $supplierId, int $imapAccountId): array
+    private function preferredProviderRefs(int $supplierId, int $imapAccountId): array
     {
-        $ids = [];
+        $refs = [];
         foreach ($this->repo->accountMappings($supplierId) as $mapping) {
-            if (empty($mapping['enabled']) || empty($mapping['provider_id'])) {
+            if (empty($mapping['enabled']) || empty($mapping['provider_ref'])) {
                 continue;
             }
             if ($imapAccountId > 0 && $mapping['imap_account_id'] !== null && (int) $mapping['imap_account_id'] !== $imapAccountId) {
                 continue;
             }
-            $ids[(int) $mapping['provider_id']] = true;
+            $refs[(string) $mapping['provider_ref']] = true;
         }
-        return array_keys($ids);
+        return array_keys($refs);
     }
 }

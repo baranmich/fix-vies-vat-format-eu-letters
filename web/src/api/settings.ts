@@ -135,11 +135,13 @@ export interface BankEmailImapSettings {
 }
 
 export interface BankEmailProvider {
-  id: number
+  id: number | null
+  provider_ref: string
+  system?: boolean
   supplier_id: number | null
   code: string
   name: string
-  parser_type: 'regex' | 'raiffeisenbank'
+  parser_type: string
   enabled: boolean
   sender_whitelist: string | null
   subject_pattern: string | null
@@ -159,6 +161,7 @@ export interface BankEmailAccountMapping {
   imap_account_id: number | null
   imap_account_name?: string | null
   provider_id: number | null
+  provider_ref: string | null
   enabled: boolean
   amount_tolerance: number
   provider_code: string | null
@@ -447,8 +450,8 @@ export const settingsApi = {
     api.delete<{ deleted: boolean }>(`/settings/bank-email-notices/providers/${id}`).then(r => r.data),
   updateBankEmailMappings: (mappings: Partial<BankEmailAccountMapping>[]) =>
     api.put<BankEmailAccountMapping[]>('/settings/bank-email-notices/mappings', { mappings }).then(r => r.data),
-  testBankEmailParser: (payload: { provider_id?: number | null; sender?: string; subject?: string; text: string }) =>
-    api.post<{ provider: Pick<BankEmailProvider, 'id' | 'code' | 'name' | 'parser_type'>; parsed: Record<string, any> }>(
+  testBankEmailParser: (payload: { provider_ref?: string | null; sender?: string; subject?: string; text: string }) =>
+    api.post<{ provider: Pick<BankEmailProvider, 'id' | 'code' | 'name' | 'parser_type' | 'provider_ref'>; parsed: Record<string, any> }>(
       '/settings/bank-email-notices/parser/test',
       payload,
     ).then(r => r.data),
