@@ -10,12 +10,18 @@ use MyInvoice\Service\Bank\EmailNotice\ParsedBankEmailNotice;
 interface BankEmailNoticeParserInterface
 {
     /**
-     * @param array<string,mixed> $provider
+     * Stabilní parser_type klíč používaný v provider konfiguraci a logu.
      */
-    public function supports(BankEmailNoticeMessage $message, array $provider): bool;
+    public function key(): string;
 
     /**
-     * @param array<string,mixed> $provider
+     * Volitelný systémový provider dodaný parserem bez DB řádku.
+     *
+     * Regex/custom parsery vrací null, protože jejich konfigurace žije v DB/UI.
      */
-    public function parse(BankEmailNoticeMessage $message, array $provider): ParsedBankEmailNotice;
+    public function defaultProvider(): ?BankEmailNoticeProvider;
+
+    public function supports(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): bool;
+
+    public function parse(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): ParsedBankEmailNotice;
 }

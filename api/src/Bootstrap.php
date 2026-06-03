@@ -109,6 +109,10 @@ final class Bootstrap
             \MyInvoice\Service\Bank\EmailNotice\ImapMailboxClientInterface::class => fn (ContainerInterface $c) => new \MyInvoice\Service\Bank\EmailNotice\WebklexImapMailboxClient(
                 $c->get(\MyInvoice\Service\Bank\EmailNotice\EmailNoticeTextNormalizer::class),
             ),
+            \MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserRepository::class => fn (ContainerInterface $c) => new \MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserRepository(
+                $c->get(Connection::class),
+                self::bankEmailNoticeParsers($c, $config),
+            ),
             \MyInvoice\Service\Bank\StatementMatcher::class => fn (ContainerInterface $c) => new \MyInvoice\Service\Bank\StatementMatcher(
                 $c->get(Connection::class),
                 $c->get(\MyInvoice\Service\Invoice\FinalFromProformaCreator::class),
@@ -150,6 +154,46 @@ final class Bootstrap
         $app->addErrorMiddleware($displayErrors, true, true, $container->get(LoggerInterface::class));
 
         return $app;
+    }
+
+    /**
+     * @return array<string,\MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserInterface>
+     */
+    private static function bankEmailNoticeParsers(ContainerInterface $container, Config $config): array
+    {
+        $classes = $config->get('bank_email.notice_parsers', []);
+        if (!is_array($classes) || $classes === []) {
+            throw new \RuntimeException('cfg.bank_email.notice_parsers musí být neprázdná mapa parser slot => class.');
+        }
+
+        $parsers = [];
+        foreach ($classes as $class) {
+            if ($class === null || $class === false || $class === '') {
+                continue;
+            }
+            $class = trim((string) $class);
+            if ($class === '') {
+                throw new \RuntimeException('cfg.bank_email.notice_parsers obsahuje prázdný class name.');
+            }
+
+            $parser = $container->get($class);
+            if (!$parser instanceof \MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserInterface) {
+                throw new \RuntimeException("Parser {$class} neimplementuje BankEmailNoticeParserInterface.");
+            }
+            $code = trim($parser->key());
+            if ($code === '') {
+                throw new \RuntimeException("Parser {$class} vrací prázdný key().");
+            }
+            if (isset($parsers[$code])) {
+                throw new \RuntimeException("Duplicitní bank email parser key: {$code}.");
+            }
+            $parsers[$code] = $parser;
+        }
+        if ($parsers === []) {
+            throw new \RuntimeException('cfg.bank_email.notice_parsers neobsahuje žádný aktivní parser.');
+        }
+
+        return $parsers;
     }
 
     private static function resolveLogLevel(string $level): \Monolog\Level

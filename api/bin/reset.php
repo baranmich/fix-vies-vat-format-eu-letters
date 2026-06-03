@@ -110,7 +110,7 @@ if ($keepCache) {
 // Tabulky s globálním seedem (supplier_id IS NULL) — smaž jen per-tenant řádky.
 $partial = [
     'vat_classifications'         => 'supplier_id IS NOT NULL',
-    'bank_email_notice_providers' => 'supplier_id IS NOT NULL', // ponech globální seed (raiffeisenbank)
+    'bank_email_notice_providers' => 'supplier_id IS NOT NULL', // ponech globální bankovní providery
 ];
 
 $allTables = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);

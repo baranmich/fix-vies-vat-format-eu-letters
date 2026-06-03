@@ -253,9 +253,10 @@ final class BankEmailNoticeRepository
     {
         $stmt = $this->db->pdo()->prepare(
             'SELECT c.id AS currency_id, c.code AS currency_code, c.label, c.account_number, c.bank_code, c.bank_name,
-                    m.id, m.imap_account_id, m.provider_id, m.enabled, m.amount_tolerance,
+                    m.id, m.imap_account_id, m.provider_id, m.provider_code AS mapped_provider_code, m.enabled, m.amount_tolerance,
                     im.name AS imap_account_name,
-                    p.code AS provider_code, p.name AS provider_name
+                    COALESCE(p.code, m.provider_code) AS provider_code,
+                    COALESCE(p.name, m.provider_code) AS provider_name
                FROM currencies c
           LEFT JOIN bank_email_account_mappings m ON m.currency_id = c.id
           LEFT JOIN bank_email_imap_settings im ON im.id = m.imap_account_id AND im.supplier_id = c.supplier_id
@@ -270,6 +271,8 @@ final class BankEmailNoticeRepository
             $row['currency_id'] = (int) $row['currency_id'];
             $row['imap_account_id'] = $row['imap_account_id'] !== null ? (int) $row['imap_account_id'] : null;
             $row['provider_id'] = $row['provider_id'] !== null ? (int) $row['provider_id'] : null;
+            $row['provider_ref'] = $this->providerRefFromMapping($row);
+            $row['mapped_provider_code'] = $this->nullable($row['mapped_provider_code'] ?? null);
             $row['enabled'] = (bool) ($row['enabled'] ?? false);
             $row['amount_tolerance'] = (float) ($row['amount_tolerance'] ?? 0.05);
         }
@@ -284,10 +287,10 @@ final class BankEmailNoticeRepository
         $pdo = $this->db->pdo();
         $stmt = $pdo->prepare(
             'INSERT INTO bank_email_account_mappings
-                (supplier_id, currency_id, imap_account_id, provider_id, enabled, amount_tolerance)
-             VALUES (?, ?, ?, ?, ?, ?)
+                (supplier_id, currency_id, imap_account_id, provider_id, provider_code, enabled, amount_tolerance)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
-                imap_account_id = VALUES(imap_account_id), provider_id = VALUES(provider_id),
+                imap_account_id = VALUES(imap_account_id), provider_id = VALUES(provider_id), provider_code = VALUES(provider_code),
                 enabled = VALUES(enabled), amount_tolerance = VALUES(amount_tolerance)'
         );
         foreach ($rows as $row) {
@@ -301,7 +304,7 @@ final class BankEmailNoticeRepository
             if ($imapAccountId !== null && !$this->imapAccountBelongsToSupplier($imapAccountId, $supplierId)) {
                 continue;
             }
-            $providerId = !empty($row['provider_id']) ? (int) $row['provider_id'] : null;
+            [$providerId, $providerCode] = $this->providerTargetFromMappingPayload($row, $supplierId);
             if ($providerId !== null && !$this->providerAvailableToSupplier($providerId, $supplierId)) {
                 continue;
             }
@@ -310,6 +313,7 @@ final class BankEmailNoticeRepository
                 $currencyId,
                 $imapAccountId,
                 $providerId,
+                $providerCode,
                 !empty($row['enabled']) && !$noImapAccount ? 1 : 0,
                 max(0.0, (float) ($row['amount_tolerance'] ?? 0.05)),
             ]);
@@ -323,7 +327,7 @@ final class BankEmailNoticeRepository
         int $supplierId,
         string $recipientAccount,
         ?int $imapAccountId = null,
-        ?int $providerId = null,
+        ?string $providerRef = null,
     ): ?array
     {
         [$account, $bankCode] = $this->splitAccount($recipientAccount);
@@ -334,7 +338,7 @@ final class BankEmailNoticeRepository
             if ($imapAccountId !== null && $row['imap_account_id'] !== null && (int) $row['imap_account_id'] !== $imapAccountId) {
                 continue;
             }
-            if ($providerId !== null && $row['provider_id'] !== null && (int) $row['provider_id'] !== $providerId) {
+            if ($providerRef !== null && $row['provider_ref'] !== null && (string) $row['provider_ref'] !== $providerRef) {
                 continue;
             }
             if ($bankCode !== null && !empty($row['bank_code']) && (string) $row['bank_code'] !== $bankCode) {
@@ -647,6 +651,40 @@ final class BankEmailNoticeRepository
         $row['enabled'] = (bool) $row['enabled'];
         $row['field_patterns'] = $this->decodeJson($row['field_patterns'] ?? '{}');
         $row['normalizer_config'] = $this->decodeJson($row['normalizer_config'] ?? '{}');
+        $row['provider_ref'] = 'db:' . $row['id'];
+        $row['system'] = false;
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     */
+    private function providerRefFromMapping(array $row): ?string
+    {
+        if (!empty($row['provider_id'])) {
+            return 'db:' . (int) $row['provider_id'];
+        }
+        $code = $this->nullable($row['mapped_provider_code'] ?? null);
+        return $code !== null ? 'system:' . $code : null;
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array{0:?int,1:?string}
+     */
+    private function providerTargetFromMappingPayload(array $row, int $supplierId): array
+    {
+        $ref = trim((string) ($row['provider_ref'] ?? ''));
+        if ($ref === '') {
+            return [null, null];
+        }
+        if (preg_match('/^db:(\d+)$/', $ref, $m) === 1) {
+            $id = (int) $m[1];
+            return $this->providerAvailableToSupplier($id, $supplierId) ? [$id, null] : [null, null];
+        }
+        if (preg_match('/^system:([a-z0-9_\\-]{1,80})$/', $ref, $m) === 1) {
+            return [null, $m[1]];
+        }
+        return [null, null];
     }
 
     private function currencyBelongsToSupplier(int $currencyId, int $supplierId): bool

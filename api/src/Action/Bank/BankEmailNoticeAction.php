@@ -12,6 +12,7 @@ use MyInvoice\Service\ActivityLogger;
 use MyInvoice\Service\Bank\EmailNotice\BankEmailNoticeMessage;
 use MyInvoice\Service\Bank\EmailNotice\BankEmailNoticeScanner;
 use MyInvoice\Service\Bank\EmailNotice\ImapMailboxClientInterface;
+use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeProvider;
 use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeParserRepository;
 use MyInvoice\Service\IpMatcher;
 use Psr\Http\Message\ResponseInterface as Response;
@@ -36,7 +37,10 @@ final class BankEmailNoticeAction
             return Json::ok($response, [
                 'imap' => $this->repo->imapSettings($sid),
                 'imap_accounts' => $this->repo->imapAccounts($sid),
-                'providers' => $this->repo->providers($sid),
+                'providers' => array_map(
+                    fn (BankEmailNoticeProvider $provider): array => $this->providerPayload($provider),
+                    $this->parsers->providers(null, $sid, false),
+                ),
                 'mappings' => $this->repo->accountMappings($sid),
                 'messages' => $this->repo->processedMessages($sid, 50, 0),
                 'messages_total' => $this->repo->countProcessedMessages($sid),
@@ -208,19 +212,14 @@ final class BankEmailNoticeAction
         try {
             $parsed = $this->parsers->parse(
                 $message,
-                !empty($body['provider_id']) ? (int) $body['provider_id'] : null,
+                !empty($body['provider_ref']) ? (string) $body['provider_ref'] : null,
                 $this->supplierId($request),
             );
         } catch (\Throwable $e) {
             return Json::error($response, 'parse_failed', $e->getMessage(), 400);
         }
         return Json::ok($response, [
-            'provider' => [
-                'id' => $parsed['provider']['id'],
-                'code' => $parsed['provider']['code'],
-                'name' => $parsed['provider']['name'],
-                'parser_type' => $parsed['provider']['parser_type'],
-            ],
+            'provider' => $this->providerPayload($parsed['provider']),
             'parsed' => $parsed['parsed']->toArray(),
         ]);
     }
@@ -298,6 +297,42 @@ final class BankEmailNoticeAction
         }
 
         return $settings;
+    }
+
+    /**
+     * @return array{
+     *   id:?int,
+     *   supplier_id:?int,
+     *   provider_ref:string,
+     *   code:string,
+     *   name:string,
+     *   parser_type:string,
+     *   enabled:bool,
+     *   sender_whitelist:?string,
+     *   subject_pattern:?string,
+     *   body_pattern:?string,
+     *   field_patterns:array<string,mixed>,
+     *   normalizer_config:array<string,mixed>,
+     *   system:bool
+     * }
+     */
+    private function providerPayload(BankEmailNoticeProvider $provider): array
+    {
+        return [
+            'id' => $provider->id,
+            'supplier_id' => $provider->supplierId,
+            'provider_ref' => $provider->providerRef,
+            'code' => $provider->code,
+            'name' => $provider->name,
+            'parser_type' => $provider->parserType,
+            'enabled' => $provider->enabled,
+            'sender_whitelist' => $provider->senderWhitelist,
+            'subject_pattern' => $provider->subjectPattern,
+            'body_pattern' => $provider->bodyPattern,
+            'field_patterns' => $provider->fieldPatterns,
+            'normalizer_config' => $provider->normalizerConfig,
+            'system' => $provider->system,
+        ];
     }
 
     /**

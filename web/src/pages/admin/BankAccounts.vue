@@ -44,7 +44,7 @@ const emailNoticesOpen = ref(false)
 const parserText = ref('')
 const parserSender = ref('info@rb.cz')
 const parserSubject = ref('Pohyb na účtě')
-const parserProviderId = ref<number | null>(null)
+const parserProviderRef = ref<string | null>(null)
 const parserResult = ref<Record<string, any> | null>(null)
 const scanSummary = ref<Record<string, any> | null>(null)
 const bankEmailLoadError = ref<string | null>(null)
@@ -321,7 +321,7 @@ async function saveMappings() {
     await settingsApi.updateBankEmailMappings(mappings.value.map(m => ({
       currency_id: m.currency_id,
       imap_account_id: m.imap_account_id === 0 ? null : m.imap_account_id,
-      provider_id: m.provider_id,
+      provider_ref: m.provider_ref,
       enabled: m.imap_account_id === 0 ? false : m.enabled,
       amount_tolerance: m.amount_tolerance,
     })))
@@ -448,14 +448,20 @@ function providerOwnerLabel(provider: BankEmailProvider): string {
 
 function parserTypeLabel(parserType: BankEmailProvider['parser_type']): string {
   if (parserType === 'raiffeisenbank') return 'Raiffeisenbank'
+  if (parserType === 'unicredit') return 'UniCredit Bank'
+  if (parserType === 'csob') return 'ČSOB'
   return 'Regex'
+}
+
+function providerSelectLabel(provider: BankEmailProvider): string {
+  return `${provider.name} (${providerOwnerLabel(provider)})`
 }
 
 async function testParser() {
   parserResult.value = null
   try {
     const r = await settingsApi.testBankEmailParser({
-      provider_id: parserProviderId.value,
+      provider_ref: parserProviderRef.value,
       sender: parserSender.value,
       subject: parserSubject.value,
       text: parserText.value,
@@ -477,7 +483,7 @@ function startNewRegexProvider() {
 }
 
 function startEditProvider(provider: BankEmailProvider) {
-  if (provider.supplier_id === null || provider.parser_type !== 'regex') return
+  if (provider.id === null || provider.supplier_id === null || provider.parser_type !== 'regex') return
   const patterns = defaultFieldPatterns()
   for (const field of regexFieldDefinitions) {
     patterns[field.key] = String(provider.field_patterns?.[field.key] ?? '')
@@ -555,7 +561,7 @@ async function saveProvider() {
 }
 
 async function removeProvider(provider: BankEmailProvider) {
-  if (provider.supplier_id === null) return
+  if (provider.id === null || provider.supplier_id === null) return
   if (!window.confirm(t('bank_accounts.delete_provider_confirm', { name: provider.name }))) return
   try {
     await settingsApi.deleteBankEmailProvider(provider.id)
@@ -751,10 +757,12 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
                   </select>
                 </td>
                 <td class="px-3 py-2">
-                  <select v-model.number="mapping.provider_id"
+                  <select v-model="mapping.provider_ref"
                     class="h-9 w-56 px-2 bg-surface border border-neutral-300 rounded-md text-sm">
                     <option :value="null">{{ t('bank_accounts.provider_auto') }}</option>
-                    <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option>
+                    <option v-for="p in providers" :key="p.provider_ref" :value="p.provider_ref">
+                      {{ providerSelectLabel(p) }}
+                    </option>
                   </select>
                 </td>
                 <td class="px-3 py-2">
@@ -963,7 +971,7 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
               <tr v-if="providers.length === 0">
                 <td colspan="6" class="px-3 py-4 text-sm text-neutral-500">{{ t('bank_accounts.providers_empty') }}</td>
               </tr>
-              <tr v-for="p in providers" :key="p.id">
+              <tr v-for="p in providers" :key="p.provider_ref">
                 <td class="px-3 py-2">
                   <div class="font-medium">{{ p.name }}</div>
                   <div class="text-xs text-neutral-500 font-mono">{{ p.code }}</div>
@@ -984,11 +992,11 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
                   <span :class="p.enabled ? 'text-success-600' : 'text-neutral-500'">{{ p.enabled ? t('common.yes') : t('common.no') }}</span>
                 </td>
                 <td class="px-3 py-2 text-right whitespace-nowrap">
-                  <button v-if="p.supplier_id !== null && p.parser_type === 'regex'" type="button" @click="startEditProvider(p)"
+                  <button v-if="p.id !== null && p.supplier_id !== null && p.parser_type === 'regex'" type="button" @click="startEditProvider(p)"
                     class="cursor-pointer text-primary-600 hover:text-primary-700 text-xs">
                     {{ t('common.edit') }}
                   </button>
-                  <button v-if="p.supplier_id !== null" type="button" @click="removeProvider(p)"
+                  <button v-if="p.id !== null && p.supplier_id !== null" type="button" @click="removeProvider(p)"
                     class="cursor-pointer text-danger-600 hover:text-danger-700 text-xs ml-2">
                     {{ t('common.delete') }}
                   </button>
@@ -999,9 +1007,11 @@ async function deleteMessage(m: BankEmailProcessedMessage) {
         </div>
         <div class="p-5 border-t border-neutral-200">
             <h3 class="text-sm font-medium mb-2">{{ t('bank_accounts.parser_test_title') }}</h3>
-            <select v-model.number="parserProviderId" class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm mb-2">
+            <select v-model="parserProviderRef" class="w-full h-10 px-3 bg-surface border border-neutral-300 rounded-md text-sm mb-2">
               <option :value="null">{{ t('bank_accounts.provider_auto') }}</option>
-              <option v-for="p in providers" :key="p.id" :value="p.id">{{ p.name }}</option>
+              <option v-for="p in providers" :key="p.provider_ref" :value="p.provider_ref">
+                {{ providerSelectLabel(p) }}
+              </option>
             </select>
             <div class="grid md:grid-cols-2 gap-3 mb-2">
               <div>

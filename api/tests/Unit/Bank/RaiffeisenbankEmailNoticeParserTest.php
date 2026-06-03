@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MyInvoice\Tests\Unit\Bank;
 
 use MyInvoice\Service\Bank\EmailNotice\BankEmailNoticeMessage;
+use MyInvoice\Service\Bank\EmailNotice\Parser\BankEmailNoticeProvider;
 use MyInvoice\Service\Bank\EmailNotice\Parser\RaiffeisenbankEmailNoticeParser;
 use PHPUnit\Framework\TestCase;
 
@@ -42,9 +43,11 @@ TEXT;
         );
 
         $parser = new RaiffeisenbankEmailNoticeParser();
-        self::assertTrue($parser->supports($message, ['parser_type' => 'raiffeisenbank']));
+        $provider = $parser->defaultProvider();
+        self::assertInstanceOf(BankEmailNoticeProvider::class, $provider);
+        self::assertTrue($parser->supports($message, $provider));
 
-        $parsed = $parser->parse($message, ['parser_type' => 'raiffeisenbank']);
+        $parsed = $parser->parse($message, $provider);
 
         self::assertSame('2606001', $parsed->variableSymbol);
         self::assertSame(1234.56, $parsed->amount);

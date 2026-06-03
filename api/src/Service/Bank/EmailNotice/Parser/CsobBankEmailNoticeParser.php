@@ -8,7 +8,7 @@ use MyInvoice\Service\Bank\EmailNotice\BankEmailNoticeMessage;
 use MyInvoice\Service\Bank\EmailNotice\EmailNoticeTextNormalizer;
 use MyInvoice\Service\Bank\EmailNotice\ParsedBankEmailNotice;
 
-final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInterface
+final class CsobBankEmailNoticeParser implements BankEmailNoticeParserInterface
 {
     private EmailNoticeTextNormalizer $normalizer;
 
@@ -19,7 +19,7 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
 
     public function key(): string
     {
-        return 'raiffeisenbank';
+        return 'csob';
     }
 
     public function defaultProvider(): ?BankEmailNoticeProvider
@@ -29,12 +29,12 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
             supplierId: null,
             providerRef: 'system:' . $this->key(),
             code: $this->key(),
-            name: 'Raiffeisenbank - Pohyb na ucte',
+            name: 'ČSOB - Moje info Avízo',
             parserType: $this->key(),
             enabled: true,
-            senderWhitelist: 'info@rb.cz',
-            subjectPattern: 'Pohyb\\s+na\\s+účtě|Pohyb\\s+na\\s+ucte',
-            bodyPattern: 'Variabilní\\s+symbol',
+            senderWhitelist: 'noreply@csob.cz',
+            subjectPattern: 'Moje\\s+info\\s+-\\s+Avízo|Moje\\s+info\\s+-\\s+Avizo',
+            bodyPattern: 'Parametry\\s+platby',
             fieldPatterns: [],
             normalizerConfig: [],
             system: true,
@@ -44,47 +44,74 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
     public function supports(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): bool
     {
         $sender = strtolower($message->sender);
-        if (!str_contains($sender, 'info@rb.cz') && !str_contains($sender, '@rb.cz')) {
+        if (!str_contains($sender, 'noreply@csob.cz') && !str_contains($sender, '@csob.cz')) {
             return false;
         }
-        $subject = mb_strtolower($message->subject);
-        if (!str_contains($subject, 'pohyb na účtě') && !str_contains($subject, 'pohyb na ucte')) {
+
+        $subject = $this->compact(mb_strtolower($message->subject, 'UTF-8'));
+        if (
+            !str_contains($subject, 'moje info')
+            || (!str_contains($subject, 'avízo') && !str_contains($subject, 'avizo'))
+        ) {
             return false;
         }
-        $text = mb_strtolower($this->normalizer->normalize($message->text));
-        return str_contains($text, 'variabilní symbol')
-            && str_contains($text, 'částka v měně účtu')
-            && str_contains($text, 'na účet');
+
+        $text = $this->compact(mb_strtolower($this->normalizer->normalize($message->text), 'UTF-8'));
+        return str_contains($text, 'parametry platby')
+            && (str_contains($text, 'vaše čsob') || str_contains($text, 'vase csob') || str_contains($text, 'čsob'))
+            && (str_contains($text, 'částka') || str_contains($text, 'castka'));
     }
 
     public function parse(BankEmailNoticeMessage $message, BankEmailNoticeProvider $provider): ParsedBankEmailNotice
     {
         $text = $this->normalizer->normalize($message->text);
 
-        $postedAt = $this->required($text, '/Datum\s+a\s+čas\s*(?<value>\d{1,2}\.\s*\d{1,2}\.\s*\d{4}\s+\d{1,2}:\d{2})/iu', 'datum');
-        $recipientAccount = $this->required($text, '/Na\s+účet\s*(?<value>[0-9\-]+\/[0-9]{4})/iu', 'cílový účet');
-        $amountCurrency = $this->match($text, '/Částka\s+v\s+měně\s+účtu\s*(?<amount>[+\-]?[0-9 .]+,[0-9]{2})\s*(?<currency>[A-Z]{3})/iu');
+        $recipientAccount = $this->required(
+            $text,
+            '/(?:^|\R)\s*Účet\s*\R\s*(?<value>[0-9\-]+\/[0-9]{4})/u',
+            'cílový účet',
+        );
+        $counterpartyAccount = $this->optional(
+            $text,
+            '/(?:^|\R)\s*Účet\s+protistrany\s*\R\s*(?<value>[0-9\-]+\/[0-9]{4})/u',
+        );
+        $counterpartyName = $this->optional(
+            $text,
+            '/(?:^|\R)\s*Název\s+protistrany\s*\R\s*(?<value>[^\r\n]+)/u',
+        );
+        $postedAt = $this->required(
+            $text,
+            '/(?:^|\R)\s*Datum\s+účtování\s*\R\s*(?<value>\d{1,2}\.\d{1,2}\.\d{4})/u',
+            'datum účtování',
+        );
+        $amountCurrency = $this->match(
+            $text,
+            '/(?:^|\R)\s*Částka\s*\R\s*(?<amount>[+\-]?[0-9 ]+,[0-9]{2})\s*(?<currency>[A-Z]{3})/u',
+        );
         if ($amountCurrency === null) {
-            throw new \RuntimeException('Raiffeisenbank parser nenašel částku a měnu.');
+            throw new \RuntimeException('ČSOB parser nenašel částku a měnu.');
         }
-        $counterparty = $this->match($text, '/Z\s+účtu\s*(?<account>[0-9\-]+\/[0-9]{4})(?<name>.*?)Variabilní\s+symbol/isu');
-        $variableSymbol = $this->required($text, '/Variabilní\s+symbol\s*(?<value>[0-9]+)/iu', 'variabilní symbol');
-        $constantSymbol = $this->optional($text, '/Konstantní\s+symbol\s*(?<value>[0-9]+)/iu');
-        $note = $this->optional($text, '/Zpráva\s+pro\s+příjemce\s*(?<value>.*?)Disponibilní\s+zůstatek/isu');
+        $variableSymbol = $this->optional(
+            $text,
+            '/(?:^|\R)\s*Variabilní\s+symbol\s*\R\s*(?<value>[0-9]+)/u',
+        );
+        $constantSymbol = $this->optional(
+            $text,
+            '/(?:^|\R)\s*Konstantní\s+symbol\s*\R\s*(?<value>[0-9]+)/u',
+        );
 
-        [$counterpartyAccount, $counterpartyBank] = $this->splitAccount((string) ($counterparty['account'] ?? ''));
+        [$cpAccount, $cpBank] = $this->splitAccount((string) $counterpartyAccount);
 
         return new ParsedBankEmailNotice(
-            variableSymbol: $variableSymbol,
+            variableSymbol: $this->normalizeSymbol((string) $variableSymbol),
             amount: $this->parseAmount((string) $amountCurrency['amount']),
             currency: strtoupper((string) $amountCurrency['currency']),
             postedAt: $this->parseDate($postedAt),
             recipientAccount: $recipientAccount,
-            counterpartyAccount: $counterpartyAccount,
-            counterpartyBank: $counterpartyBank,
-            counterpartyName: $this->cleanNullable((string) ($counterparty['name'] ?? '')),
+            counterpartyAccount: $cpAccount,
+            counterpartyBank: $cpBank,
+            counterpartyName: $counterpartyName,
             constantSymbol: $constantSymbol,
-            message: $note,
         );
     }
 
@@ -109,7 +136,7 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
     {
         $value = $this->optional($text, $pattern);
         if ($value === null) {
-            throw new \RuntimeException("Raiffeisenbank parser nenašel {$label}.");
+            throw new \RuntimeException("ČSOB parser nenašel {$label}.");
         }
         return $value;
     }
@@ -125,7 +152,7 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
 
     private function parseAmount(string $value): float
     {
-        $value = str_replace(["\xc2\xa0", ' ', '+', '.'], '', trim($value));
+        $value = str_replace(["\xc2\xa0", ' ', '+'], '', trim($value));
         $value = str_replace(',', '.', $value);
         return (float) $value;
     }
@@ -133,13 +160,13 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
     private function parseDate(string $value): string
     {
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
-        foreach (['d. m. Y H:i', 'd.m.Y H:i'] as $format) {
+        foreach (['d.m.Y', 'd. m. Y'] as $format) {
             $dt = \DateTimeImmutable::createFromFormat($format, $value);
             if ($dt instanceof \DateTimeImmutable) {
                 return $dt->format('Y-m-d');
             }
         }
-        throw new \RuntimeException('Raiffeisenbank parser nenašel validní datum platby.');
+        throw new \RuntimeException('ČSOB parser nenašel validní datum účtování.');
     }
 
     /**
@@ -157,9 +184,21 @@ final class RaiffeisenbankEmailNoticeParser implements BankEmailNoticeParserInte
         return [$value, null];
     }
 
+    private function normalizeSymbol(string $value): string
+    {
+        $digits = preg_replace('/\D+/', '', $value) ?? '';
+        $trimmed = ltrim($digits, '0');
+        return $trimmed !== '' ? $trimmed : $digits;
+    }
+
     private function cleanNullable(string $value): ?string
     {
         $value = trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
         return $value !== '' ? mb_substr($value, 0, 255) : null;
+    }
+
+    private function compact(string $value): string
+    {
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? $value);
     }
 }
