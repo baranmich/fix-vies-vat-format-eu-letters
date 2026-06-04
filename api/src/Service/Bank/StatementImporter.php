@@ -131,16 +131,20 @@ final class StatementImporter
      *
      * AccountNumberNormalizer::equals normalizuje leading zeros / dashes pro
      * porovnání (např. `0000000112866714` z GPC vs `112866714` z UI inputu).
+     * Porovnává se i domácí část IBANu (#109) — cizoměnové účty bývají
+     * evidované jen IBANem a bez toho EUR výpis spadl na CZK fallback.
      */
     private function lookupAccountCurrency(string $accountNumber): ?string
     {
         if ($accountNumber === '') return null;
         $stmt = $this->db->pdo()->query(
-            'SELECT account_number, code FROM currencies WHERE account_number IS NOT NULL'
+            'SELECT account_number, iban, code FROM currencies
+              WHERE account_number IS NOT NULL OR iban IS NOT NULL'
         );
         if ($stmt === false) return null;
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            if (AccountNumberNormalizer::equals((string) $row['account_number'], $accountNumber)) {
+            $iban = isset($row['iban']) && is_string($row['iban']) ? $row['iban'] : null;
+            if (AccountNumberNormalizer::matchesAny($accountNumber, $row['account_number'] ?? null, $iban)) {
                 return (string) $row['code'];
             }
         }

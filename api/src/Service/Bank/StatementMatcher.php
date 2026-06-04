@@ -113,18 +113,30 @@ final class StatementMatcher
 
         // Určení supplier_id z bank účtu (currencies.account_number + bank_code).
         // Normalizace přes AccountNumberNormalizer (řeší zero-padding a prefix).
+        // Porovnává se i domácí část IBANu (#109) — cizoměnové účty bývají evidované
+        // jen IBANem (viz schema currencies), GPC ale nese domácí číslo účtu; bez toho
+        // EUR výpis skončil jako unknown_supplier_for_account a nikdy se nespároval.
         $supplierId = 0;
         if (!empty($row['recipient_account'])) {
-            $sql = 'SELECT supplier_id, account_number FROM currencies WHERE account_number IS NOT NULL';
-            $params = [];
-            if (!empty($row['recipient_bank'])) {
-                $sql .= ' AND bank_code = ?';
-                $params[] = $row['recipient_bank'];
-            }
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+            $stmt = $pdo->query(
+                'SELECT supplier_id, account_number, iban, bank_code FROM currencies
+                  WHERE account_number IS NOT NULL OR iban IS NOT NULL'
+            );
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $candidate) {
-                if (AccountNumberNormalizer::equals((string) $candidate['account_number'], (string) $row['recipient_account'])) {
+                $iban = isset($candidate['iban']) && is_string($candidate['iban']) ? $candidate['iban'] : null;
+                // Bank code filter (jen když výpis kód banky nese): kandidátův kód
+                // z bank_code sloupce, případně z IBANu. Neznámý kód nevyřazuje —
+                // radši porovnat číslo účtu než ztratit IBAN-only řádek.
+                if (!empty($row['recipient_bank'])) {
+                    $candidateBank = (string) ($candidate['bank_code'] ?? '');
+                    if ($candidateBank === '' && $iban !== null) {
+                        $candidateBank = (string) AccountNumberNormalizer::czechIbanBankCode($iban);
+                    }
+                    if ($candidateBank !== '' && $candidateBank !== (string) $row['recipient_bank']) {
+                        continue;
+                    }
+                }
+                if (AccountNumberNormalizer::matchesAny((string) $row['recipient_account'], $candidate['account_number'] ?? null, $iban)) {
                     $supplierId = (int) $candidate['supplier_id'];
                     break;
                 }
