@@ -124,4 +124,41 @@ TEXT;
         self::assertSame(-1234.50, $parsed->amount);
         self::assertSame('CZK', $parsed->currency);
     }
+
+    /**
+     * #110: šablona „Odešla platba" nemusí mít v bloku transakce řádek „Číslo účtu:" —
+     * vlastní účet se pak doplní fallbackem z úvodní věty „z účtu … odešla platba".
+     */
+    public function testOutgoingNoticeWithoutRecipientAccountLineFallsBackToIntroSentence(): void
+    {
+        $body = <<<TEXT
+Dobrý den, pane Nováku,
+
+z účtu SIMPLE NETWORKS 6509175329/0800 právě odešla platba ve výši 1 234,50 Kč.
+
+Na účtu je nově k dispozici x xxx xxx,xx Kč.
+
+Vaše Česká spořitelna
+
+Informace o transakci
+
+Směr platby: odchozí
+
+Číslo účtu protistrany: 2801836907/2010
+
+Částka v měně účtu: 1 234,50 Kč
+
+Variabilní symbol: 555
+Konstantní symbol: 0
+TEXT;
+
+        $parser = new RegexBankEmailNoticeParser();
+        $parsed = $parser->parse($this->csMessage($body), $this->csProvider());
+
+        self::assertSame('6509175329/0800', $parsed->recipientAccount);
+        self::assertSame(-1234.50, $parsed->amount);
+        self::assertSame('555', $parsed->variableSymbol);
+        self::assertSame('2801836907', $parsed->counterpartyAccount);
+        self::assertSame('2010', $parsed->counterpartyBank);
+    }
 }

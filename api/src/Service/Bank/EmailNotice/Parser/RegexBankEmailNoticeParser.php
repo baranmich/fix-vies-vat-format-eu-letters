@@ -72,6 +72,15 @@ final class RegexBankEmailNoticeParser implements BankEmailNoticeParserInterface
             $data['posted_at'] = $message->date->format('d.m.Y H:i');
         }
 
+        // #110: šablona ČS „Odešla platba" nemusí obsahovat řádek „Číslo účtu:" —
+        // jako fallback vytáhni vlastní účet z úvodní věty („z účtu NÁZEV 123/0800 právě
+        // odešla platba…" / „na účet NÁZEV 123/0800 právě dorazila platba…").
+        if (trim((string) ($data['recipient_account'] ?? '')) === ''
+            && preg_match('/(?:z\s+účtu|na\s+účet)\s+[^\n]{0,120}?(?<value>\d[\d\-]*\/\d{4})/iu', $text, $m) === 1
+        ) {
+            $data['recipient_account'] = trim($m['value']);
+        }
+
         foreach (['variable_symbol', 'amount', 'currency', 'posted_at', 'recipient_account'] as $required) {
             if (trim((string) ($data[$required] ?? '')) === '') {
                 throw new \RuntimeException("Parser nenašel povinné pole {$required}.");
