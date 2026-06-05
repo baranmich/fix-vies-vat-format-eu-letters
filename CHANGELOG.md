@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Kniha DPH řadí jako POHODA.** Sekce vzestupně dle čísla členění (15 přijatá → 36 uskutečněná → 43 mirror → 47 majetek; dříve vystavené napřed) a doklady uvnitř sekce dle interního čísla dokladu (natural sort; dříve dle data plnění) — výstup tak jde porovnat se sestavou účetní řádek po řádku.
+- **Kniha DPH řadí jako POHODA.** Sekce vzestupně dle čísla členění (15 přijatá → 36 uskutečněná → 43 RC/dovozové páry → 47 majetek; dříve vystavené napřed) a doklady uvnitř sekce dle interního čísla dokladu (natural sort; dříve dle data plnění) — výstup tak jde porovnat se sestavou účetní řádek po řádku. RC/dovozový pár (samovyměření + mirror odpočet ř. 43) je nově celý pod členěním 43 — primary řádek (např. dovoz služby ř. 12) se už neukazuje mezi přijatými 15.xxx na začátku, ale hned před svým zrcadlovým odpočtem za sekcí 36, přesně jako POHODA („43 ř.012" + „43 ř.043").
 
 ## [4.17.0] — 2026-06-05
 

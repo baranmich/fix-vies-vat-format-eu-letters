@@ -262,6 +262,14 @@ final class KhDphTaxScenariosTest extends TestCase
             $sec[$s['key']] = $s;
         }
 
+        // Pořadí sekcí jako POHODA (reference DPH_LIST_KH 42026.pdf): přijatá
+        // tuzemsko 15 → uskutečněná 36 → RC/dovozové páry 43 (primary i mirror) → 47.
+        $this->assertSame(
+            ['15.040', '36.001', '36.022', '36.025', '43.003', '43.010', '43.043', '47.047'],
+            array_column($book['sections'], 'key'),
+            'Kniha DPH: pořadí sekcí dle POHODA (RC pár až za sekcí 36)'
+        );
+
         // 36.001 — vystavená tuzemsko 21 % (S1+S2+S3) = ř.1 DPHDP3
         $this->assertArrayHasKey('36.001', $sec);
         $this->assertEqualsWithDelta(55000, $sec['36.001']['subtotal_base'], 0.01);
@@ -273,15 +281,15 @@ final class KhDphTaxScenariosTest extends TestCase
         $this->assertArrayHasKey('15.040', $sec);
         $this->assertEqualsWithDelta(53000, $sec['15.040']['subtotal_base'], 0.01);
         $this->assertEqualsWithDelta(11130, $sec['15.040']['subtotal_vat'], 0.01);
-        // 15.003 — pořízení z JČS (P4), samovyměřená daň
-        $this->assertArrayHasKey('15.003', $sec);
-        $this->assertEqualsWithDelta(8000, $sec['15.003']['subtotal_base'], 0.01);
-        $this->assertEqualsWithDelta(1680, $sec['15.003']['subtotal_vat'], 0.01);
-        // 15.010 — tuzemský RC (P5) — samovyměření i BEZ per-faktura flagu
+        // 43.003 — pořízení z JČS (P4), samovyměřená daň (RC pár → členění 43 jako POHODA)
+        $this->assertArrayHasKey('43.003', $sec);
+        $this->assertEqualsWithDelta(8000, $sec['43.003']['subtotal_base'], 0.01);
+        $this->assertEqualsWithDelta(1680, $sec['43.003']['subtotal_vat'], 0.01);
+        // 43.010 — tuzemský RC (P5) — samovyměření i BEZ per-faktura flagu
         // (díky is_reverse_charge na kódu 5 / migrace 0048). Toto pinuje fix konzistence.
-        $this->assertArrayHasKey('15.010', $sec, 'P5 RC bez flagu musí mít sekci ř.10');
-        $this->assertEqualsWithDelta(9000, $sec['15.010']['subtotal_base'], 0.01);
-        $this->assertEqualsWithDelta(1890, $sec['15.010']['subtotal_vat'], 0.01,
+        $this->assertArrayHasKey('43.010', $sec, 'P5 RC bez flagu musí mít sekci ř.10');
+        $this->assertEqualsWithDelta(9000, $sec['43.010']['subtotal_base'], 0.01);
+        $this->assertEqualsWithDelta(1890, $sec['43.010']['subtotal_vat'], 0.01,
             'Kniha DPH musí samovyměřit RC i přes is_reverse_charge, ne jen flag');
         // 43.043 — mirror odpočet u samovyměřené daně (P4 + P5)
         $this->assertArrayHasKey('43.043', $sec);
@@ -296,7 +304,7 @@ final class KhDphTaxScenariosTest extends TestCase
         $this->assertEqualsWithDelta(11550, $book['totals']['issued']['vat'], 0.01,
             'totals.issued = jen daň na výstupu (36.001)');
         $this->assertEqualsWithDelta(14700, $book['totals']['received']['vat'], 0.01,
-            'totals.received = odpočet na vstupu (15.040+15.003+15.010), bez mirror 43/47');
+            'totals.received = odpočet na vstupu (15.040+43.003+43.010 primary), bez mirror 43.043/47');
         // Bilance = výstup − odpočet (záporná = nadměrný odpočet).
         $this->assertEqualsWithDelta(-3150, $book['totals']['vat_balance'], 0.01);
     }
@@ -385,18 +393,18 @@ final class KhDphTaxScenariosTest extends TestCase
 
         // ── KVĚTEN: pořízení z JČS (ř.3 + mirror ř.43), tuzemský RC tu NESMÍ být ──
         $may = $sectionsFor(5);
-        $this->assertArrayHasKey('15.003', $may, 'pořízení z JČS patří do měsíce DUZP (§ 25)');
-        $this->assertEqualsWithDelta(305312, $may['15.003']['subtotal_base'], 0.01);
-        $this->assertEqualsWithDelta(64115.52, $may['15.003']['subtotal_vat'], 0.01, 'samovyměření 305312 × 21 %');
+        $this->assertArrayHasKey('43.003', $may, 'pořízení z JČS patří do měsíce DUZP (§ 25)');
+        $this->assertEqualsWithDelta(305312, $may['43.003']['subtotal_base'], 0.01);
+        $this->assertEqualsWithDelta(64115.52, $may['43.003']['subtotal_vat'], 0.01, 'samovyměření 305312 × 21 %');
         $this->assertArrayHasKey('43.043', $may, 'mirror odpočet ř.43 ve stejném období (§ 73/1/b)');
         $this->assertEqualsWithDelta(305312, $may['43.043']['subtotal_base'], 0.01);
-        $this->assertArrayNotHasKey('15.010', $may, 'tuzemský RC s pozdním dokladem zůstává na GREATEST (červen)');
+        $this->assertArrayNotHasKey('43.010', $may, 'tuzemský RC s pozdním dokladem zůstává na GREATEST (červen)');
 
         // ── ČERVEN: pořízení z JČS tu NESMÍ být (žádná duplicita), tuzemský RC ano ──
         $june = $sectionsFor(6);
-        $this->assertArrayNotHasKey('15.003', $june, 'pořízení z JČS nesmí spadnout do měsíce vystavení');
-        $this->assertArrayHasKey('15.010', $june, 'tuzemský RC dle GREATEST patří do června');
-        $this->assertEqualsWithDelta(9000, $june['15.010']['subtotal_base'], 0.01);
+        $this->assertArrayNotHasKey('43.003', $june, 'pořízení z JČS nesmí spadnout do měsíce vystavení');
+        $this->assertArrayHasKey('43.010', $june, 'tuzemský RC dle GREATEST patří do června');
+        $this->assertEqualsWithDelta(9000, $june['43.010']['subtotal_base'], 0.01);
 
         // ── DPHDP3 květen: ř.3 + ř.43 + KH A.2 ──
         $dpMay = (new \SimpleXMLElement($this->dph->build($this->supplierId, self::YEAR, 5, 'monthly')['xml']))->DPHDP3;
@@ -447,8 +455,8 @@ final class KhDphTaxScenariosTest extends TestCase
         $book = $this->book->build($this->supplierId, self::YEAR, self::MONTH);
         $sec = [];
         foreach ($book['sections'] as $s) $sec[$s['key']] = $s;
-        $this->assertArrayHasKey('15.003', $sec);
-        $this->assertEqualsWithDelta(2634.66, $sec['15.003']['subtotal_vat'], 0.01, 'Kniha: samovyměření z classification rate');
+        $this->assertArrayHasKey('43.003', $sec);
+        $this->assertEqualsWithDelta(2634.66, $sec['43.003']['subtotal_vat'], 0.01, 'Kniha: samovyměření z classification rate');
     }
 
     /**
@@ -542,12 +550,12 @@ final class KhDphTaxScenariosTest extends TestCase
         $this->assertSame('10000', (string) $dp->Veta4['odp_rezim'], 'ř.43 mirror základ');
         $this->assertSame('2100',  (string) $dp->Veta4['odp_rez_nar'], 'ř.43 mirror odpočet');
 
-        // Kniha DPH — sekce 15.012 (dovoz služby) a 43.043 (mirror)
+        // Kniha DPH — sekce 43.012 (dovoz služby, RC pár pod členěním 43) a 43.043 (mirror)
         $book = $this->book->build($this->supplierId, self::YEAR, self::MONTH);
         $sec = [];
         foreach ($book['sections'] as $s) $sec[$s['key']] = $s;
-        $this->assertArrayHasKey('15.012', $sec, 'Kniha: sekce ř.12 dovoz služby');
-        $this->assertEqualsWithDelta(2100, $sec['15.012']['subtotal_vat'], 0.01, 'Kniha ř.12 samovyměřená daň');
+        $this->assertArrayHasKey('43.012', $sec, 'Kniha: sekce ř.12 dovoz služby');
+        $this->assertEqualsWithDelta(2100, $sec['43.012']['subtotal_vat'], 0.01, 'Kniha ř.12 samovyměřená daň');
     }
 
     /**

@@ -15,7 +15,8 @@ use MyInvoice\Infrastructure\Database\Connection;
  *   - **Vystavené faktury** (invoices) → sekce s prefixem `36.001`, `36.002` …
  *     (řádky 1, 2, … DPHDP3 — uskutečněná plnění)
  *   - **Přijaté faktury** (purchase_invoices) → sekce `15.040`, `15.041` …
- *     (řádky 40, 41 … — přijatá tuzemská), `43.012/43.043` (dovoz služby)
+ *     (řádky 40, 41 … — přijatá tuzemská), `43.012` + `43.043` (dovoz služby:
+ *     primary i mirror pod členěním 43, jako POHODA)
  *
  * Scope = **vystavené + přijaté včetně draftů**. Drafty jsou označeny
  * `is_draft=true` v rows; UI je vizuálně odlišuje (badge "Koncept"). Storno
@@ -24,7 +25,8 @@ use MyInvoice\Infrastructure\Database\Connection;
  * Section key formát:
  *   - **15.XXX** = řádek pro přijatá plnění (sekce 15)
  *   - **36.XXX** = řádek pro vystavená plnění (sekce 36)
- *   - **43.XXX** = řádek 43 (nárok na odpočet) — pouze secondary z dovozu služby
+ *   - **43.XXX** = RC/dovozové páry — primary samovyměření (43.003/43.010/43.012 …)
+ *     i mirror odpočet ř.43 (43.043); celý pár pohromadě za sekcí 36 jako POHODA
  *
  * Pokud má klasifikační kód `dphdp3_line_secondary` (typicky dovoz služby:
  * ř.12 + ř.43), pak builder generuje DVĚ sekce ze stejné faktury (data se
@@ -254,8 +256,12 @@ final class DphBookBuilder
     private function addToSection(array &$sections, string $directionScope, array $cls, array $row): void
     {
         $sectionPrefix = $directionScope === 'issued' ? '36' : '15';
-        // Sekce s line=43 jsou secondary (dovoz služby / RC mirror — nárok na odpočet)
-        if ($cls['dphdp3_line'] === '43') {
+        // RC/dovozový pár (samovyměření + mirror odpočet ř.43) patří CELÝ pod
+        // členění 43 — POHODA (reference DPH_LIST_KH 42026.pdf) řadí "43 ř.012"
+        // i "43 ř.043" až ZA sekci 36, ne mezi přijaté 15.xxx. Primary řádek
+        // páru proto dostává stejný prefix jako jeho mirror.
+        if ($cls['dphdp3_line'] === '43'
+            || ($directionScope === 'received' && !empty($cls['dphdp3_line_secondary']))) {
             $sectionPrefix = '43';
         }
         // Sekce ř.47 = doplňující údaj o hodnotě pořízeného majetku
@@ -305,7 +311,16 @@ final class DphBookBuilder
             return sprintf('%s ř.%s - %s: %s', $prefix, str_pad($line, 3, '0', \STR_PAD_LEFT), $direction, $what . $rateLabel);
         }
         if ($prefix === '43') {
-            return sprintf('%s ř.%s - %s: Z reverse charge / dovozu služby - sazba%s', $prefix, str_pad($line, 3, '0', \STR_PAD_LEFT), $direction, $rateLabel);
+            // Pod 43 jsou primary řádky RC/dovozových párů (ř.3/7/10/12 …) i mirror
+            // odpočet ř.43 — popis dle řádku, stejně jako POHODA u svého členění.
+            $what = match ($line) {
+                '12', '13' => 'Z dovozu služby - sazba',
+                '3', '4'   => 'Pořízení z EU',
+                '7'        => 'Dovoz zboží ze 3. země',
+                '10', '11' => 'Tuzemský reverse charge - sazba',
+                default    => 'Z reverse charge / dovozu služby - sazba',
+            };
+            return sprintf('%s ř.%s - %s: %s%s', $prefix, str_pad($line, 3, '0', \STR_PAD_LEFT), $direction, $what, $rateLabel);
         }
         if ($prefix === '47') {
             return sprintf('%s ř.%s - PŘIJATÁ: Hodnota pořízeného majetku (§ 4 odst. 4 písm. c)', $prefix, str_pad($line, 3, '0', \STR_PAD_LEFT));
@@ -325,7 +340,8 @@ final class DphBookBuilder
     private function sectionOrder(string $key): int
     {
         // Vzestupně dle čísla členění jako POHODA: 15.XXX přijaté (0),
-        // 36.XXX vystavené (1), 43.XXX RC/dovoz mirror (2), 47.XXX majetek (3).
+        // 36.XXX vystavené (1), 43.XXX RC/dovozové páry vč. primary (2),
+        // 47.XXX majetek (3).
         $prefix = substr($key, 0, 2);
         return match ($prefix) {
             '15' => 0,
