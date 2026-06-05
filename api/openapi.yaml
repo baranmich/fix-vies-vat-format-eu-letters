@@ -5332,6 +5332,12 @@ components:
         reverse_charge: { type: boolean }
         payment_due_days: { type: integer }
         discount_percent: { type: number, format: float, description: "Procentuální sleva (0–100) zděděná na každou vygenerovanou fakturu." }
+        revenue_category_id:
+          type: integer
+          nullable: true
+          description: "Pevná kategorie tržby pro generované faktury (#119) — přebíjí fallback výchozí kategorie zakázky > zákazníka. NULL = fallback. Na fakturu se ukládá jako snapshot při generování."
+        revenue_category_label: { type: string, nullable: true, description: "Label kategorie (jen detail šablony)." }
+        revenue_category_code: { type: string, nullable: true, description: "Kód kategorie (jen detail šablony)." }
         draft_open_mode:
           type: string
           enum: [at_issue, period_start]
@@ -5407,6 +5413,10 @@ components:
           maximum: 100
           default: 0
           description: "Procentuální sleva z celé faktury (0–100); zdědí ji každá vygenerovaná faktura (materializuje se jako záporná položka „Sleva X %\")."
+        revenue_category_id:
+          type: integer
+          nullable: true
+          description: "Pevná kategorie tržby pro generované faktury (#119). Musí existovat a patřit dodavateli šablony. NULL/vynecháno = fallback výchozí kategorie zakázky > zákazníka při generování."
         draft_open_mode:
           type: string
           enum: [at_issue, period_start]

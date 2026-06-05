@@ -6,6 +6,7 @@ import { recurringApi, type RecurringTemplate, type RecurringTemplatePayload, ty
 import { clientsApi, type Client, type ViesLookupResult } from '@/api/clients'
 import { projectsApi, type Project } from '@/api/projects'
 import { codebooksApi, type VatRate, type Currency, type Unit } from '@/api/codebooks'
+import { revenueCategoriesApi, type RevenueCategory } from '@/api/revenueCategories'
 import { useToast } from '@/composables/useToast'
 import { useSupplierStore } from '@/stores/supplier'
 import { formatMoney } from '@/composables/useFormat'
@@ -80,6 +81,10 @@ const projects = ref<Project[]>([])
 const currencies = ref<Currency[]>([])
 const vatRates = ref<VatRate[]>([])
 const units = ref<Unit[]>([])
+const revenueCategories = ref<RevenueCategory[]>([])
+// Label kategorie načtené šablony — pro případ, že je mezitím archivovaná
+// (list(false) vrací jen aktivní) a v selectu by jinak „zmizela".
+const loadedCategoryLabel = ref<string | null>(null)
 
 function defaultItemUnit(): string {
   return units.value.find(u => u.is_default)?.code || units.value[0]?.code || 'ks'
@@ -110,6 +115,7 @@ const form = ref<{
   reverse_charge: boolean
   prices_include_vat: boolean
   discount_percent: number
+  revenue_category_id: number | null
   payment_due_days: number
   tax_date_mode: 'same_as_issue' | 'previous_month_last_day'
   draft_open_mode: 'at_issue' | 'period_start'
@@ -136,6 +142,7 @@ const form = ref<{
   reverse_charge: false,
   prices_include_vat: false,
   discount_percent: 0,
+  revenue_category_id: null,
   payment_due_days: 14,
   tax_date_mode: 'same_as_issue',
   draft_open_mode: 'at_issue',
@@ -416,14 +423,16 @@ onMounted(async () => {
   loading.value = true
   try {
     // Klienti se hledají server-side (onClientSearch); cache se plní výsledky + vybraným.
-    const [cur, vat, un] = await Promise.all([
+    const [cur, vat, un, rcat] = await Promise.all([
       codebooksApi.currencies(),
       codebooksApi.vatRates(),
       codebooksApi.units(),
+      revenueCategoriesApi.list(false).catch(() => [] as RevenueCategory[]),  // jen aktivní
     ])
     currencies.value = cur
     vatRates.value = vat
     units.value = un
+    revenueCategories.value = rcat
 
     if (form.value.currency_id === 0) {
       const def = cur.find(c => c.is_default && c.code === 'CZK') || cur[0]
@@ -501,6 +510,7 @@ onMounted(async () => {
         reverse_charge: tpl.reverse_charge,
         prices_include_vat: (tpl as { prices_include_vat?: boolean }).prices_include_vat ?? false,
         discount_percent: tpl.discount_percent ?? 0,
+        revenue_category_id: tpl.revenue_category_id ?? null,
         payment_due_days: tpl.payment_due_days,
         tax_date_mode: tpl.tax_date_mode ?? 'same_as_issue',
         draft_open_mode: tpl.draft_open_mode ?? 'at_issue',
@@ -519,6 +529,7 @@ onMounted(async () => {
           order_index: it.order_index,
         })),
       })
+      loadedCategoryLabel.value = tpl.revenue_category_label ?? null
       if (tpl.client_id) await loadProjectsForClient(tpl.client_id)
     }
   } finally {
@@ -569,6 +580,7 @@ async function submit() {
       reverse_charge: form.value.reverse_charge,
       prices_include_vat: form.value.prices_include_vat,
       discount_percent: form.value.discount_percent || 0,
+      revenue_category_id: form.value.revenue_category_id,
       payment_due_days: form.value.payment_due_days,
       tax_date_mode: form.value.tax_date_mode,
       draft_open_mode: form.value.draft_open_mode,
@@ -780,6 +792,22 @@ async function submit() {
                 class="w-full h-10 pl-3 pr-8 border border-neutral-300 rounded-md text-right font-mono" />
               <span class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none">%</span>
             </div>
+          </div>
+          <!-- Pevná kategorie tržby (#119) — přebíjí fallback zakázka → zákazník -->
+          <div>
+            <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('recurring.revenue_category') }}</label>
+            <select v-model="form.revenue_category_id"
+              class="w-full h-10 px-3 border border-neutral-300 rounded-md bg-surface">
+              <option :value="null">— {{ t('recurring.revenue_category_fallback') }} —</option>
+              <option v-for="c in revenueCategories" :key="c.id" :value="c.id">
+                {{ c.label }} ({{ c.code }})
+              </option>
+              <option v-if="form.revenue_category_id && !revenueCategories.some(c => c.id === form.revenue_category_id)"
+                :value="form.revenue_category_id">
+                {{ loadedCategoryLabel ?? `#${form.revenue_category_id}` }}
+              </option>
+            </select>
+            <p class="mt-1 text-xs text-neutral-500">{{ t('recurring.revenue_category_hint') }}</p>
           </div>
           <div class="md:col-span-2">
             <label class="block text-sm font-medium text-neutral-700 mb-1">{{ t('recurring.tax_date_mode') }}</label>

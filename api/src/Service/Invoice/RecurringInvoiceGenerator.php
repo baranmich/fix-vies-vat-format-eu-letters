@@ -378,13 +378,16 @@ final class RecurringInvoiceGenerator
         $pdo->beginTransaction();
         try {
             $discountPercent = round(max(0.0, min(100.0, (float) ($template['discount_percent'] ?? 0))), 2);
-            // Výchozí kategorie tržby — default zakázky > klienta (sdílený helper,
-            // stejná logika jako createDraft a import). Faktura ze šablony tak dostane
-            // kategorii stejně jako ručně založená.
+            // Kategorie tržby — pevná kategorie šablony (#119) přebíjí dynamický
+            // fallback default zakázky > klienta (sdílený helper, stejná logika jako
+            // createDraft a import). Hodnota se na fakturu ukládá jako snapshot:
+            // pozdější změna šablony/zakázky/klienta už vygenerované faktury nemění.
             $projectId = !empty($template['project_id']) ? (int) $template['project_id'] : null;
-            $revenueCategoryId = InvoiceRepository::resolveDefaultRevenueCategoryId(
-                $pdo, (int) $template['client_id'], $projectId
-            );
+            $revenueCategoryId = !empty($template['revenue_category_id'])
+                ? (int) $template['revenue_category_id']
+                : InvoiceRepository::resolveDefaultRevenueCategoryId(
+                    $pdo, (int) $template['client_id'], $projectId
+                );
             $stmt = $pdo->prepare(
                 'INSERT INTO invoices
                    (invoice_type, client_id, project_id, supplier_id,

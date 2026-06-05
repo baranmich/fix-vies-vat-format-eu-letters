@@ -283,6 +283,7 @@ async function removeAction() {
             <div class="flex justify-between"><dt class="text-neutral-500">{{ t('payment_method.label') }}</dt><dd>{{ t('payment_method.' + tpl.payment_method) }}</dd></div>
             <div class="flex justify-between"><dt class="text-neutral-500">{{ t('recurring.payment_due_days') }}</dt><dd>{{ tpl.payment_due_days }}</dd></div>
             <div v-if="tpl.discount_percent > 0" class="flex justify-between"><dt class="text-neutral-500">{{ t('invoice.discount.label') }}</dt><dd>{{ tpl.discount_percent }} %</dd></div>
+            <div class="flex justify-between"><dt class="text-neutral-500">{{ t('recurring.revenue_category') }}</dt><dd>{{ tpl.revenue_category_id ? (tpl.revenue_category_label ?? `#${tpl.revenue_category_id}`) : t('recurring.revenue_category_fallback') }}</dd></div>
             <div class="flex justify-between"><dt class="text-neutral-500">{{ t('recurring.tax_date_mode') }}</dt><dd>{{ t('recurring.tax_date_mode_' + (tpl.tax_date_mode ?? 'same_as_issue')) }}</dd></div>
           </dl>
         </div>
