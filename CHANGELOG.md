@@ -5,6 +5,12 @@ All notable changes to MyInvoice.cz are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.3] — 2026-06-06
+
+### Fixed
+
+- **Relativní cesty v cfg.php se ukotvují k rootu aplikace.** `cfg.sample.php` měl u `cron.backup.output_dir` relativní hodnotu `'storage/backup'`, kterou backup crony braly doslovně — cesta se pak resolvovala proti pracovnímu adresáři procesu, který je pod Task Schedulerem/cronem jinde než root aplikace, takže zálohy končily v cizím adresáři (typicky pod adresářem cron runneru). Nově `Config::load()` každou relativní cestu ve známých path klíčích (`storage.*`, `cron.backup.output_dir`, `logging.path`, `purchase_invoice.archive_storage`/`inbox_dir`, `invoice.import_archive_storage`, `smtp.dkim.*`) ukotví k rootu aplikace; absolutní cesty (vč. Windows `C:\` a UNC `\\server`) i `MYINVOICE_DATA_DIR` override zůstávají beze změny. Sample cfg má nově `__DIR__ . '/storage/backup'` konzistentně s ostatními cestami.
+
 ## [4.18.2] — 2026-06-06
 
 ### Added
