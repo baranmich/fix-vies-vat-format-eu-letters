@@ -1,4 +1,4 @@
-# 3. První spuštění (setup wizard)
+# 6. První spuštění (setup wizard)
 
 Po čerstvé instalaci je celá aplikace **zamčená na setup wizard**. Žádný jiný
 endpoint kromě setup endpointů a healthchecku neodpovídá. Wizard je jednorázový
@@ -7,7 +7,7 @@ endpoint kromě setup endpointů a healthchecku neodpovídá. Wizard je jednorá
 Wizard má **3 kroky** (admin → dodavatel → sample data) a po dokončení tě
 **automaticky přihlásí**.
 
-## 3.1 Krok 1 — Administrátor
+## 6.1 Krok 1 — Administrátor
 
 ![Setup wizard krok 1](img/03_setup_admin.webp)
 
@@ -25,12 +25,12 @@ Klikni **Další**.
 > 💡 Tip: Použij passphrase 4–5 slov místo krátkého složitého hesla. „korelace
 > medvědí dýně přístav 2026" je odolnější vůči brute-force než „Hu1@n!".
 
-## 3.2 Krok 2 — Dodavatel
+## 6.2 Krok 2 — Dodavatel
 
 ![Setup wizard krok 2](img/03_setup_dodavatel.webp)
 
 Vyplníš údaje o **prvním dodavateli** (firmě nebo OSVČ), za kterého budeš
-fakturovat. Můžeš jich později přidat víc — viz [18. Multi-supplier](18_Multi_supplier.md).
+fakturovat. Můžeš jich později přidat víc — viz [33. Multi-supplier](33_Multi_supplier.md).
 
 | Sekce | Popis |
 |---|---|
@@ -47,7 +47,7 @@ Klikni **Další**.
 > účtů). Pokud zadáš neplatné číslo, QR platba se ve faktuře nezobrazí. Příklad
 > platného testovacího čísla: `1000000005 / 0100`.
 
-## 3.3 Krok 3 — Sample data (volitelné)
+## 6.3 Krok 3 — Sample data (volitelné)
 
 ![Setup wizard krok 3](img/03_setup_sample.webp)
 
@@ -64,12 +64,12 @@ zjistíš, že je chceš, dostaneš `409 setup_done` (ochrana proti přepsání 
 faktur). Reset přes `php api/bin/reset.php` smaže všechno a wizard se objeví znovu.
 
 Klikni **Dokončit**. Wizard tě **automaticky přihlásí** a přesměruje na
-[Přehled (dashboard)](05_Prehled.md).
+[Přehled (dashboard)](08_Prehled.md).
 
-## 3.4 Co dál po setupu
+## 6.4 Co dál po setupu
 
 1. Otevři **Systém → Nastavení** a doplň, co wizard nepokryl: e-mail kontakt,
-   doplnění více bankovních účtů — viz [19. Nastavení](19_Nastaveni.md).
+   doplnění více bankovních účtů — viz [34. Nastavení](34_Nastaveni.md).
 2. **Systém → Číselníky → Měny** — pokud fakturuješ i v EUR, doplň druhý účet
    (IBAN + BIC).
 3. **Systém → Uživatelé** — pokud má systém používat někdo další (účetní),

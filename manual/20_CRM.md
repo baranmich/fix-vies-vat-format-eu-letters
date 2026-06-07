@@ -1,17 +1,10 @@
-# 23. CRM dashboard
+# 20. CRM dashboard
 
 CRM (Customer Relationship Management) v MyInvoice.cz je BI/analytický modul nad tržbami, náklady a klienty. Najdeš ho v menu **Finance → CRM**.
 
 ![CRM dashboard — KPI, monthly trend, aging, DSO, concentration risk](img/23_crm.webp)
 
-> [!IMPORTANT]
-> CRM nahrazuje předchozí stránku **Grafy** (přejmenovaná na **Tržby** v menu). Tržby zůstanou pro jednoduchý revenue overview; CRM rozšiřuje o náklady, zisk, aging, koncentraci, churn a další.
 >
-> ![Tržby — jednoduchý revenue overview (12měsíční obrat, forecast, top klienti)](img/23_trzby.webp)
-
-> [!TIP]
-> Vedle Tržeb najdeš v menu **Finance → Náklady** zrcadlovou analýzu nad přijatými fakturami: 12měsíční náklady, odhad nákladů, top dodavatelé, rozpad DPH na vstupu a podle kategorií, riziko koncentrace dodavatelů, plán plateb (splatné závazky do 30 / 60 / 90 dní) a aging závazků. Náklady jsou počítány bez DPH u plátců (na vstupu se odečte), s DPH u neplátců, a řazeny podle pozdějšího z dat DUZP / vystavení.
-
 ## Co CRM zobrazuje
 
 ### KPI karty (top of dashboard)
@@ -85,3 +78,20 @@ Některé metriky (aging, churn, DSO) jsou **live queries** z `invoices` / `purc
 2. **Plnit VAT klasifikační kódy** (auto-default už řeší 99% případů) → DPH report v sekci Daně bude přesnější
 3. **Vyrovnávat bank statements** → DSO bude přesné (paid_at = datum úhrady)
 4. **Pravidelné faktury** (`/recurring`) — predikovatelné MRR, plánujeme zobrazit v dalším iter
+
+## CRM vs. Tržby vs. Náklady
+
+V menu **Finance** najdeš vedle CRM ještě dvě podrobnější stránky, které mají v manuálu vlastní kapitoly:
+
+| Stránka | Co dělá | Pro koho |
+|---|---|---|
+| **CRM** (tato kapitola) | Souhrnný BI dashboard — tržby i náklady **vedle sebe**, zisk, zdraví firmy (DSO/DPO, koncentrace), churn, akční úkoly | Rychlý denní přehled „jak na tom jsme" |
+| **[Tržby](21_Trzby.md)** | Hloubková analýza jen **vydaných faktur** (obrat, klienti, zakázky, predikce, DPH) | Detail příjmové strany, plánování, registrační limity |
+| **[Náklady](22_Naklady.md)** | Hloubková analýza jen **přijatých faktur** (náklady, dodavatelé, závazky, odhad výdajů) | Detail nákladové strany, cash-flow ven |
+
+Klik na KPI kartu **Tržby** v CRM tě přenese na stránku Tržby, klik na **Náklady** na stránku Náklady.
+
+> [!NOTE]
+> CRM čte pre-agregovanou cache `crm_monthly_summary` (nightly cron), zatímco
+> Tržby a Náklady počítají **živě** z faktur — proto se v nich může objevit
+> čerstvě zaúčtovaný doklad o chvíli dřív než v CRM.

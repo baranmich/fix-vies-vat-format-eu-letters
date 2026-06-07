@@ -1,11 +1,11 @@
-# 7. Klienti
+# 13. Klienti
 
 Klient = firma nebo osoba, které vystavuješ faktury. Každý klient má alespoň
 jeden hlavní e-mail (povinný kontakt). Pod klientem můžeš mít jednu nebo více
-**zakázek** (viz [8. Zakázky](08_Zakazky.md)) — typicky 1 zakázka = 1 projekt
+**zakázek** (viz [14. Zakázky](14_Zakazky.md)) — typicky 1 zakázka = 1 projekt
 nebo dlouhodobá spolupráce.
 
-## 7.1 Seznam klientů
+## 13.1 Seznam klientů
 
 V hlavním menu klikni **Klienti**.
 
@@ -20,18 +20,18 @@ Tabulka ukazuje:
 | Stát | 2-písmenný kód (CZ, SK, DE, …) |
 | Měna | Výchozí měna pro nové faktury |
 | Hlavní e-mail | Kontakt pro odesílání faktur |
-| Plátce DPH | Badge **Ano / Ne** — zda je subjekt plátce DPH. Užitečné hlavně u **dodavatelů**: u neplátce nemá přijatá faktura nárok na odpočet (viz [§ 10.2.4](10_Prijate_faktury.md#1024-daňová-uznatelnost-a-nárok-na-odpočet)). Příznak se plní z ARES (CZ) / VIES (EU). |
+| Plátce DPH | Badge **Ano / Ne** — zda je subjekt plátce DPH. Užitečné hlavně u **dodavatelů**: u neplátce nemá přijatá faktura nárok na odpočet (viz [§ 17.2.4](17_Prijate_faktury.md#1724-danova-uznatelnost-a-narok-na-odpocet)). Příznak se plní z ARES (CZ) / VIES (EU). |
 | Obrat letos | Suma vystavených faktur v aktuálním roce, v měně klienta |
 
 Nad tabulkou je vyhledávač (jméno / IČO) a filtr stavu (`Aktivní` / `Archivovaní`).
 
-### 7.1.1 Akce na řádku
+### 13.1.1 Akce na řádku
 
 - **Klik na jméno** → detail klienta
 - **Tlačítko Smazat** se zobrazí jen pokud klient nemá žádné faktury ani zakázky.
   Pokud má, smazání vrátí 409 a UI tlačítko skryje.
 
-## 7.2 Nový klient
+## 13.2 Nový klient
 
 Tlačítko **+ Nový klient** vpravo nahoře otevře modal.
 
@@ -50,14 +50,14 @@ Doporučený postup pro českého klienta:
    s textem „Daň přiznává odběratel".
 7. **Uložit**.
 
-### 7.2.1 Pole formuláře
+### 13.2.1 Pole formuláře
 
 | Pole | Význam |
 |---|---|
 | Firma / jméno | Název na faktuře |
 | Křestní jméno + Příjmení | Jen pro fyzické osoby (volitelné) |
 | IČO | České IČO (8 cifer); slovenské také funguje s ARES SK |
-| DIČ | Daňové ID s prefixem země; ČR „CZ12345678", SK „SK1234567890", EU různě. U slovenského klienta se pole jmenuje **IČ DPH** (viz § 7.2.1a) |
+| DIČ | Daňové ID s prefixem země; ČR „CZ12345678", SK „SK1234567890", EU různě. U slovenského klienta se pole jmenuje **IČ DPH** (viz § 13.2.1a) |
 | Národní daňové číslo | Zobrazí se jen u zemí, kde existuje vedle VAT ID: SK **DIČ**, DE/AT **Steuernummer**, PL **NIP**, HU **Adószám**. Tiskne se na fakturu mezi IČO a DIČ/IČ DPH |
 | Ulice / Město / PSČ / Stát | Adresa pro fakturu |
 | Hlavní e-mail | **Povinný** — pro odesílání faktur a upomínek |
@@ -69,7 +69,7 @@ Doporučený postup pro českého klienta:
 | Splatnost | Preset **7 dnů / 14 dnů / Měsíc / Vlastní**, nebo **Použít výchozí** = dědit z dodavatele. „Měsíc" = kalendářní měsíc (1. 2. → 1. 3., 31. 1. → 28. 2.), ne fixních 30 dní |
 | Poznámka | Interní text — nezobrazí se na faktuře |
 
-### 7.2.1a Slovenský klient a národní daňová čísla
+### 13.2.1a Slovenský klient a národní daňová čísla
 
 Slovenské subjekty mají **tři** identifikační čísla — IČO, **DIČ** (bez prefixu,
 přiděluje ho finanční úřad každému podnikateli včetně neplátců) a **IČ DPH**
@@ -92,7 +92,7 @@ nově ověřuje přes evropský **VIES** — zobrazí stav registrace k DPH, ná
 a adresu subjektu. Český registr plátců DPH (zveřejněné účty, nespolehlivý
 plátce) se používá dál jen pro česká DIČ.
 
-### 7.2.2 E-mailové kontakty podle účelu
+### 13.2.2 E-mailové kontakty podle účelu
 
 U firemních odběratelů je běžné, že různé typy zpráv mají chodit na různé
 adresy — faktury na účtárnu, upomínky na odpovědnou osobu, schvalování
@@ -113,7 +113,7 @@ U každého kontaktu vyplníš:
 **Jak se vybírají příjemci:**
 
 - **Bez kontaktů** se nic nemění — vše chodí na **hlavní e-mail** klienta
-  (+ fakturační e-maily zakázky, viz [§ 8](08_Zakazky.md)). Stávající
+  (+ fakturační e-maily zakázky, viz [§ 8](14_Zakazky.md)). Stávající
   klienti tedy fungují přesně jako dřív.
 - **Jakmile má účel přiřazený aktivní kontakt**, použijí se kontakty s tímto
   účelem a hlavní e-mail se už automaticky **nepřidává** (zůstává jen
@@ -130,7 +130,7 @@ konkrétní odeslání ručně upravit jako dosud.
 Limit je 10 kontaktů na klienta. Kontakty jsou dostupné i přes API
 (`email_contacts` v detailu klienta, replace-all při create/update).
 
-## 7.3 Detail klienta
+## 13.3 Detail klienta
 
 Klik na jméno v seznamu → detail.
 
@@ -138,26 +138,26 @@ Klik na jméno v seznamu → detail.
 
 Detail má 4 záložky:
 
-### 7.3.1 Přehled
+### 13.3.1 Přehled
 
 Sumář: kontakt, výchozí nastavení, obraty (letos / loni), počet zakázek,
 počet faktur podle stavu.
 
-### 7.3.2 Zakázky
+### 13.3.2 Zakázky
 
 Seznam zakázek pod klientem. Tlačítko **+ Nová zakázka** otevře editor —
-viz [8. Zakázky](08_Zakazky.md).
+viz [14. Zakázky](14_Zakazky.md).
 
-### 7.3.3 Faktury
+### 13.3.3 Faktury
 
 Seznam faktur klienta (všechny zakázky + faktury bez zakázky). Filtr stavu
 + pagination.
 
-### 7.3.4 Aktivita
+### 13.3.4 Aktivita
 
 Activity log — kdo a kdy klienta vytvořil / upravil / odeslal mu fakturu.
 
-## 7.4 Editace klienta
+## 13.4 Editace klienta
 
 Na detailu klikni **Upravit** (ikona tužky vpravo nahoře).
 
@@ -166,13 +166,13 @@ Změny se okamžitě projeví na nových fakturách. Faktury, které už jsou
 klienta — tam se editace neprojeví. Tím se zajišťuje neměnnost vystavených
 dokladů.
 
-## 7.5 Archivace klienta
+## 13.5 Archivace klienta
 
 Klik na **Archivovat** — klient se schová z výchozího filtru, ale data zůstanou
 zachována (faktury, statistiky). Archivovaného klienta najdeš ve filtru
 „Archivovaní" v seznamu, kde ho můžeš obnovit (**Obnovit**).
 
-## 7.6 Tipy
+## 13.6 Tipy
 
 - **ARES** funguje jen pro česká IČO. Pro SK použij interní lookup `/api/clients/ares-lookup-sk?ic=...`.
 - **VIES** je pomalý (~1–2 sekundy) a občas nedostupný — výsledek se cachuje

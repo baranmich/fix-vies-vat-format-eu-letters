@@ -1,4 +1,4 @@
-# 5. Přehled (dashboard)
+# 8. Přehled (dashboard)
 
 Přehled je úvodní obrazovka po přihlášení — okamžitý report, kolik jsi vystavil,
 co je po splatnosti, jaký je obrat za letošní a loňský rok, a kdo jsou tví
@@ -6,7 +6,7 @@ top klienti.
 
 ![Přehled (dashboard)](img/05_dashboard.webp)
 
-## 5.1 KPI dlaždice (horní řada)
+## 8.1 KPI dlaždice (horní řada)
 
 Šířka řady se přizpůsobí počtu aktivních měn (4–6 dlaždic):
 
@@ -18,7 +18,7 @@ top klienti.
 | **Po splatnosti** | Suma neuhrazených faktur, které jsou po splatnosti. Zobrazená v CZK + EUR součtu, červené barvy. Klik proklikne na filtrovaný seznam. |
 | **Ø doba úhrady** | Průměrný počet dní mezi vystavením a zaplacením (jen pro letošní zaplacené faktury). |
 
-## 5.2 Top klienti — koláč
+## 8.2 Top klienti — koláč
 
 Levý koláč ukazuje **3 největší klienty letos**, pravý **3 největší loni**.
 Hover nad výsečí ukáže jméno klienta + obrat. Klik na legendu odfiltruje.
@@ -26,7 +26,7 @@ Hover nad výsečí ukáže jméno klienta + obrat. Klik na legendu odfiltruje.
 > 💡 Pokud máš multi-supplier (více dodavatelů), koláč ukazuje data jen pro
 > aktuálně vybraného dodavatele (přepínač v horní liště).
 
-## 5.3 Stav faktur — koláč
+## 8.3 Stav faktur — koláč
 
 Pravý koláč rozdělí letošní faktury podle stavu:
 
@@ -36,13 +36,13 @@ Pravý koláč rozdělí letošní faktury podle stavu:
 - 🟠 **Upomínka** — `reminded` (po splatnosti, byla odeslána upomínka)
 - ⚫ **Storno / dobropis** — `cancellation` / `credit_note`
 
-## 5.4 Obrat po měsících (line / bar chart)
+## 8.4 Obrat po měsících (line / bar chart)
 
 Spodní dva grafy ukazují měsíční obrat (CZK a EUR samostatně) — letošní rok
 plnou barvou, minulý rok prázdnou pro porovnání. Hover nad sloupcem ukáže
 přesnou částku.
 
-## 5.5 Po splatnosti + nezaplacené faktury
+## 8.5 Po splatnosti + nezaplacené faktury
 
 Pod grafy je tabulka:
 
@@ -52,25 +52,25 @@ Pod grafy je tabulka:
 - **Nezaplacené** — faktury v stavu `sent` / `issued` / `reminded`, ještě před
   splatností.
 
-Klik na číslo faktury otevře [Detail faktury](12_Faktura_PDF.md).
+Klik na číslo faktury otevře [Detail faktury](11_Faktura_PDF.md).
 
-## 5.6 Rychlé vytváření (horní lišta)
+## 8.6 Rychlé vytváření (horní lišta)
 
 Nové doklady a záznamy zakládáš z tlačítka **+ Vytvořit** v horní liště
 (vpravo, vedle jména uživatele). Rozbalovací menu nabízí:
 
-- **Vydaná faktura** — otevře [Editor faktury](11_Faktura_editor.md), prázdný koncept
+- **Vydaná faktura** — otevře [Editor faktury](10_Faktura_editor.md), prázdný koncept
 - **Zálohová faktura** — editor rovnou v režimu proforma
-- **Pravidelná fakturace** — nová [šablona](15_Pravidelne_fakturace.md)
+- **Pravidelná fakturace** — nová [šablona](12_Pravidelne_fakturace.md)
 - **Klient** — modal pro založení klienta (s ARES lookupem)
 - **Dodavatel** — nový dodavatel (firma)
-- **Přijatá faktura** — nová [přijatá faktura](10_Prijate_faktury.md)
+- **Přijatá faktura** — nová [přijatá faktura](17_Prijate_faktury.md)
 
 Stejné zkratky najdeš i v postranním menu jako nenápadné **„+"** u příslušné
 položky (objeví se po najetí myší). Rychlé vytváření je dostupné jen pro
 uživatele s právem zápisu.
 
-## 5.7 Aktualizace dat
+## 8.7 Aktualizace dat
 
 Statistiky se nepočítají v reálném čase — používají agregační cache
 (`project_revenue_cache`, `client_revenue_cache`), která se přepočítá pokaždé,
@@ -84,7 +84,7 @@ php api/bin/recompute-stats.php
 > 🛈 Sample data (vygenerovaná během setup wizardu) automaticky přepočítají
 > stats hned po dokončení — nemusíš nic dělat.
 
-## 5.8 Vzhled — světlý a tmavý režim
+## 8.8 Vzhled — světlý a tmavý režim
 
 V horní liště (vpravo, vedle přepínače jazyka) je přepínač barevného motivu se
 třemi stavy:

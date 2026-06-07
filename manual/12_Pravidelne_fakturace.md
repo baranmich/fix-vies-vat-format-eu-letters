@@ -1,4 +1,4 @@
-# 15. Pravidelné fakturace (Recurring invoices)
+# 12. Pravidelné fakturace (Recurring invoices)
 
 Šablony pro automatické generování faktur v pravidelných intervalech. Hodí se
 pro paušální platby (hosting, předplatné, retainer …), kde se fakturuje stále
@@ -9,7 +9,7 @@ stejná částka stejnému klientovi.
 faktury. Volitelně je rovnou **vystaví** (přidělí číslo faktury) a/nebo
 **odešle klientovi e-mailem**.
 
-## 15.1 Kdy použít
+## 12.1 Kdy použít
 
 - Pravidelný měsíční / čtvrtletní / pololetní / roční paušál
 - Stejné položky a stejné částky (drobné posouvání měsíce v popisech řeší
@@ -20,13 +20,13 @@ Pro **jednorázové znovuvystavení** stávající faktury (např. „udělej ze
 faktury 5/2026 fakturu 6/2026") slouží klasický **klon faktury** v detailu
 faktury — ne pravidelná šablona.
 
-## 15.2 Vytvoření šablony
+## 12.2 Vytvoření šablony
 
 V menu **Systém → Pravidelné fakturace** klikni **+ Nová šablona**, nebo
 v detailu existující faktury tlačítko **Vytvořit šablonu z této faktury**
 (předvyplní klienta, položky, měnu, jazyk i payment method).
 
-### 15.2.1 Sekce „Periodicita"
+### 12.2.1 Sekce „Periodicita"
 
 - **Periodicita** — Měsíčně / Čtvrtletně / Pololetně / Ročně
 - **Den v měsíci** — 1–28 (28 je nejvyšší možná hodnota; cap kvůli únoru)
@@ -38,7 +38,7 @@ v detailu existující faktury tlačítko **Vytvořit šablonu z této faktury**
 - **Datum ukončení** (volitelné) — po překročení tohoto data se šablona
   automaticky pozastaví (status **Vypršela**) a cron ji přeskakuje.
 
-### 15.2.2 Sekce „Faktura"
+### 12.2.2 Sekce „Faktura"
 
 Tady nastavíš metadata, která se zkopírují na každou vygenerovanou fakturu:
 
@@ -51,7 +51,7 @@ Tady nastavíš metadata, která se zkopírují na každou vygenerovanou fakturu
 - **Splatnost** — počet dnů od vystavení
 - **Sleva z celé faktury** — procentuální sleva (0–100 %), kterou zdědí každá
   vygenerovaná faktura. Na faktuře se projeví jako záporná položka „Sleva X %"
-  (po sazbách DPH) — viz § 11.4.1.
+  (po sazbách DPH) — viz § 10.4.1.
 - **Kategorie tržby** — pevná kategorie tržby pro všechny
   faktury z této šablony (typicky domény, hosting, licence, paušály). Bez
   výběru (*dle zakázky / zákazníka*) se při generování použije výchozí
@@ -61,7 +61,7 @@ Tady nastavíš metadata, která se zkopírují na každou vygenerovanou fakturu
   snapshot — změna šablony už vygenerované faktury nemění.
 - **Ceny s DPH / bez DPH** — režim, ve kterém jsou zadané ceny
   položek šablony. „s DPH" (brutto) počítá daň „shora" koeficientem a propisuje
-  se na každou vygenerovanou fakturu — viz [§ 11.2.6](11_Faktura_editor.md#1126-ceny-s-dph-vs-bez-dph-brutto--netto-režim).
+  se na každou vygenerovanou fakturu — viz [§ 10.2.6](10_Faktura_editor.md#1026-ceny-s-dph-vs-bez-dph-brutto-netto-rezim).
 - **DUZP** *(plátci DPH)* — režim, kterým se počítá datum uskutečnění
   zdanitelného plnění z `issue_date`:
     - **Stejné jako datum vystavení** *(default)* — DUZP = vystavení.
@@ -71,7 +71,7 @@ Tady nastavíš metadata, která se zkopírují na každou vygenerovanou fakturu
       31.5.2026. Měsíc v popiscích položek se synchronizuje k DUZP, takže
       „Hosting 05/2026" zůstane „05/2026" i když je vystavena 1.6.
 
-### 15.2.3 Položky
+### 12.2.3 Položky
 
 Položky šablony se 1:1 kopírují na každou vygenerovanou fakturu (popis, mn.,
 cena/j, sazba DPH). Sazba se bere podle vybraného `vat_rate_id` ze šablony.
@@ -79,7 +79,7 @@ cena/j, sazba DPH). Sazba se bere podle vybraného `vat_rate_id` ze šablony.
 > ⚠️ **Změna sazby DPH státem** — sazba je v šabloně přišpendlená na konkrétní
 > řádek číselníku. Když se sazba změní (např. 21 % → 22 %), vznikne v `vat_rates`
 > **nový řádek** a starý dostane konec platnosti. Šablona pak ukazuje na vypršelou
-> sazbu — generování se **zastaví s jasnou chybou** (viz banner v § 15.3) a ty
+> sazbu — generování se **zastaví s jasnou chybou** (viz banner v § 12.3) a ty
 > ve šabloně vybereš aktuální sazbu. Tím se nikdy tiše nevystaví doklad se starou
 > sazbou. (Totéž hlídá i klonování faktury.)
 
@@ -130,7 +130,7 @@ Další ukázky: `sezóna {YY}/{YY+1}` → „sezóna 26/27", `servis {Q}Q/{YYYY
 > volbě „Synchronizovat měsíc" níže (lze kombinovat; obojí míří na stejné
 > referenční datum).
 
-### 15.2.4 Sekce „Automatizace"
+### 12.2.4 Sekce „Automatizace"
 
 - **Synchronizovat měsíc v popiscích položek s DUZP** — pokud je v popisu
   vzorec `M/YYYY` (např. „Hosting 03/2026"), automaticky se **nahradí**
@@ -140,7 +140,7 @@ Další ukázky: `sezóna {YY}/{YY+1}` → „sezóna 26/27", `servis {Q}Q/{YYYY
   spadá do 5/2026, a „Hosting 06/2026" pokud do 6/2026 — bez kumulativního
   driftu. Pattern detektor zvládá `M/YYYY`, `YYYY-MM`, `M.YYYY`, `M-YYYY`
   a varianty; plná data typu `2026-05-15` chrání lookaround a nemění je.
-  Pro nové šablony zvaž **placeholdery období** (viz § 15.2.3) — jsou
+  Pro nové šablony zvaž **placeholdery období** (viz § 12.2.3) — jsou
   explicitnější (`{MM}/{YYYY}`) a umí víc (roky, čtvrtletí, celá data);
   tahle volba zůstává pro stávající šablony s prostým `M/YYYY` v textu.
 - **Po vygenerování rovnou vystavit** — cron rovnou přidělí číslo faktury
@@ -150,7 +150,7 @@ Další ukázky: `sezóna {YY}/{YY+1}` → „sezóna 26/27", `servis {Q}Q/{YYYY
 - **Po vystavení rovnou odeslat klientovi e-mailem** — automatický send PDF
   + e-mailu na klienta a fakturační e-maily zakázky. Vyžaduje předchozí
   volbu (nelze odeslat draft).
-- **Kdy vytvořit koncept** — viz [15.2.5](#1525-otevřený-koncept-průběžný-výkaz-víceprací).
+- **Kdy vytvořit koncept** — viz [15.2.5](#1225-otevreny-koncept-prubezny-vykaz-vicepraci).
 - **Připomenout dní před vystavením** — jen u režimu „Na začátku období";
   počet dní předem, kdy ti přijde e-mailová připomínka doplnit vícepráce
   (0 = neposílat).
@@ -158,7 +158,7 @@ Další ukázky: `sezóna {YY}/{YY+1}` → „sezóna 26/27", `servis {Q}Q/{YYYY
 **Default pro nové šablony** je obojí (vystavit + odeslat) zapnuté a režim
 konceptu „Až při vystavení" → plně automatická pravidelná fakturace.
 
-### 15.2.5 Otevřený koncept (průběžný výkaz víceprací)
+### 12.2.5 Otevřený koncept (průběžný výkaz víceprací)
 
 Řeší fakturaci typu **fixní SLA + nepravidelné vícepráce**: část faktury je
 stálý paušál, ke kterému během měsíce přibývá proměnný seznam víceprací.
@@ -197,7 +197,7 @@ Přepínač **„Kdy vytvořit koncept"** má dvě hodnoty:
 > Pokud koncept během měsíce vystavíš ručně, cron to pozná a v den vystavení
 > už nic nevytvoří — jen posune rozvrh na další měsíc.
 
-## 15.3 Lifecycle šablony
+## 12.3 Lifecycle šablony
 
 Šablona má tři stavy:
 
@@ -227,7 +227,7 @@ užitečné pro testování i pro ruční vytvoření dokladu mimo rozvrh).
 > uloží se poslední chyba a zobrazí se jako červený banner na detailu šablony
 > a odznak v seznamu. Po úspěšném (ručním i cronovém) vygenerování banner zmizí.
 
-## 15.4 Cron
+## 12.4 Cron
 
 Skript `api/bin/cron-generate-recurring-invoices.php` — spouštěj ho **jednou
 denně**:
@@ -254,14 +254,14 @@ za cyklus a posune o jeden krok — zbytek backlog se doplní postupně další
 dny. Tím se zabrání tomu, aby po výpadku cron vygeneroval naráz 30 faktur
 za poslední měsíc.
 
-## 15.5 Kill-switch (Nastavení → Dodavatel)
+## 12.5 Kill-switch (Nastavení → Dodavatel)
 
 V **Nastavení → Můj dodavatel** je přepínač **„Generovat pravidelné
 fakturace cronem"**. Pokud je vypnutý, cron tohoto dodavatele úplně
 přeskočí — všechny šablony se zastaví, dokud ho zase nezapneš. Manuální
 tlačítko **Vygenerovat teď** funguje nezávisle.
 
-## 15.6 Vazba na vygenerované faktury
+## 12.6 Vazba na vygenerované faktury
 
 Každá faktura vytvořená šablonou má vazbu `recurring_template_id` (sloupec
 v `invoices`). V detailu faktury se zobrazí badge **↻ Pravidelná** s odkazem
@@ -270,7 +270,7 @@ na šablonu, ze které pochází.
 Když šablonu smažeš, vygenerované faktury zůstanou (databáze má `ON DELETE
 SET NULL` — vazba se vyčistí, faktura zůstane platná).
 
-## 15.7 Activity log
+## 12.7 Activity log
 
 Vše se zaznamenává:
 
@@ -284,7 +284,7 @@ Vše se zaznamenává:
 - `cron.generate_recurring` — sumář jednoho běhu cronu (počet otevřených,
   vygenerovaných, vystavených, odeslaných, připomínek, chyb)
 
-## 15.8 REST API
+## 12.8 REST API
 
 Pravidelné fakturace mají vlastní REST endpointy pod `/api/recurring/*`:
 

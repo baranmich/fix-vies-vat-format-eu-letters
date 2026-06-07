@@ -1,4 +1,4 @@
-# 14. Upomínky po splatnosti
+# 24. Upomínky po splatnosti
 
 Když klient nezaplatil včas, můžeš mu poslat **upomínku** — speciální e-mail
 s textem typu „Vaše faktura č. XXX byla splatná YY dní zpět, prosíme o úhradu".
@@ -9,7 +9,7 @@ Upomínky lze posílat **3 způsoby**:
 2. **Hromadně** z [Seznamu faktur](09_Faktury.md) (bulk action)
 3. **Automaticky** z cronu (`cron-send-reminders.php`)
 
-## 14.1 Předpoklady
+## 24.1 Předpoklady
 
 Aby šla upomínka odeslat, faktura musí:
 
@@ -17,19 +17,19 @@ Aby šla upomínka odeslat, faktura musí:
 - Být ve stavu `issued`, `sent` nebo `reminded`
 - Být **po splatnosti** (`due_date < dnes`)
 - Mít k dispozici klientův e-mail (hlavní + případné fakturační)
-- Mít zapnutý přepínač **Posílat automatické upomínky** (viz § 14.7) — týká se
+- Mít zapnutý přepínač **Posílat automatické upomínky** (viz § 24.7) — týká se
   jen automatického cronu; ruční i hromadné odeslání funguje vždy.
 
-## 14.2 Manuální upomínka
+## 24.2 Manuální upomínka
 
-Otevři [Detail faktury](12_Faktura_PDF.md) → tlačítko **Upomínka**.
+Otevři [Detail faktury](11_Faktura_PDF.md) → tlačítko **Upomínka**.
 
 ![Tlačítko upomínka](img/12_upominka_btn.webp)
 
 Po kliknutí:
 
 - E-mail jde na: kontakty klienta s účelem **Upomínky** *(viz
-  [§ 7.2.2](07_Klienti.md))*; bez nich kontakty **Doklady**; bez kontaktů
+  [§ 13.2.2](13_Klienti.md))*; bez nich kontakty **Doklady**; bez kontaktů
   na `klient.hlavni_email + zakazka.fakturacni_emaily[]`. Příjemce
   vidíš v potvrzovacím dialogu vč. zdroje.
 - Šablona: `invoice_reminder` (CZ / EN podle jazyka klienta)
@@ -39,7 +39,7 @@ Po kliknutí:
 
 Activity log: `invoice.reminded` s počtem dní po splatnosti.
 
-### 14.2.1 Test upomínky
+### 24.2.1 Test upomínky
 
 Vedle **Upomínka** je tlačítko **Test upomínky** — pošle stejný e-mail jen na
 **tvůj** e-mail (admina, kterého jsi přihlášen). Užitečné pro:
@@ -48,7 +48,7 @@ Vedle **Upomínka** je tlačítko **Test upomínky** — pošle stejný e-mail j
 - Ověření, že SMTP funguje
 - Náhled, jak vypadá HTML verze e-mailu v tvém klientu
 
-## 14.3 Hromadná upomínka
+## 24.3 Hromadná upomínka
 
 Z **Faktury → filtr „Po splatnosti"** zaškrtni více faktur → bulk action
 **Upomínka (N)**.
@@ -57,7 +57,7 @@ Z **Faktury → filtr „Po splatnosti"** zaškrtni více faktur → bulk action
 
 Server:
 
-1. Pro každou fakturu zkontroluje, že splňuje předpoklady (§ 14.1)
+1. Pro každou fakturu zkontroluje, že splňuje předpoklady (§ 24.1)
 2. Cooldown — pokud byla upomínka poslána před **<14 dny**, faktura se
    přeskočí
 3. Pošle e-mail
@@ -65,7 +65,7 @@ Server:
 
 Hláška o výsledku: `Odesláno: 8, přeskočeno (cooldown): 2, chyb: 0`.
 
-## 14.4 Cron — automatické upomínky
+## 24.4 Cron — automatické upomínky
 
 Pro pravidelné upomínání nastav cron:
 
@@ -77,11 +77,11 @@ Skript `php api/bin/cron-send-reminders.php` má parametry:
 
 | Parametr | Default | Význam |
 |---|---|---|
-| `--days=N` | (per dodavatel) | Faktura musí být po splatnosti alespoň N dní. Bez parametru se čte **práh nastavený u dodavatele** (§ 14.7, default 3); `--days` ho pro daný běh přebije. |
+| `--days=N` | (per dodavatel) | Faktura musí být po splatnosti alespoň N dní. Bez parametru se čte **práh nastavený u dodavatele** (§ 24.7, default 3); `--days` ho pro daný běh přebije. |
 | `--cooldown=N` | `7` | Min. počet dní mezi dvěma upomínkami stejné faktury |
 | `--dry-run` | — | Jen vypíše, co by udělal, **bez odeslání** |
 
-### 14.4.1 Doporučené nastavení
+### 24.4.1 Doporučené nastavení
 
 ```cron
 # Po-Pá v 9:00 — upomínat faktury 5+ dní po splatnosti, max 1× za 14 dní
@@ -91,7 +91,7 @@ Skript `php api/bin/cron-send-reminders.php` má parametry:
 > 💡 `--days=5` je rozumný „grace period" — klient mohl mít dovolenou,
 > bankovní poplatek, nebo sis ty zapomněl naimportovat výpis.
 
-### 14.4.2 Dry-run pro test
+### 24.4.2 Dry-run pro test
 
 Před produkčním nasazením:
 
@@ -108,7 +108,7 @@ Vypíše:
 [dry-run] CELKEM: 2 by se odeslaly, 1 přeskočena.
 ```
 
-## 14.5 Šablona upomínky
+## 24.5 Šablona upomínky
 
 Šablona je v **Systém → E-mail šablony → invoice_reminder**.
 
@@ -120,7 +120,7 @@ Můžeš editovat:
 - **HTML tělo** — Twig template
 - **Plain text tělo** — fallback pro klienty bez HTML
 
-### 14.5.1 Dostupné placeholders
+### 24.5.1 Dostupné placeholders
 
 | Placeholder | Význam |
 |---|---|
@@ -134,7 +134,7 @@ Můžeš editovat:
 | `{{ payment_link }}` | (volitelné) odkaz na platební bránu |
 | `{{ reminder_count }}` | Počet již odeslaných upomínek (1 = první, 2 = druhá, …) |
 
-### 14.5.2 Multi-jazyčnost
+### 24.5.2 Multi-jazyčnost
 
 Pro každou šablonu jsou **4 varianty**:
 
@@ -145,7 +145,7 @@ Pro každou šablonu jsou **4 varianty**:
 
 Vybere se podle `klient.language`.
 
-## 14.6 Tipy
+## 24.6 Tipy
 
 - **Cooldown 14 dní** je rozumný — kratší by byl agresivní, delší se obchází.
 - **Eskalace tónu** — pomocí `{{ reminder_count }}` můžeš v šabloně použít
@@ -158,7 +158,7 @@ Vybere se podle `klient.language`.
 - **Test upomínky** = vždy před produkčním cronem. Nešťastné je posílat
   klientovi rozbitý HTML.
 
-## 14.7 Vypnutí upomínek u konkrétní faktury a práh dní
+## 24.7 Vypnutí upomínek u konkrétní faktury a práh dní
 
 Automatické upomínky lze řídit na třech úrovních; cron pošle upomínku, jen když
 **všechny tři** dovolí (zapnuto u dodavatele **i** u klienta **i** u faktury):
@@ -169,23 +169,23 @@ Automatické upomínky lze řídit na třech úrovních; cron pošle upomínku, 
 | Klient | Detail klienta | Vypnutí pro všechny faktury daného klienta |
 | **Faktura** | Editor faktury | Vypnutí pro jedinou konkrétní fakturu |
 
-### 14.7.1 Přepínač na faktuře
+### 24.7.1 Přepínač na faktuře
 
-V [editoru faktury](11_Faktura_editor.md) je v pravém boxu **Datumy**, hned pod
+V [editoru faktury](10_Faktura_editor.md) je v pravém boxu **Datumy**, hned pod
 polem *Splatnost*, přepínač **Posílat automatické upomínky** (výchozí: zapnuto).
 Když ho vypneš, cron tuto fakturu přeskočí, i kdyby měl dodavatel i klient
 upomínky zapnuté. **Ruční i hromadné** odeslání upomínky funguje vždy. U dobropisů
 se přepínač nezobrazuje (dobropisy se neupomínají).
 
-### 14.7.2 Práh „po kolika dnech po splatnosti"
+### 24.7.2 Práh „po kolika dnech po splatnosti"
 
 V **Nastavení → dodavatel** nastavíš, **po kolika dnech po splatnosti** se má
 poslat první automatická upomínka. Na výběr jsou předvolby **3 dny / týden /
 měsíc** nebo **vlastní** počet dní (1–365). Hodnota je per dodavatel; cron ji čte
-automaticky. Parametr `--days=N` (§ 14.4) ji pro daný běh přebije — hodí se pro
+automaticky. Parametr `--days=N` (§ 24.4) ji pro daný běh přebije — hodí se pro
 mimořádný / ruční běh.
 
-## 14.8 Kontrola, co se opravdu odeslalo (a co ne)
+## 24.8 Kontrola, co se opravdu odeslalo (a co ne)
 
 V **Systém → Odeslané e-maily** je přehled **všech** e-mailů, které aplikace
 rozeslala — odeslání faktur, upomínky, schvalovací upomínky, poděkování za
@@ -199,5 +199,5 @@ zkratka **Neodesláno: N** umožní rychle najít, co je potřeba poslat znovu.
 
 > ⚠️ „Odesláno" znamená, že e-mail **převzal SMTP server** — nezaručuje doručení
 > do schránky (odmítnutí mailserverem příjemce / spam filtr aplikace netrackuje).
-> Pokud cron upomínku **přeskočí** kvůli předpokladům z § 14.1 (např. klient nemá
+> Pokud cron upomínku **přeskočí** kvůli předpokladům z § 24.1 (např. klient nemá
 > e-mail), nejde o „selhání odeslání" a v přehledu se jako chyba neobjeví.

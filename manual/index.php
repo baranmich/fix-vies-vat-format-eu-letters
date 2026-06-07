@@ -67,9 +67,13 @@ $isLanding = $activeFile === 'INDEX';
 $versionFile = dirname(__DIR__) . '/VERSION';
 $version     = is_file($versionFile) ? trim((string)file_get_contents($versionFile)) : '';
 
-// Accent barvy skupin TOC — stejné pořadí jako pilulky landing page (manual.css
-// h3:nth-of-type) a barevně laděné k menu sekcím aplikace (AppLayout ACCENT_CLASSES).
-$ACCENTS = ['primary', 'warning', 'success', 'sky', 'neutral', 'danger', 'neutral'];
+// Accent barvy skupin TOC — pozičně mapované na skupiny v INDEX.md tak, aby
+// barvy sekcí odpovídaly menu aplikace (AppLayout ACCENT_CLASSES): Prodej=primary,
+// Nákup=warning, Finance=success, Dokumenty=neutral, Daně=danger, Systém=neutral.
+// Úvodní blok (Instalace a start) = sky; Systém = indigo, Reference = stone
+// (vlastní odstíny, aby se nekryly s neutrální Dokumenty).
+// Stejné pořadí drží i pilulky landing page (manual.css .landing h3:nth-of-type).
+$ACCENTS = ['sky', 'primary', 'warning', 'success', 'neutral', 'danger', 'indigo', 'stone'];
 
 // Pager: předchozí / další kapitola (flatten TOC)
 $flat = [];
@@ -183,6 +187,14 @@ $ICON_DARK   = 'M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75
             <input type="search" id="manual-search" placeholder="Hledat v manuálu…" autocomplete="off" />
             <div class="search-results" id="search-results"></div>
         </div>
+        <ul class="toc-top">
+            <li>
+                <a href="/manual/" class="nav-item <?= $isLanding ? 'active' : '' ?>">
+                    <span class="num"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 11.5 12 4l9 7.5M5.5 9.7V20a1 1 0 0 0 1 1H10v-5.5h4V21h3.5a1 1 0 0 0 1-1V9.7"/></svg></span>
+                    Homepage
+                </a>
+            </li>
+        </ul>
         <?php foreach ($groups as $gi => $g): ?>
             <div class="toc-group">
                 <div class="nav-pill acc-<?= $ACCENTS[$gi % count($ACCENTS)] ?>"><?= htmlspecialchars($g['title']) ?></div>

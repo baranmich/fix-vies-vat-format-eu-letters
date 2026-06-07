@@ -107,7 +107,7 @@ Dokumenty zálohuje **samostatná plánovaná úloha** `cron-backup-documents`
 `storage/backup/{db}-documents-RRRR-MM-DD.zip` s retencí 30 denních + 12 měsíčních
 záloh. Náhledy se nezálohují (regenerují se). Zálohu lze volitelně šifrovat
 heslem `cron.backup.password` v `cfg.php` (AES-256, společné pro všechny typy
-záloh — viz § 2.4.1).
+záloh — viz [§ 5.5 Cron skripty](05_Po_instalaci.md#55-cron-skripty)).
 
 ## Bezpečnost
 

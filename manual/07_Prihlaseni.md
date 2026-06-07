@@ -1,19 +1,19 @@
-# 4. Přihlášení a uživatelský profil
+# 7. Přihlášení a uživatelský profil
 
-## 4.1 Přihlášení
+## 7.1 Přihlášení
 
 ![Přihlašovací obrazovka](img/04_login.webp)
 
 Zadej e-mail + heslo a klikni **Přihlásit**. Po přihlášení tě systém pustí na
-[Přehled (dashboard)](05_Prehled.md).
+[Přehled (dashboard)](08_Prehled.md).
 
 | Pole | Význam |
 |---|---|
 | E-mail | Login zadaný při registraci |
 | Heslo | Heslo zadané při registraci |
-| Zapomenuté heslo? | Odkaz na obnovu — viz § 4.4 |
+| Zapomenuté heslo? | Odkaz na obnovu — viz § 7.4 |
 
-## 4.2 Brute-force ochrana
+## 7.2 Brute-force ochrana
 
 Po **5 neúspěšných pokusech** během 5 minut z jedné IP se objeví **CAPTCHA**
 (Cloudflare Turnstile). Po **10 selháních** během 15 minut se IP zablokuje na
@@ -24,13 +24,13 @@ e-mail přijde upozornění.
 > a pokračuj. Pokud se zablokuješ, počkej 15 minut nebo požádej admina, aby ti
 > heslo resetoval z CLI: `php api/bin/set-password.php tvuj@email.cz`.
 
-## 4.3 Dvoufaktorové ověření (TOTP / 2FA)
+## 7.3 Dvoufaktorové ověření (TOTP / 2FA)
 
 Pokud máš pro účet aktivované 2FA, po zadání hesla tě systém vyzve k
 6-cifernému kódu z autentikátoru. Detailní popis aktivace, použití záložních
-kódů a řešení ztráty telefonu — viz [20. Bezpečnost — § 20.2](20_Bezpecnost.md).
+kódů a řešení ztráty telefonu — viz [37. Bezpečnost — § 37.2](37_Bezpecnost.md).
 
-## 4.4 Zapomenuté heslo
+## 7.4 Zapomenuté heslo
 
 Klikni na **Zapomenuté heslo?** pod přihlášením. Zadej e-mail, na který přijde
 odkaz pro nastavení nového hesla (platnost 1 hodina).
@@ -43,7 +43,7 @@ Pokud e-mail nepřišel:
 - Ověř s adminem, že systém má nakonfigurované SMTP (`cfg.php` → `smtp.*`).
 - V krajním případě admin nastaví heslo z CLI: `php api/bin/set-password.php tvuj@email.cz`.
 
-## 4.5 Můj profil
+## 7.5 Můj profil
 
 V pravém horním rohu klikni na své jméno → **Můj profil**.
 
@@ -58,7 +58,7 @@ Můžeš si změnit:
 | Heslo | Změna stávajícího hesla (vyžaduje původní) |
 | 2FA | Aktivovat / deaktivovat (vyžaduje heslo + ověření TOTP kódem) |
 
-## 4.6 Odhlášení
+## 7.6 Odhlášení
 
 V pravém horním rohu klikni **Odhlásit**. Session se zruší okamžitě i na
 serveru. Pokud nezmáčkneš odhlásit a jen zavřeš okno, session vyprší **za 30

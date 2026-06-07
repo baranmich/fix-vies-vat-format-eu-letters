@@ -1,17 +1,10 @@
-# 2. Instalace
+# 3. Instalace — Docker
 
-> Tato kapitola je technická — určená pro osobu, která systém nasazuje (IT
-> administrátor, hostingový tým). Běžný uživatel ji může přeskočit.
-
-Nabízíme dvě cesty: **Docker** (nejrychlejší, doporučeno pro nové instalace)
-nebo **nativní install** (PHP + MariaDB + web server, tradiční hosting).
-
-## 2.1 Docker (3 minuty)
-
+Docker je nejrychlejší cesta (cca 3 minuty) a doporučená pro nové instalace.
 Předpoklady: **Docker Desktop** (Windows / macOS) nebo **Docker Engine
 + compose-plugin** (Linux).
 
-Klon repa je společný krok pro obě varianty:
+Klon repa je společný krok pro většinu variant:
 
 ```bash
 git clone https://github.com/radekhulan/myinvoice.git myinvoice
@@ -21,7 +14,7 @@ cd myinvoice
 Pak si vyber variantu podle toho, jestli chceš stavět image lokálně, nebo
 si stáhnout pre-built z GHCR.
 
-### 2.1.1 Varianta A — pre-built image z GHCR (rychlejší, bez local buildu)
+## 3.1 Varianta A — pre-built image z GHCR (rychlejší, bez local buildu)
 
 Stáhne hotový multi-arch image (`ghcr.io/radekhulan/myinvoice:latest`,
 `linux/amd64` + `linux/arm64`). Nepotřebuješ na hostu `pnpm`/`composer`
@@ -45,7 +38,7 @@ Skript `docker-ghcr` postupně:
 
 Používá `docker-compose.production.yml` (image-only, žádný `build:` block),
 takže další compose příkazy vyžadují flag `-f docker-compose.production.yml`
-(viz [2.1.6 Daily ops](#216-daily-ops)).
+(viz [§ 3.6 Daily ops](#36-daily-ops)).
 
 > 💡 V produkci pinuj konkrétní verzi — uprav `docker-compose.production.yml`
 > a změň `:latest` na konkrétní tag (např. `:1.7.0`). Update pak přes
@@ -73,9 +66,10 @@ takže aktualizace je otázkou jednoho příkazu.
 > 🔔 **Upgrade přímo z UI:** admin vidí v **Systém →
 > Aktualizace** stav verze + tlačítko *Aktualizovat*, které pull image
 > + restart spustí přes host-side watcher. Detaily včetně instalace
-> watcheru jako systemd unit / Scheduled Task → § 2.1.9 nebo § 21.4.
+> watcheru jako systemd unit / Scheduled Task → [§ 3.9 Update watcher](#39-update-watcher-jednoclick-upgrade-z-ui-volitelne)
+> nebo kapitola [Aktualizace](38_Aktualizace.md).
 > Pro denní kontrolu nové verze nezapomeň naplánovat
-> `php api/bin/cron-version-check.php` (1× denně, viz § 21.2).
+> `php api/bin/cron-version-check.php` (1× denně, viz [Aktualizace](38_Aktualizace.md)).
 
 > **WSL2 / Linux po klonu:** pokud `./cmd/docker-ghcr.sh` hlásí
 > `Permission denied` nebo `/usr/bin/env: 'bash\r': No such file…`,
@@ -92,7 +86,7 @@ takže aktualizace je otázkou jednoho příkazu.
 > Repo má `.gitattributes` s `*.sh text eol=lf`, takže příští `git clone`
 > bude LF i bez tohoto kroku.
 
-### 2.1.2 Varianta B — build z source
+## 3.2 Varianta B — build z source
 
 Postaví image lokálně z repa — vhodné pro vývoj a vlastní úpravy.
 
@@ -115,7 +109,7 @@ Skript `docker-install` postupně:
 4. Spustí stack: **app** (Apache:80 → host:8080) + **db** (MariaDB 11)
 5. Počká, až bude DB healthy, a spustí migrace
 
-### 2.1.3 Varianta C — bez klonování repa (jen Docker)
+## 3.3 Varianta C — bez klonování repa (jen Docker)
 
 Pokud nechceš mít na hostiteli klon repa (typicky produkční Linux server,
 jen Docker daemon), GHCR image obsahuje veškerý PHP/JS kód i migrace —
@@ -190,16 +184,16 @@ docker compose exec app php api/bin/migrate.php
 >   php tools/exportManualToPdf.php
 > ```
 
-### 2.1.4 Po dokončení (všechny varianty)
+## 3.4 Po dokončení (všechny varianty)
 
 **Otevři: 👉 http://localhost:8080**
 
-V prohlížeči naskočí setup wizard — viz [3. První spuštění](03_Setup_wizard.md).
+V prohlížeči naskočí setup wizard — viz [6. První spuštění](06_Setup_wizard.md).
 
 > ⚠️ **Použij `http://`, ne `https://`, a explicitní port `:8080`.** Docker
 > stack běží na plain HTTP — pokud zadáš `https://...` nebo defaultní port,
 > dostaneš `SSL_ERROR_RX_RECORD_TOO_LONG` / `ERR_SSL_PROTOCOL_ERROR`. Pro
-> HTTPS na LAN/produkčním serveru viz [2.1.8 HTTPS / TLS terminace](#218-https--tls-terminace).
+> HTTPS na LAN/produkčním serveru viz [§ 3.8 HTTPS / TLS terminace](#38-https-tls-terminace).
 
 > 🌐 **Přístup z jiného stroje (LAN IP, hostname)?** Setup wizard funguje
 > z libovolného hostu (např. `http://10.0.0.8:8080`) a `app.url` se automaticky
@@ -213,7 +207,7 @@ V prohlížeči naskočí setup wizard — viz [3. První spuštění](03_Setup_
 > a `web.config`. Také požadavek s hlavičkou `X-Forwarded-Proto: https`
 > (reverse proxy s TLS terminací) redirect přeskočí.
 
-### 2.1.5 Změna portu
+## 3.5 Změna portu
 
 Edituj `.env` (vznikl po prvním spuštění):
 
@@ -224,7 +218,7 @@ DB_PORT=3308           # místo 3307 (vázán jen na 127.0.0.1)
 
 a `docker compose up -d`. URL pak `http://localhost:9000`.
 
-### 2.1.5.1 Runtime env pro auto-migrace (Docker)
+### 3.5.1 Runtime env pro auto-migrace (Docker)
 
 Vstupní skript image podporuje tyto proměnné:
 
@@ -235,7 +229,7 @@ MYINVOICE_MIGRATE_DELAY=3       # pauza mezi pokusy (sekundy)
 MYINVOICE_DATA_DIR=/data        # default v compose souborech; sjednocuje
                                 # log/, storage/, private/ a cfg.local.php pod /data
 MYINVOICE_AUTH_REQUIRE_TOTP=true # vynutit 2FA pro všechny uživatele
-                                # (default false; viz § 20.2.4)
+                                # (default false; viz § 37.2.4)
 ```
 
 Default je `20` pokusů s pauzou `3` sekundy. Pokud proměnné nenastavíš, použije
@@ -244,24 +238,24 @@ se výchozí chování.
 **`MYINVOICE_DATA_DIR`** je **default** v `docker-compose.yml` i
 `docker-compose.production.yml` (single-volume layout `app-data:/data`). Drží
 log/, storage/, private/dkim/ **i `cfg.local.php`** — per-instance konfigurace
-z setup wizardu tak přežije image update. Viz **[2.1.5.3 Single-volume úložiště](#2153-single-volume-úložiště)** níže.
+z setup wizardu tak přežije image update. Viz **[§ 3.5.3 Single-volume úložiště](#353-single-volume-uloziste)** níže.
 Pokud upgraduješ z 3.5.x nebo staršího 3-volume layoutu, `cmd/docker-update.{sh,ps1}`
 detekuje starý layout a před `up -d` automaticky spustí
-`cmd/docker-migrate-volumes.{sh,ps1}` — viz [§ 21.5](21_Aktualizace.md#215-migrace-na-single-volume-layout-35x--360).
+`cmd/docker-migrate-volumes.{sh,ps1}` — viz [§ 38.5](38_Aktualizace.md#385-migrace-na-single-volume-layout-35x-360).
 
 **`cfg.docker.php` mount je nově volitelný** — image obsahuje stub `cfg.php`
 (`<?php return [];`) a vše lze předat přes ENV (12-factor). Pro full-ENV deploy
 (Railway, Heroku, Fly.io) bind-mount `./cfg.docker.php:/var/www/html/cfg.php:ro`
 v `docker-compose.yml` zakomentuj nebo odstraň.
 
-### 2.1.5.2 Railway / PaaS specifika
+### 3.5.2 Railway / PaaS specifika
 
 Některé PaaS (typicky Railway) injectují nevyřešené placeholdery jako
 `${VAR}`, pokud proměnná není definovaná. MyInvoice je v env
 overridech ignoruje, takže nepřepíší validní hodnoty z `cfg.php`/`cfg.docker.php`.
 Pokud chybí `secret_encryption_key`, aplikace fallbackuje na HKDF z `app.pepper`.
 
-### 2.1.5.3 Single-volume úložiště
+### 3.5.3 Single-volume úložiště
 
 > 🛈 **TL;DR:** od **3.6.0** je single-volume default. Všechen stateful obsah
 > (log/, storage/, private/dkim/ **+ `cfg.local.php`**) leží v jediném
@@ -305,7 +299,7 @@ docker volume ls | grep myinvoice                           # vidíš pouze app-
 
 **Nikdy nepřepínej layout bez migrace** — aplikace by nahlížela do prázdného
 `/data` a tvářila se, že data zmizela. `cmd/docker-update.{sh,ps1}` to dělá
-automaticky před `up -d`. Detaily v § [21.5 Migrace na single-volume layout](21_Aktualizace.md#215-migrace-na-single-volume-layout-35x--360).
+automaticky před `up -d`. Detaily v [§ 38.5 Migrace na single-volume layout](38_Aktualizace.md#385-migrace-na-single-volume-layout-35x-360).
 
 Shrnutí: `cmd/docker-migrate-volumes.{sh,ps1}` snapshotne `cfg.local.php`
 z běžícího kontejneru, zkopíruje data ze starých volumes do nového `app-data`
@@ -321,9 +315,9 @@ docker run --rm \
   alpine tar czf /backup/myinvoice-data-$(date +%F).tar.gz -C /data .
 ```
 
-Plus dump MariaDB (viz § [21.7 Záloha a obnova](21_Aktualizace.md)) — to jsou dohromady **dvě entity** k zálohování (db + app-data).
+Plus dump MariaDB (viz [§ 38.7 Záloha a obnova](38_Aktualizace.md)) — to jsou dohromady **dvě entity** k zálohování (db + app-data).
 
-### 2.1.6 Daily ops
+## 3.6 Daily ops
 
 ```bash
 docker compose up -d                                 # start
@@ -339,7 +333,7 @@ cmd/docker-build.sh --no-cache                       # rebuild image (po PHP/JS 
 > `docker compose` příkazy potřebují flag `-f docker-compose.production.yml`,
 > např. `docker compose -f docker-compose.production.yml logs -f app`.
 
-### 2.1.7 Volitelný Redis
+## 3.7 Volitelný Redis
 
 ```bash
 docker compose --profile redis up -d
@@ -347,7 +341,7 @@ docker compose --profile redis up -d
 
 a v `cfg.docker.php` nastav `redis.enabled => true`. Restart appky.
 
-### 2.1.8 HTTPS / TLS terminace
+## 3.8 HTTPS / TLS terminace
 
 Docker stack sám TLS nedělá — Apache uvnitř kontejneru poslouchá na portu 80
 (HTTP) a mapuje se na host port `8080`. Pokud potřebuješ HTTPS (LAN server,
@@ -421,7 +415,7 @@ této změně zkusil load přes `http://`, login se rozbije (cookie se neuloží
 Restart stacku: `docker compose -f docker-compose.production.yml restart app`
 (nebo bez `-f` flagu pro Variantu B).
 
-### 2.1.9 Update watcher — jednoclick upgrade z UI (volitelné)
+## 3.9 Update watcher — jednoclick upgrade z UI (volitelné)
 
 Admin vidí v **Systém → Aktualizace** stav verze + tlačítko
 *Aktualizovat*, které zařadí upgrade do fronty. Aby ho někdo aplikoval,
@@ -492,125 +486,9 @@ Stav úlohy: `schtasks /query /tn "MyInvoice Update Watcher" /v /fo list`.
 
 Watcher jen reaguje na *kliknutí*. Aby admin **viděl**, že je dostupná
 nová verze (badge v patičce + status na `/admin/update`), musí běžet
-denní cron `cmd/cron-version-check.(sh/cmd)` — viz § 21.2.
+denní cron `cmd/cron-version-check.(sh/cmd)` — viz [Aktualizace](38_Aktualizace.md).
 
 #### Plné detaily
 
 Recovery při zaseknutém upgradu, test workflow z `master`, externí
-monitoring přes `/api/version` → § 19 Aktualizace.
-
-## 2.2 Nativní install (5 minut)
-
-Předpoklady:
-
-- **PHP 8.5+** s extensions: `pdo`, `pdo_mysql`, `mbstring`, `openssl`, `json`,
-  `iconv`, `gd`
-- **MariaDB 10.6+** (doporučeno 11.x)
-- **Composer 2.x**, **Node.js 22+** (24 doporučeno), **pnpm 10+**
-- **Redis** (volitelné — fallback na MariaDB MEMORY)
-- Web server: **IIS** nebo **Apache** (oba podporované, repo má `web.config`
-  i `.htaccess`)
-
-### 2.2.1 Klon a konfigurace
-
-```bash
-git clone https://github.com/radekhulan/myinvoice.git myinvoice
-cd myinvoice
-cp cfg.sample.php cfg.php
-```
-
-Otevři `cfg.php` a vyplň:
-
-- `db.user` / `db.pass` — připojení k MariaDB
-- `app.pepper` — vygeneruj `openssl rand -base64 32`
-- `smtp.host` / `user` / `pass` — odchozí pošta
-- `captcha.site_key` / `secret_key` — z dash.cloudflare.com → Turnstile
-- `ip_allowlist.allow` — volitelné, doporučeno v produkci
-
-### 2.2.2 Vytvoř databázi
-
-```bash
-mysql -u root -p -e "CREATE DATABASE myinvoice CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-```
-
-### 2.2.3 Backend + migrace
-
-```bash
-cd api && composer install && cd ..
-php api/bin/migrate.php
-php tools/generateManualHtml.php   # vyrenderuje manual/generated/ → /manual route
-php tools/exportManualToPdf.php    # vygeneruje manual/manual.pdf (Stáhnout PDF v sidebaru)
-```
-
-`generateManualHtml.php` je self-contained (nepotřebuje composer/vendor),
-generuje HTML kapitoly + search index. `exportManualToPdf.php` vyžaduje
-`api/vendor/` (mPDF). Spouštět obojí znovu po každém pull repa, aby `/manual`
-ukazoval aktuální obsah. (V Docker variantě se volá
-build-time uvnitř `Dockerfile` — viz § 2.1.)
-
-### 2.2.4 Frontend build
-
-```bash
-cd web
-pnpm install
-pnpm build       # produkční build do web/dist/
-```
-
-### 2.2.5 Web server
-
-- **IIS** — `web.config` v rootu repa nakonfiguruje rewrite + statiku.
-- **Apache** — `.htaccess` v rootu repa, vyžaduje `mod_rewrite`, `mod_headers`.
-
-## 2.3 Po instalaci
-
-Otevři aplikaci v prohlížeči — pokračuj na [3. První spuštění](03_Setup_wizard.md).
-
-## 2.4 CLI nástroje
-
-```bash
-php api/bin/migrate.php              # spustí pending migrace
-php api/bin/migrate.php --status     # vypíše stav migrací
-php api/bin/setup.php                # interaktivní úvodní zřízení
-php api/bin/sample.php               # vygeneruje testovací data (po setupu)
-php api/bin/reset.php                # smaže všechna user-data (vyžaduje "ANO")
-php api/bin/recompute-stats.php      # přepočítá agregované statistiky
-```
-
-### 2.4.1 Cron skripty
-
-V `cmd/` jsou připravené `.cmd` (Windows Task Scheduler) i `.sh` (Linux cron) wrappery:
-
-| Skript | Doporučená frekvence |
-|---|---|
-| `cron-cleanup` | 1× denně 03:00 |
-| `cron-backup` | 1× denně 02:00 |
-| `cron-bank-scan` | každých 30 min |
-| `cron-bank-email-notices` | každých 30 min |
-| `cron-send-reminders` | 1× denně 09:00, Po–Pá |
-
-Detaily v `cmd/README.md`.
-
-**Šifrování záloh:** volitelné heslo `cron.backup.password` v `cfg.php`
-zašifruje všechny tři typy ZIP záloh (DB dump, PDF dokladů, sekce Dokumenty)
-algoritmem AES-256. Pro rozbalení použijte 7-Zip, WinRAR nebo `unzip -P` —
-vestavěný Průzkumník Windows šifrované AES-256 archivy neumí otevřít. Šifruje
-se obsah souborů, názvy souborů uvnitř archivu zůstávají čitelné. Pokud je
-heslo nastavené a PHP šifrování nepodporuje (libzip < 1.2), záloha se záměrně
-nevytvoří a úloha skončí chybou — nešifrovaná záloha by vznikla jen omylem.
-
-> 💡 **Relativní cesty v `cfg.php`.** Cestové klíče (`cron.backup.output_dir`,
-> `storage.*`, `logging.path`, archivy přijatých/importovaných dokladů, DKIM)
-> zadané relativně (např. `storage/backup`) se ukotvují k **rootu aplikace**,
-> ne k pracovnímu adresáři procesu. Záloha tak skončí na očekávaném místě
-> i když cron běží pod Task Schedulerem nebo systémovým cronem s jiným
-> aktuálním adresářem. Absolutní cesty (vč. `C:\…` a UNC `\\server`) i
-> `MYINVOICE_DATA_DIR` zůstávají beze změny.
-
-**Kontrola, že úlohy běží:** otevři v aplikaci **Systém → Plánované úlohy**.
-Každý cron skript si zapisuje vlastní heartbeat do tabulky `cron_runs`
-(start, konec, exit code, JSON report). Stránka ukazuje pro každou
-doporučenou úlohu kdy naposled úspěšně proběhla, a pokud poslední běh
-chybí nebo je starší než `max_age_hours` (typicky 36 h), je tu varování
-**Stáří** / **Selhává** / **Neběželo**. Tím se odhalí "cron vůbec není
-nastavený" i "cron běží, ale failuje" — bez ohledu na OS (crontab vs.
-Task Scheduler vs. Docker host).
+monitoring přes `/api/version` → kapitola [Aktualizace](38_Aktualizace.md).

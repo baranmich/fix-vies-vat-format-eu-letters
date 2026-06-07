@@ -5,6 +5,14 @@ All notable changes to MyInvoice.cz are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.18.6] — 2026-06-07
+
+### Changed
+
+- **Manuál přeorganizovaný podle menu aplikace.** Pořadí kapitol teď kopíruje levé menu (Instalace a start · Prodej · Nákup · Finance · Dokumenty · Daně · Systém · Reference). Rozsáhlejší témata se rozpadla na samostatné kapitoly, aby se v nich dalo lépe orientovat: **CRM** → CRM dashboard / Tržby / Náklady; **Výkazy DPH** → Výkazy DPH (DPHDP3 + KH) / Kniha DPH / Souhrnné hlášení / Měsíční export; **Instalace** → Quickstart / Docker / Nativní / Po instalaci a CLI (Quickstart nově nabízí i instalační příkazy pro Git a Docker — winget / Homebrew); **Přijaté faktury** → odštěpen Export přijatých faktur a AI extrakce; z kapitoly **Banka** se vyčlenily **Bankovní účty a e-mailová avíza (IMAP)** do sekce Systém. Daňový průvodce (Fakturujeme) se přesunul na začátek sekce Daně. Doplněny chybějící popisy **Tržeb** a **Nákladů** (KPI, grafy, predikce).
+- **Sidebar manuálu.** Nahoře přibyla položka **Homepage** (rozcestník), názvy kapitol jsou kratší a přehlednější a barvy skupin nově odpovídají barvám sekcí v menu aplikace (Prodej = fialová, Nákup = jantarová, Finance = zelená, Daně = červená…); Systém a Reference dostaly vlastní odstíny (indigo / kámen).
+- **Callouty v manuálu.** Poznámkové bloky `> [!TIP] / [!NOTE] / [!IMPORTANT] / [!WARNING] / [!CAUTION]` se vykreslují jako barevné boxy s ikonou místo holého textu `[!TIP]`.
+
 ## [4.18.5] — 2026-06-07
 
 ### Changed

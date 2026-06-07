@@ -1,4 +1,4 @@
-# 10. Přijaté faktury (nákupy)
+# 17. Přijaté faktury (nákupy)
 
 **Přijaté faktury** jsou doklady, které **dostáváš od svých dodavatelů** — peníze
 odcházejí z firmy. Oproti vystaveným fakturám:
@@ -14,7 +14,11 @@ odcházejí z firmy. Oproti vystaveným fakturám:
 
 V hlavním menu **Přijaté faktury**.
 
-## 10.1 Stavy přijaté faktury
+> [!TIP]
+> Samostatné kapitoly k nákupní agendě: [Export přijatých faktur](18_Export_prijatych.md)
+> (naše PDF / ISDOC / Pohoda) a [AI extrakce](19_AI_extrakce.md) (import z PDF přes Claude).
+
+## 17.1 Stavy přijaté faktury
 
 | Stav | Význam | Co lze |
 |---|---|---|
@@ -26,17 +30,17 @@ V hlavním menu **Přijaté faktury**.
 
 Smazat jde **jen koncept**. Pro pozdější stavy použij Stornovat (zachová auditní stopu).
 
-## 10.2 Nová přijatá faktura
+## 17.2 Nová přijatá faktura
 
 V seznamu klikni **+ Nová přijatá faktura**. Otevře se formulář.
 
-### 10.2.1 Drag & drop PDF
+### 17.2.1 Drag & drop PDF
 Nad formulářem je **drag & drop zóna**. Pokud máš PDF od dodavatele:
 
 - Přetáhni PDF do zóny (nebo klikni a vyber soubor).
 - Systém prohledá PDF zda obsahuje **embedded ISDOC** přílohu:
   - **Pokud ano** (fakturační software jako Money S3, Pohoda, Stormware, sám MyInvoice) → pole formuláře se předvyplní strukturovanými daty.
-  - **Pokud ne** (běžné PDF bez přílohy) → můžeš použít **AI extrakci přes Anthropic Claude** (viz [§ 10.7](#107-ai-extrakce--kontrola-výsledků)), nebo pole vyplnit ručně.
+  - **Pokud ne** (běžné PDF bez přílohy) → můžeš použít **AI extrakci přes Anthropic Claude** (viz [AI extrakce](19_AI_extrakce.md)), nebo pole vyplnit ručně.
 - Originál PDF se po prvním uložení faktury automaticky **archivuje** mimo webroot a v detailu si ho můžeš kdykoli stáhnout zpět.
 
 > 💡 Doklad jde nahrát **už při zakládání nové faktury** (po přetažení se ukáže kartička „soubor připraven, nahraje se po uložení") i **z detailu** faktury, která zatím doklad nemá. Kromě PDF lze přetáhnout i **fotku** (JPG/PNG/WEBP/HEIC), systém ji převede na PDF.
@@ -46,7 +50,7 @@ Limity:
 - Akceptujeme pouze application/pdf (magic bytes `%PDF-` se ověřují server-side)
 - SHA-256 deduplikace — stejný PDF už archivovaný u jiné faktury nebude akceptován
 
-### 10.2.2 Povinná pole
+### 17.2.2 Povinná pole
 
 | Pole | Význam |
 |---|---|
@@ -60,9 +64,9 @@ Limity:
 | **Datum přijetí** | Kdy jsi to fyzicky / e-mailem dostal. Default = dnes. |
 | **Měna faktury** | Měna, ve které je doklad vystaven (USD, EUR, CZK…). |
 | **Kurz k DUZP** | Pokud je měna ≠ CZK, **musíš zafixovat kurz**. Tlačítko „Načíst z ČNB" stáhne aktuální nebo poslední dostupný denní kurz. |
-| **Reverse charge** | Zaškrtni, pokud je doklad B2B s přenesenou daňovou povinností (pořízení zboží z EU, služby z EU/3. země, tuzemský §92a). Položkám nastav **tuzemskou sazbu** (typicky 21 %) a odpovídající klasifikační kód — daň na dokladu zůstane 0 (dodavatel ji neúčtuje), samovyměření i zrcadlový odpočet dopočítají výkazy DPH. Viz [§ 10.2.6](#1026-reverse-charge-z-eu--pořízení-zboží-vs-služba). |
+| **Reverse charge** | Zaškrtni, pokud je doklad B2B s přenesenou daňovou povinností (pořízení zboží z EU, služby z EU/3. země, tuzemský §92a). Položkám nastav **tuzemskou sazbu** (typicky 21 %) a odpovídající klasifikační kód — daň na dokladu zůstane 0 (dodavatel ji neúčtuje), samovyměření i zrcadlový odpočet dopočítají výkazy DPH. Viz [§ 17.2.6](#1726-reverse-charge-z-eu-porizeni-zbozi-vs-sluzba). |
 
-### 10.2.3 Položky
+### 17.2.3 Položky
 
 Tlačítkem **+ Přidat položku** přidej řádek. Per řádek:
 
@@ -81,10 +85,10 @@ Souhrn dole se přepočítá automaticky po každé změně.
 > koeficientovou metodou (§37 ZDP). Zadání ceny do sloupce „Celkem s DPH" respektuje
 > aktuální režim (nepřepíná ho); jednotková cena se v detailu i PDF zobrazuje jako
 > netto. Funguje stejně jako u vystavených faktur — viz
-> [§ 11.2.6](11_Faktura_editor.md#1126-ceny-s-dph-vs-bez-dph-brutto--netto-režim).
+> [§ 10.2.6](10_Faktura_editor.md#1026-ceny-s-dph-vs-bez-dph-brutto-netto-rezim).
 > AI import účtenek režim nastaví sám.
 
-### 10.2.4 Daňová uznatelnost a nárok na odpočet
+### 17.2.4 Daňová uznatelnost a nárok na odpočet
 
 V boxu **Klasifikace** jsou dva nezávislé příznaky řídící, jak faktura vstupuje do daňových výkazů:
 
@@ -139,10 +143,10 @@ přiznání / sekci B kontrolního hlášení). MyInvoice proto plátcovství do
   nevstupuje (je to jen účetní náklad). Override je možný.
 - **AI import** — extraktor plátcovství ověří a u neplátce (signál „DIČ:
   Neplátce DPH" / žádné DIČ + žádná DPH na řádcích, případně ARES) odpočet
-  automaticky zakáže a doplní varování (viz [§ 10.7](#107-ai-extrakce--kontrola-výsledků)).
+  automaticky zakáže a doplní varování (viz [AI extrakce](19_AI_extrakce.md)).
 
 Plátcovství dodavatele je vidět i ve **výpisu klientů/dodavatelů** jako badge
-*Plátce DPH* (viz [§ 7.1](07_Klienti.md#71-seznam-klientů)).
+*Plátce DPH* (viz [§ 13.1](13_Klienti.md#131-seznam-klientu)).
 
 > 🛠️ **Zpětná oprava existujících dodavatelů** — jednorázově
 > spusť `php api/bin/backfill-vendor-vat-payer.php`. Skript podle ARES/VIES doplní příznak
@@ -150,7 +154,7 @@ Plátcovství dodavatele je vidět i ve **výpisu klientů/dodavatelů** jako ba
 > sazby na 0 %, **celková částka beze změny**). Výchozí běh je **dry-run** (jen
 > náhled); zápis až s `--apply`.
 
-### 10.2.5 Platba v jiné měně (multi-currency)
+### 17.2.5 Platba v jiné měně (multi-currency)
 
 Klikni na **„Platba v jiné měně než měna faktury"** pokud máš tento scénář:
 
@@ -168,7 +172,7 @@ Systém automaticky vypočte:
 - **Ekvivalent v měně faktury** — pro spárování proti `amount_to_pay`
 - **Kurzový rozdíl** — v základní měně (CZK). Záporný = kurzová ztráta, kladný = zisk. Zaznamenává se pro reporting a účetně se automaticky promítne do správných řádků DPH výkazů.
 
-### 10.2.6 Reverse charge z EU — pořízení zboží vs. služba
+### 17.2.6 Reverse charge z EU — pořízení zboží vs. služba
 
 Typický případ: nákup **zboží od EU dodavatele** (např. auto z Německa) — doklad
 je vystaven **bez DPH** (osvobozené intrakomunitární dodání) a daň si samovyměříš
@@ -196,12 +200,12 @@ Klíčové principy:
   faktura za zboží převzaté v dubnu tak patří do **května** (DUZP 15. 5.), ne do
   měsíce vystavení.
 - **Kurz ČNB se váže k DUZP** (§ 4 odst. 8 — den vzniku povinnosti přiznat daň).
-- **AI import tohle vše nastaví sám** — viz [§ 10.7](#107-ai-extrakce--kontrola-výsledků).
+- **AI import tohle vše nastaví sám** — viz [AI extrakce](19_AI_extrakce.md).
 
 > ⚠️ U **vybraných osobních automobilů** pohlídej limit odpočtu dle § 72
 > (strop základu 2 000 000 Kč / DPH 420 000 Kč) — aplikace ho nehlídá.
 
-## 10.3 Detail přijaté faktury
+## 17.3 Detail přijaté faktury
 
 Po uložení / přechodu na detail:
 
@@ -214,7 +218,7 @@ Po uložení / přechodu na detail:
 - Tlačítko **Upravit** je dostupné jen u draft. Po označení jako přijatá je doklad immutable (kromě admin override `?force=1` u received).
 - Tlačítko **Smazat** je dostupné jen u draft. Pro pozdější stavy použij Stornovat.
 
-### 10.3.1 Propojení zálohy s vyúčtovací fakturou (proti dvojímu započtení)
+### 17.3.1 Propojení zálohy s vyúčtovací fakturou (proti dvojímu započtení)
 
 Když ti dodavatel pošle nejdřív **zálohovou fakturu** (typ dokladu *Záloha* / proforma)
 a po zaplacení samostatnou **vyúčtovací (finální) fakturu**, máš v systému dva doklady
@@ -249,7 +253,7 @@ Jedna záloha může být navázaná **jen na jednu** finální fakturu.
 zkusí najít odpovídající zálohu a v detailu nabídne **návrh propojení**. Stačí ho
 **Potvrdit** (nebo **Zamítnout**) — nic se nepáruje automaticky.
 
-## 10.4 Scan inbox — automatický import z adresáře
+## 17.4 Scan inbox — automatický import z adresáře
 
 Pokud máš dodavatele kteří ti **posílají PDF e-mailem** nebo máš složku
 sdílených dokladů, nakonfiguruj **inbox adresář** v `cfg.php`:
@@ -275,7 +279,7 @@ Modal po skončení zobrazí přehled: vytvořeno / přeskočeno / chyby + per-s
 **Bezpečnost:** soubory mimo configured `inbox_dir` jsou odmítnuty (path traversal guard
 přes `realpath()`). Maximum 500 souborů per běh (DoS protection na velké adresáře).
 
-## 10.5 Klienti vs. dodavatelé
+## 17.5 Klienti vs. dodavatelé
 
 V tabulce klientů jsme zavedli dva flagy:
 
@@ -289,125 +293,7 @@ fakturuješ za development a od níž kupuješ hosting) — jedna entita = jedna
 V hlavním menu **Klienti** vidíš defaultně jen `is_customer=1`. V budoucí verzi
 přidáme oddělený view **Dodavatelé** pro `is_vendor=1`.
 
-## 10.6 Export přijaté faktury (naše PDF / ISDOC / Pohoda)
-
-V detailu přijaté faktury najdeš tlačítko **„Exporty"** s dropdown menu:
-
-### Naše PDF (rekonstrukce)
-Vygeneruje naši vlastní PDF kopii ze strukturovaných dat. Užitečné když:
-- Importovaly se jen metadata (z iDokladu/Fakturoidu API, ne originální PDF)
-- Originál není dostupný (přijatá faktura zadaná ručně)
-- Potřebuješ čitelný PDF pro účetní archiv
-
-PDF obsahuje hlavičku s dodavatelem, položky, totals, poznámky. Footer poznámka:
-*„Naše rekonstrukce přijaté faktury z dat v MyInvoice.cz. Originál od dodavatele je
-referenční dokument."*
-
-### ISDOC XML
-Export do ISDOC 6.0 standardu — kompatibilní s Pohoda, Money S3, iDoklad a dalšími.
-Strategie: **role inversion** — v ISDOC pro přijatou fakturu je *dodavatel* =
-původní vendor, *zákazník* = naše firma (opak vystavené).
-
-### Pohoda XML
-Pohoda dataPack XML pro import do účetního software Pohoda. Direction =
-purchase (`<pur:purchase>` místo `<inv:invoice>`).
-
-### Hromadný export za měsíc
-
-V hlavním menu **Přijaté faktury → Exporty** vyber měsíc + formát:
-
-- **PDF ZIP** — preferuje archivovaný **originál** od dodavatele (`Prijata-{vs}-{vendor}.pdf`); pokud originál chybí, doplní se **naše rekonstrukce** z dat faktury (`…-rekonstrukce.pdf`, ať ji účetní pozná). Faktura se přeskočí jen když selže i rekonstrukce.
-- **ISDOC ZIP** — jeden `.isdoc` XML soubor za fakturu, sbaleno do ZIP.
-- **Pohoda XML** — sloučený `<dataPack>` se všemi fakturami za měsíc (přímý import do Pohody, direction = purchase).
-
-„Datum dle" volí, podle kterého data se faktura zařadí do měsíce: DUZP (tax),
-datum vystavení (issue, default) nebo datum přijetí (received).
-
-## 10.7 AI extrakce — kontrola výsledků
-
-Při AI extrakci z PDF se po importu automaticky spustí **sanity check**: sečtou
-se řádky bez DPH a porovnají s celkovým základem daně, který AI přečetla z PDF
-„K úhradě". Pokud se hodnoty liší o víc než 2 %, faktura získá flag **„Ke
-kontrole"** a uživatel by měl řádky před zaúčtováním ověřit.
-
-### Indikátory v UI
-
-- **Žluté zvýraznění řádku** + ikona ⚠ vedle čísla faktury v seznamu přijatých
-  faktur (`/purchase-invoices`).
-- **Filtr „Ke kontrole"** v topbaru seznamu — zobrazí jen faktury, kde je flag
-  aktivní.
-- **Žlutý warning banner** v detailu i editoru faktury s diagnostickým textem
-  (např. *„součet řádků bez DPH (XX) je vyšší než AI-vrácený základ daně bez
-  DPH (YY) — rozdíl Z %"*).
-
-### Jak zrušit warning
-
-- Tlačítko **Beru na vědomí** v banneru — pošle POST
-  `/api/purchase-invoices/{id}/dismiss-extraction-warning` a flag se smaže.
-- **Automaticky** při přechodu z draftu na další stav (received / booked /
-  paid) — uživatel posunul stav = ověřil data.
-
-### Auto-upgrade modelu
-
-Pokud levnější model (Haiku 4.5) vrátí slabý výsledek (vendor se shoduje s
-tenantem nebo součet řádků se výrazně liší od totalu), extractor automaticky
-zkusí znovu se silnějším modelem (Sonnet 4.6, ~4× dráž za extract). Pokud máš
-Sonnet/Opus jako default, retry se přeskočí.
-
-### Katastrofální mismatch — placeholder
-
-Když ani silnější model nezvládne rozparsovat řádky (typicky komplexní
-multi-column servisní faktury) a součet řádků se liší od totalu o víc než
-50 %, extractor:
-
-1. Zachová **popisy řádků** z AI extraktu (jsou obvykle správně)
-2. Vynuluje jejich **qty a unit_price** (0)
-3. Přidá první řádek **KOREKCE** s AI totalem z „K úhradě", aby seděl celkový
-   součet faktury
-
-Uživatel pak postupně doplní qty/cenu k jednotlivým řádkům a nakonec smaže
-korekční řádek.
-
-### Backfill existujících faktur
-
-CLI skript `php api/bin/recheck-ai-extracted-invoices.php` projde přijaté
-faktury s PDF přílohou, re-spustí AI extrakci a porovná AI total s aktuálním
-DB totalem. Při rozdílu nad práh (default 2 %) zapíše varování:
-
-```
-php api/bin/recheck-ai-extracted-invoices.php                    # dry-run
-php api/bin/recheck-ai-extracted-invoices.php --apply            # zápis
-php api/bin/recheck-ai-extracted-invoices.php --supplier-id=1
-php api/bin/recheck-ai-extracted-invoices.php --threshold=0.05
-```
-
-### Dodavatel neplátce DPH
-
-Při AI importu se ověří **plátcovství dodavatele** (ARES/VIES, případně signál
-z dokladu „DIČ: Neplátce DPH"). U neplátce se automaticky nastaví **Bez nároku
-na odpočet**, vynulují sazby a doplní varování — aby se neoprávněný odpočet
-nedostal do přiznání. Detail viz [§ 10.2.4](#1024-daňová-uznatelnost-a-nárok-na-odpočet).
-
-### Reverse charge ze zahraničí — automatika
-
-Když extraktor detekuje **reverse charge** (zahraniční dodavatel + všechny řádky
-bez DPH), doklad automaticky daňově připraví:
-
-- AI klasifikuje **povahu plnění** (zboží / služba) přímo z dokladu (VIN a vozidlo
-  → zboží; SaaS, licence, API → služba).
-- Položky dostanou **tuzemskou sazbu 21 %** a klasifikační kód: **23** (zboží
-  z EU → ř. 3 + ř. 43, KH A.2), **24** (služba), **25** (zboží ze 3. země).
-  Částka k úhradě se nemění — daň zůstává na dokladu nulová, samovyměří se až
-  ve výkazech.
-- U **pořízení zboží z EU** se dopočítá zákonné **DUZP dle § 25** (15. den
-  měsíce po dodání, pokud doklad nebyl vystaven dříve) a k němu se naváže
-  **kurz ČNB** — pozdě vystavená faktura tak spadne do správného DPH období.
-- Do dokladu se zapíše **informační varování** s rekapitulací, co se nastavilo
-  — zkontroluj hlavně zboží vs. služba a případně změň kód (23 ↔ 24).
-
-Detail daňové logiky viz [§ 10.2.6](#1026-reverse-charge-z-eu--pořízení-zboží-vs-služba).
-
-## 10.8 Audit log
+## 17.6 Audit log
 
 Akce s přijatými fakturami jsou logované v aktivním logu (Systém → Log):
 
@@ -425,7 +311,7 @@ Akce s přijatými fakturami jsou logované v aktivním logu (Systém → Log):
 - `purchase_invoice.isdoc_exported` / `pohoda_exported`
 - `purchase_invoice.inbox_scanned`
 
-## 10.9 REST API
+## 17.7 REST API
 
 Všechny operace jsou dostupné i přes REST API (`/api/v1/purchase-invoices/*`) —
 viz [Swagger UI](/api/docs) nebo [Redoc](/api/reference). PAT token musí mít scope

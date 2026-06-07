@@ -1,17 +1,17 @@
-# 19. Nastavení
+# 34. Nastavení
 
 V hlavním menu **Systém** je rozbalovací podmenu se sekcemi pro konfiguraci
 aplikace:
 
-- **Dodavatelé** — viz [18. Multi-supplier](18_Multi_supplier.md)
+- **Dodavatelé** — viz [33. Multi-supplier](33_Multi_supplier.md)
 - **Bankovní účty** — měny, účty dodavatele, IMAP účty a bankovní e-mailová avíza
 - **Číselníky** — DPH sazby, země, jednotky a další pomocné seznamy
 - **Uživatelé** — správa lidí, kteří se přihlašují
 - **E-mail šablony** — texty automatických e-mailů
 - **Activity log** — kdo co změnil
-- **Exporty** — viz [16. Exporty](16_Exporty.md)
+- **Exporty** — viz [15. Exporty](15_Exporty.md)
 
-## 19.1 Číselníky
+## 34.1 Číselníky
 
 **Systém → Číselníky**.
 
@@ -19,7 +19,7 @@ aplikace:
 
 4 záložky:
 
-### 19.1.1 Měny
+### 34.1.1 Měny
 
 Měny a bankovní účty aktuálního dodavatele jsou nově soustředěné na stránce
 **Systém → Bankovní účty**. Každý řádek představuje jeden bankovní účet v dané
@@ -44,9 +44,9 @@ měny.
 
 Na stejné stránce je i konfigurace **bankovních e-mailových avíz**: IMAP účty,
 mapování bankovní účet → IMAP účet → parser, parser provideri a přehled
-zpracovaných e-mailů. Detail je v [§ 13.7 Bankovní e-mailová avíza](13_Banka.md).
+zpracovaných e-mailů. Detail je v [§ 23.7 Bankovní e-mailová avíza](23_Banka.md).
 
-### 19.1.2 Sazby DPH
+### 34.1.2 Sazby DPH
 
 ![Číselníky — DPH](img/15_ciselniky_dph.webp)
 
@@ -60,12 +60,12 @@ zpracovaných e-mailů. Detail je v [§ 13.7 Bankovní e-mailová avíza](13_Ban
 | Reverse charge | Zatrhneme pro `CZ-RC` |
 | Platnost od | Pro historické faktury (15 % v roce 2023) |
 
-### 19.1.3 Země
+### 34.1.3 Země
 
 Statický číselník — nemělo by být potřeba editovat. Obsahuje 200+ zemí podle
 ISO 3166-1.
 
-### 19.1.4 Jednotky
+### 34.1.4 Jednotky
 
 Číselník měrných jednotek pro položky faktury. Globální (sdílený mezi
 dodavateli), nahrazuje volný textový vstup za dropdown.
@@ -85,7 +85,7 @@ dodavateli), nahrazuje volný textový vstup za dropdown.
 > popisu i bez ceny tiše smažou. Můžeš tedy v editoru přidat víc řádků na
 > zásobu a nepoužité se neuloží.
 
-## 19.2 Uživatelé
+## 34.2 Uživatelé
 
 **Systém → Uživatelé** (jen pro admina).
 
@@ -93,7 +93,7 @@ dodavateli), nahrazuje volný textový vstup za dropdown.
 
 Tabulka uživatelů, kteří se mohou přihlásit. Tlačítko **+ Nový uživatel**.
 
-### 19.2.1 Pole formuláře
+### 34.2.1 Pole formuláře
 
 | Pole | Význam |
 |---|---|
@@ -104,7 +104,7 @@ Tabulka uživatelů, kteří se mohou přihlásit. Tlačítko **+ Nový uživate
 | Jazyk | `cs` / `en` |
 | Aktivní | Vypnutý uživatel nemůže se přihlásit |
 
-### 19.2.2 Role
+### 34.2.2 Role
 
 | Role | Co může |
 |---|---|
@@ -114,16 +114,16 @@ Tabulka uživatelů, kteří se mohou přihlásit. Tlačítko **+ Nový uživate
 
 > 🛈 Rozdíl mezi **accountant** a **readonly** je jediný: zápis. Obě role vidí a
 > exportují stejná data; `readonly` jen nemá žádná tlačítka pro úpravy. Úplná
-> matice oprávnění je v [§ 20.5 RBAC](20_Bezpecnost.md).
+> matice oprávnění je v [§ 37.5 RBAC](37_Bezpecnost.md).
 
 > 🛈 Systém má **guard proti odebrání posledního aktivního admina** — pokud
 > jsi sám admin a zkusíš si snížit roli, vrátí 409. Musí být minimálně 1
 > admin v systému.
 
-## 19.3 Můj profil
+## 34.3 Můj profil
 
 **Pravý horní roh → klik na jméno → Můj profil**. Stejná obrazovka jako
-[§ 4.5 Můj profil](04_Prihlaseni.md) — viz screenshot tam.
+[§ 7.5 Můj profil](07_Prihlaseni.md) — viz screenshot tam.
 
 Můžeš si změnit:
 
@@ -131,9 +131,9 @@ Můžeš si změnit:
 - **Heslo** — vyžaduje původní heslo
 - **2FA** — zapnout / vypnout (vyžaduje heslo + ověření TOTP)
 
-Viz [20. Bezpečnost § 20.2](20_Bezpecnost.md) pro detail TOTP.
+Viz [37. Bezpečnost § 37.2](37_Bezpecnost.md) pro detail TOTP.
 
-## 19.4 E-mailové šablony
+## 34.4 E-mailové šablony
 
 **Systém → E-mail šablony**.
 
@@ -146,7 +146,7 @@ Seznam šablon:
 | `invoice_send` | Odeslání faktury klientovi |
 | `invoice_reminder` | Upomínka po splatnosti |
 | `proforma_reminder` | Připomínka nezaplacené zálohové faktury |
-| `invoice_payment_thanks` | Poděkování za úhradu (viz § 18.5.5) — má i variantu pro zálohu |
+| `invoice_payment_thanks` | Poděkování za úhradu (viz § 33.5.5) — má i variantu pro zálohu |
 | `invoice_approval` | Žádost o schválení výkazu víceprací zákazníkem |
 | `recurring_draft_reminder` | Připomínka otevřeného konceptu pravidelné fakturace |
 | `password_reset` | Reset hesla (system) |
@@ -154,7 +154,7 @@ Seznam šablon:
 | `welcome` | Uvítací e-mail novému uživateli |
 | `test` | Pro Test odeslání (debug) |
 
-### 19.4.1 Editor šablony
+### 34.4.1 Editor šablony
 
 Klik na řádek → editor.
 
@@ -167,17 +167,17 @@ Záložky podle jazyka × formátu:
 
 Editor je **CodeMirror** s syntaxí Twig.
 
-### 19.4.2 Předmět
+### 34.4.2 Předmět
 
 Pole nahoře, podporuje placeholders (`{{ varsymbol }}`, …).
 
-### 19.4.3 Test odeslání
+### 34.4.3 Test odeslání
 
 Tlačítko **Test e-mail** dole — pošle vyplněnou šablonu na **tvůj** e-mail
 (přihlášeného admina) s vzorovými daty (faktura `2605001`, klient „Test
 Klient s.r.o.", …).
 
-### 19.4.4 Placeholders
+### 34.4.4 Placeholders
 
 Závisí na typu šablony. `invoice_new`:
 
@@ -191,7 +191,7 @@ Závisí na typu šablony. `invoice_new`:
 | `{{ supplier_name }}` | Dodavatel |
 | `{{ pdf_url }}` | Odkaz pro stažení PDF (pokud máš public link) |
 
-## 19.5 Activity log
+## 34.5 Activity log
 
 **Systém → Activity log**.
 
@@ -218,14 +218,14 @@ Použití:
 > standardně **neničí** activity log, ale lze nastavit retention v
 > `cfg.php → app.activity_log_retention_days`.
 
-## 19.6 Elektronické podpisy
+## 34.6 Elektronické podpisy
 
 Elektronické podpisy mají vlastní stránku **Systém -> Elektronické podpisy**.
 Aktuální konfigurace už není jeden certifikát dodavatele, ale sada
 podpisových profilů a mapování pro jednotlivé výstupy. Detailní postup je v
-[kapitole 28. Elektronické podpisy](28_Elektronicke_podpisy.md).
+[kapitole 28. Elektronické podpisy](36_Elektronicke_podpisy.md).
 
-## 19.7 Tipy
+## 34.7 Tipy
 
 - **Test šablony** vždy před produkčním nasazením — typo v Twig syntaxi by
   rozbilo odesílání všem klientům.

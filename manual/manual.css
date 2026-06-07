@@ -31,6 +31,8 @@
     --acc-sky-bg:     #EFF6FC;  --acc-sky-fg:     #2D6E9E;
     --acc-danger-bg:  #FBEDED;  --acc-danger-fg:  #B84545;
     --acc-neutral-bg: #F4F2F8;  --acc-neutral-fg: #5A5470;
+    --acc-indigo-bg:    #E7EAFB;  --acc-indigo-fg:    #3B47A6;
+    --acc-stone-bg:    #EFE9E1;  --acc-stone-fg:    #6B5536;
 
     --code-bg: #F4F2F8;
     --code-fg: #B84545;
@@ -71,6 +73,8 @@
     --acc-sky-bg:     #13293D;  --acc-sky-fg:     #7CBCE8;
     --acc-danger-bg:  #371A1A;  --acc-danger-fg:  #E08989;
     --acc-neutral-bg: #2C2840;  --acc-neutral-fg: #A8A1BE;
+    --acc-indigo-bg:    #1E2150;  --acc-indigo-fg:    #9AA2EC;
+    --acc-stone-bg:    #2A2418;  --acc-stone-fg:    #C2A87E;
 
     --code-bg: #2C2840;
     --code-fg: #ECA0A0;
@@ -326,8 +330,11 @@ a:hover { text-decoration: underline; }
 .acc-sky     { background: var(--acc-sky-bg);     color: var(--acc-sky-fg); }
 .acc-danger  { background: var(--acc-danger-bg);  color: var(--acc-danger-fg); }
 .acc-neutral { background: var(--acc-neutral-bg); color: var(--acc-neutral-fg); }
+.acc-indigo    { background: var(--acc-indigo-bg);    color: var(--acc-indigo-fg); }
+.acc-stone    { background: var(--acc-stone-bg);    color: var(--acc-stone-fg); }
 
 .toc-group ul { list-style: none; margin: 0; padding: 0; }
+.toc-top { list-style: none; margin: 0 0 8px; padding: 0; }
 .nav-item {
     display: flex;
     align-items: center;
@@ -416,6 +423,7 @@ a:hover { text-decoration: underline; }
 .content:not(.landing) > ul,
 .content:not(.landing) > ol,
 .content:not(.landing) > blockquote,
+.content:not(.landing) > .callout,
 .content:not(.landing) > h1,
 .content:not(.landing) > h2,
 .content:not(.landing) > h3,
@@ -491,6 +499,35 @@ a:hover { text-decoration: underline; }
     color: var(--text-2);
 }
 .content blockquote p { margin: 0; }
+
+/* ── Callouty (GitHub [!TIP] / [!NOTE] / [!IMPORTANT] / [!WARNING] / [!CAUTION]) ── */
+.content .callout {
+    margin: 0 auto 16px;
+    padding: 11px 16px 12px;
+    background: var(--cl-bg, var(--surface-2));
+    border: 1px solid color-mix(in srgb, var(--cl-fg, var(--muted)) 28%, transparent);
+    border-left: 3px solid var(--cl-fg, var(--muted));
+    border-radius: 0 8px 8px 0;
+    color: var(--text-2);
+}
+.content .callout-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: .01em;
+    color: var(--cl-fg, var(--muted));
+    margin-bottom: 5px;
+}
+.content .callout-icon { width: 17px; height: 17px; flex-shrink: 0; }
+.content .callout-body p { margin: 0; }
+.content .callout-tip       { --cl-bg: var(--acc-success-bg); --cl-fg: var(--acc-success-fg); }
+.content .callout-note      { --cl-bg: var(--acc-sky-bg);     --cl-fg: var(--acc-sky-fg); }
+.content .callout-important { --cl-bg: var(--acc-primary-bg); --cl-fg: var(--acc-primary-fg); }
+.content .callout-warning   { --cl-bg: var(--acc-warning-bg); --cl-fg: var(--acc-warning-fg); }
+.content .callout-caution   { --cl-bg: var(--acc-danger-bg);  --cl-fg: var(--acc-danger-fg); }
+
 .content table.md-tab {
     border-collapse: collapse;
     width: 100%;
@@ -654,20 +691,25 @@ a:hover { text-decoration: underline; }
     text-transform: uppercase;
     letter-spacing: .11em;
 }
-.landing h3:nth-of-type(1) { background: var(--acc-primary-bg); color: var(--acc-primary-fg); }
-.landing h3:nth-of-type(2) { background: var(--acc-warning-bg); color: var(--acc-warning-fg); }
-.landing h3:nth-of-type(3) { background: var(--acc-success-bg); color: var(--acc-success-fg); }
-.landing h3:nth-of-type(4) { background: var(--acc-sky-bg);     color: var(--acc-sky-fg); }
+/* Pořadí drží sync s index.php $ACCENTS a menu sekcemi aplikace:
+   1 Instalace a start=sky, 2 Prodej=primary, 3 Nákup=warning, 4 Finance=success,
+   5 Dokumenty=neutral, 6 Daně=danger, 7 Systém=neutral, 8 Reference=neutral. */
+.landing h3:nth-of-type(1) { background: var(--acc-sky-bg);     color: var(--acc-sky-fg); }
+.landing h3:nth-of-type(2) { background: var(--acc-primary-bg); color: var(--acc-primary-fg); }
+.landing h3:nth-of-type(3) { background: var(--acc-warning-bg); color: var(--acc-warning-fg); }
+.landing h3:nth-of-type(4) { background: var(--acc-success-bg); color: var(--acc-success-fg); }
 .landing h3:nth-of-type(5) { background: var(--acc-neutral-bg); color: var(--acc-neutral-fg); }
 .landing h3:nth-of-type(6) { background: var(--acc-danger-bg);  color: var(--acc-danger-fg); }
-.landing h3:nth-of-type(7) { background: var(--acc-neutral-bg); color: var(--acc-neutral-fg); }
-.landing ol:nth-of-type(1) li { --dot: var(--acc-primary-fg); }
-.landing ol:nth-of-type(2) li { --dot: var(--acc-warning-fg); }
-.landing ol:nth-of-type(3) li { --dot: var(--acc-success-fg); }
-.landing ol:nth-of-type(4) li { --dot: var(--acc-sky-fg); }
+.landing h3:nth-of-type(7) { background: var(--acc-indigo-bg);    color: var(--acc-indigo-fg); }
+.landing h3:nth-of-type(8) { background: var(--acc-stone-bg);    color: var(--acc-stone-fg); }
+.landing ol:nth-of-type(1) li { --dot: var(--acc-sky-fg); }
+.landing ol:nth-of-type(2) li { --dot: var(--acc-primary-fg); }
+.landing ol:nth-of-type(3) li { --dot: var(--acc-warning-fg); }
+.landing ol:nth-of-type(4) li { --dot: var(--acc-success-fg); }
 .landing ol:nth-of-type(5) li { --dot: var(--acc-neutral-fg); }
 .landing ol:nth-of-type(6) li { --dot: var(--acc-danger-fg); }
-.landing ol:nth-of-type(7) li { --dot: var(--acc-neutral-fg); }
+.landing ol:nth-of-type(7) li { --dot: var(--acc-indigo-fg); }
+.landing ol:nth-of-type(8) li { --dot: var(--acc-stone-fg); }
 .landing ol {
     list-style: none;
     margin: 14px 0 6px;

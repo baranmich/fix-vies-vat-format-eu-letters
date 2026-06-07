@@ -18,7 +18,7 @@ Vyvíjí **[MyWebdesign.cz s.r.o.](https://mywebdesign.cz/)**
 
 📖 **Online dokumentace: [MyInvoice.cz/manual](https://myinvoice.cz/manual/)**
 
-> ⚠️ **Než začneš fakturovat — přečti si [Fakturujeme — daňový průvodce](manual/06_Fakturujeme.md).**
+> ⚠️ **Než začneš fakturovat — přečti si [Fakturujeme — daňový průvodce](manual/26_Fakturujeme.md).**
 > Vysvětluje, jak aplikace pracuje s plátci/neplátci DPH, sazbami, reverse charge,
 > kde má aplikace limitace (OSS, SK 23 %) a jak je obejít. **Správnost faktury
 > je vždy na uživateli — pro nestandardní situace konzultuj účetní.**
@@ -306,7 +306,7 @@ schtasks /run /tn "MyInvoice Update Watcher"
 ```
 
 Detaily, recovery při zaseknutém upgradu a odlaďování v manuálu §
-[21 Aktualizace](manual/21_Aktualizace.md).
+[38 Aktualizace](manual/38_Aktualizace.md).
 
 ### Varianta B — build z source (pro vývoj)
 
@@ -673,8 +673,9 @@ Pokud chybí `cfg.php` nebo nelze do DB, frontend i API vrací **503 s instrukce
 ## Dokumentace
 
 **Uživatelský manuál** (HTML, lokálně po instalaci): `https://tvoje-domena.cz/manual` —
-25 kapitol (od přihlášení přes vystavené i přijaté faktury, CRM, výkazy DPH až
-po REST API), fulltext search, sidebar TOC, responsive mobile drawer.
+39 kapitol řazených dle menu aplikace (od instalace přes vystavené i přijaté
+faktury, finanční přehledy, dokumenty, výkazy DPH až po systémová nastavení a
+REST API), fulltext search, sidebar TOC, responsive mobile drawer.
 Zdroj v `manual/*.md`.
 
 **Vývojářská spec** v `source/`:

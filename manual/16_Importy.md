@@ -1,4 +1,4 @@
-# 17. Importy (Pohoda XML, ISDOC, PDF/A-3, iDoklad API, Fakturoid API)
+# 16. Importy (Pohoda XML, ISDOC, PDF/A-3, iDoklad API, Fakturoid API)
 
 Pokud máš historické vystavené faktury v jiném systému (Pohoda, iDoklad,
 Fakturoid, Superfaktura nebo jiný fakturační software podporující ISDOC),
@@ -13,7 +13,7 @@ Existují dvě cesty:
 > jiné firmy). Dodavatel ve vstupním souboru se musí shodovat s aktuálně
 > zvoleným dodavatelem v aplikaci.
 
-## 17.1 Obrazovka importů
+## 16.1 Obrazovka importů
 
 V hlavním menu **Systém → Importy**.
 
@@ -22,11 +22,11 @@ Formulář:
 - **Soubory** — přetáhni nebo klikni pro výběr. Akceptuje:
   - `.xml` (Pohoda dataPack)
   - `.isdoc` (ISDOC 6.0.x)
-  - `.pdf` (PDF/A-3 s embedded ISDOC přílohou — viz § 17.6)
+  - `.pdf` (PDF/A-3 s embedded ISDOC přílohou — viz § 16.6)
   - `.zip` s libovolným počtem těchto souborů uvnitř
 - **Importovat** — odešle a vrátí report (kolik vytvořeno / přeskočeno / chyba).
 
-## 17.2 Co se založí
+## 16.2 Co se založí
 
 Pro každou fakturu v souboru:
 
@@ -36,7 +36,7 @@ Pro každou fakturu v souboru:
 | **Zakázka** | Když má faktura `číslo zakázky` (ISDOC `OrderReference/ID`, Pohoda `numberOrder`), přiřadí se k zakázce s tím číslem (vytvoří se, pokud chybí). Pokud nemá číslo zakázky, ale klient má v importovaném balíku **více různých e-mailů**, vytvoří se per-email zakázka s názvem `{Firma} – {email}`. Jinak `bez zakázky`. |
 | **Faktura** | Přepíše se do `invoices` se zachovaným původním varsymbolem. Položky, sazby DPH, kurz, měna se převezmou. Snapshoty (klient/dodavatel/banka) se zafixují z aktuálních dat. |
 
-## 17.3 Stav (paid vs issued) — pravidlo 30 dní
+## 16.3 Stav (paid vs issued) — pravidlo 30 dní
 
 Aby ses nemusel po importu zabývat starými fakturami:
 
@@ -47,14 +47,14 @@ Aby ses nemusel po importu zabývat starými fakturami:
   uloží jako **Vystavená**. Můžeš platbu spárovat standardním flow přes
   bankovní výpis nebo ručně označit jako zaplacenou.
 
-## 17.4 Co se přeskočí
+## 16.4 Co se přeskočí
 
 - **Cizí dodavatel** — celý soubor se přeskočí, pokud IČO dodavatele v souboru
   neodpovídá aktuálnímu dodavateli v aplikaci. (Hláška v reportu.)
 - **Duplicita** — pokud faktura s daným varsymbolem u tohoto dodavatele už
   existuje, přeskočí se. V reportu se zobrazí důvod a id existující faktury.
 
-## 17.5 Report
+## 16.5 Report
 
 Po importu vidíš tabulku:
 
@@ -65,7 +65,7 @@ Po importu vidíš tabulku:
 | Var. symbol | Z faktury |
 | Detail | Link na vytvořenou fakturu, badge `paid`/`issued`, štítky `+ klient` / `+ zakázka` (pokud něco vzniklo). U přeskočených/chybných: důvod. |
 
-## 17.6 PDF/A-3 import (embedded ISDOC)
+## 16.6 PDF/A-3 import (embedded ISDOC)
 
 Většina českých fakturačních systémů (**iDoklad**, **Fakturoid**, **Superfaktura**,
 **Pohoda**, **MyInvoice**) dnes vkládá ISDOC XML přímo do PDF dokumentu jako
@@ -116,28 +116,28 @@ ISDOC přílohu". V tom případě:
   Vzácné, ale existuje. Workaround: stáhni si ISDOC samostatně v původním
   systému.
 
-## 17.7 Tipy
+## 16.7 Tipy
 
 - **Před importem nahraj klienty z ARES** — ne nutné, ale pokud máš čas, můžeš
   je založit ručně se správnou výchozí měnou a paušálem; import pak jen použije
   existující ID a nebude tahat ARES.
 - **Pohoda → MyInvoice** — exportuj v Pohodě data balíček (XML), nahraj sem.
   Pohoda neukládá `číslo zakázky` per fakturu, takže se importují bez zakázky
-  (pokud klient nemá více emailů — viz § 17.2).
+  (pokud klient nemá více emailů — viz § 16.2).
 - **Multi-supplier** — přepni v aplikaci na cílového dodavatele předtím, než
   spustíš import. IČO z XML se ověří proti tomuto kontextu.
 - **Co dělat, když import vyhodí chybu** — soubor zkontroluj v textovém
   editoru, jestli má validní XML a očekávaný root element (`<dat:dataPack>`
   pro Pohodu, `<Invoice>` v ISDOC namespace pro ISDOC). Pro PDF zkontroluj,
-  jestli má `.isdoc` přílohu (viz § 17.6).
+  jestli má `.isdoc` přílohu (viz § 16.6).
 
-## 17.8 API import z iDoklad
+## 16.8 API import z iDoklad
 
 Alternativa k file uploadu: přímé volání iDoklad API v3 (OAuth2 Client Credentials).
 Vhodné pro většinu dat — táhne **kontakty + vystavené faktury + dobropisy + přijaté
 faktury** najednou, po sekcích a rocích, s dry-run preview a background jobem.
 
-### 17.8.1 Získání API credentials
+### 16.8.1 Získání API credentials
 
 1. Přihlas se do [iDokladu](https://app.idoklad.cz/).
 2. **Nastavení → API přístup** (nebo **Uživatelský účet → API**).
@@ -146,7 +146,7 @@ faktury** najednou, po sekcích a rocích, s dry-run preview a background jobem.
    - **Client ID** — identifikátor aplikace
    - **Client Secret** — tajný klíč (zobrazí se **jen jednou**; uschovej si ho)
 
-### 17.8.2 Nastavení v MyInvoice
+### 16.8.2 Nastavení v MyInvoice
 
 `Systém → Externí integrace → iDoklad` (admin only):
 
@@ -159,7 +159,7 @@ Klikni **Uložit** → MyInvoice si **otestuje connection** (token endpoint + pi
 na první sekci). Pokud OAuth2 selže (401), zkontroluj copy-paste (typicky se
 přidá whitespace).
 
-### 17.8.3 Spuštění importu
+### 16.8.3 Spuštění importu
 
 Na téže stránce, sekce **Spustit import**:
 
@@ -171,19 +171,19 @@ Na téže stránce, sekce **Spustit import**:
 
 Klikni **Spustit import**.
 
-### 17.8.4 Co se importuje
+### 16.8.4 Co se importuje
 
 | Sekce | Co se vytvoří |
 |---|---|
 | **contacts** | `clients` rows (IČ, name, address, DIČ, email, phone). ARES NEvolá — důvěřuje datům z iDokladu. |
-| **invoices** | `invoices` + `invoice_items` + VAT classification. Status: viz § 17.8.5. |
+| **invoices** | `invoices` + `invoice_items` + VAT classification. Status: viz § 16.8.5. |
 | **credit-notes** | `invoices` se `invoice_type='credit_note'` + parent link na původní fakturu (přes `parent_invoice_id`). |
 | **purchases** | `purchase_invoices` + `purchase_invoice_items`. Klient → `clients` s `is_vendor=true`. |
 
-### 17.8.5 Platební stav
+### 16.8.5 Platební stav
 
 API import přebírá **skutečný platební stav ze zdrojového systému** — na rozdíl
-od file uploadu (§ 17.3), kde se stáří jen odhaduje pravidlem 30 dní:
+od file uploadu (§ 16.3), kde se stáří jen odhaduje pravidlem 30 dní:
 
 - Doklad v iDokladu **Uhrazeno / Přeplaceno** → importuje se jako **Zaplacená**
   (`paid_at` = datum úhrady z iDokladu; nepošle se na ni upomínka).
@@ -194,7 +194,7 @@ od file uploadu (§ 17.3), kde se stáří jen odhaduje pravidlem 30 dní:
 
 **Sleva** — sleva z iDokladu se přenáší: sleva na úrovni dokladu
 (`DiscountType=OnDocument`) se u vydaných faktur uloží jako procentuální sleva
-(viz § 11.4.1), u přijatých jako záporná položka „Sleva X %" po sazbách DPH;
+(viz § 10.4.1), u přijatých jako záporná položka „Sleva X %" po sazbách DPH;
 položková sleva se zapečetí do jednotkové ceny. Importovaná částka tak odpovídá
 iDokladu (dřív se sleva ignorovala a faktura se importovala za plnou cenu).
 
@@ -202,12 +202,12 @@ iDokladu (dřív se sleva ignorovala a faktura se importovala za plnou cenu).
 prvním importu. Druhý import téhož období záznamy **přeskočí** (žádné duplicity,
 žádný update existujících — import je čistě additivní).
 
-## 17.9 API import z Fakturoid
+## 16.9 API import z Fakturoid
 
 Stejný flow jako iDoklad, jen jiný provider. **Podporujeme dvě auth
 metody** — email + API token i OAuth2 Client Credentials.
 
-### 17.9.1 Získání API credentials
+### 16.9.1 Získání API credentials
 
 **Nově založené účty (po 2024) — OAuth2:**
 
@@ -223,7 +223,7 @@ metody** — email + API token i OAuth2 Client Credentials.
 2. Zkopíruj **email** + **API token**.
 3. Zjisti **slug** (stejný postup).
 
-### 17.9.2 Nastavení v MyInvoice
+### 16.9.2 Nastavení v MyInvoice
 
 `Systém → Externí integrace → Fakturoid`:
 
@@ -241,11 +241,11 @@ OAuth2 token MyInvoice cachuje šifrovaně (AES-256-GCM v
 `supplier.fakturoid_access_token_enc`) s TTL ~2h. Při HTTP 401 se token vyhodí
 a obnoví automaticky — uživatel to nemusí řešit.
 
-### 17.9.3 Spuštění importu
+### 16.9.3 Spuštění importu
 
-Identické s iDoklad (viz § 17.8.3) — vyber roky, sekce, dry-run.
+Identické s iDoklad (viz § 16.8.3) — vyber roky, sekce, dry-run.
 
-### 17.9.4 Co se importuje
+### 16.9.4 Co se importuje
 
 | Sekce | Co se vytvoří |
 |---|---|
@@ -254,7 +254,7 @@ Identické s iDoklad (viz § 17.8.3) — vyber roky, sekce, dry-run.
 | **credit-notes** | `invoices` s `invoice_type='credit_note'` |
 | **purchases** (Fakturoid `expenses`) | `purchase_invoices` |
 
-**Platební stav** — stejně jako u iDokladu (§ 17.8.5) se přebírá
+**Platební stav** — stejně jako u iDokladu (§ 16.8.5) se přebírá
 skutečný stav z Fakturoidu: doklad **Zaplaceno** → importuje se jako Zaplacená
 (`paid_at` = datum úhrady `paid_on`), **Stornováno** → Stornovaná; vše ostatní
 (vč. částečných úhrad) zůstává Koncept k ručnímu vystavení.
@@ -264,7 +264,7 @@ za vybrané roky.
 
 **Idempotence přes `fakturoid_id`** stejně jako u iDokladu.
 
-## 17.10 Dry-run mód
+## 16.10 Dry-run mód
 
 Společný pro iDoklad i Fakturoid. Po zaškrtnutí **Jen náhled (dry-run)** se import
 provede **synchronně** (vrátí výsledek najednou) a **nezapisuje do DB**. Slouží
@@ -280,7 +280,7 @@ k validaci credentials + náhledu dat.
 
 Pokud výstup vypadá rozumně, odzaškrtni dry-run a spusť ostrý import.
 
-## 17.11 Background job (ostrý import)
+## 16.11 Background job (ostrý import)
 
 Ostrý import (bez dry-run) běží jako **background worker** přes PHP CLI proces
 (`api/bin/import-worker.php`). Aplikace vrátí `job_id` okamžitě a UI sleduje
@@ -295,7 +295,7 @@ průběh:
 **Prevence duplicitních jobů:** stejné parametry (provider + sekce + roky)
 nelze spustit znovu, dokud běží — UI vrátí 409 Conflict s odkazem na běžící job.
 
-## 17.12 Časté problémy API importu
+## 16.12 Časté problémy API importu
 
 **„Neplatné credentials" / 401 Unauthorized**
 → Whitespace v copy-pastu Client Secret / API tokenu. Vygeneruj credentials znovu

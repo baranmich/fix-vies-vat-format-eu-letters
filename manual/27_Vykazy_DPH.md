@@ -1,11 +1,12 @@
-# 24. Výkazy DPH (DPHDP3 + KH + SH)
+# 27. Výkazy DPH (DPHDP3 + KH)
 
 MyInvoice.cz generuje XML pro EPO portál MFČR:
 - **DPH přiznání (DPHDP3)** — měsíční nebo kvartální
 - **Kontrolní hlášení (DPHKH1)** — vždy měsíčně (i pro kvartální plátce DPH)
-- **Souhrnné hlášení (DPHSHV)** — EU dodání zboží/služeb, měsíčně
 
-Najdeš v menu **Daně**.
+Související výkazy a exporty mají v manuálu vlastní kapitoly: [Kniha DPH](28_Kniha_DPH.md)
+(interní žurnál), [Souhrnné hlášení](29_Souhrnne_hlaseni.md) (EU dodání B2B) a
+[Měsíční export](32_Mesicni_export.md) (ZIP balíček pro účetní). Všechny najdeš v menu **Daně**.
 
 > [!WARNING]
 > **⚠️ Vygenerovaný XML je pouze pomůcka.** Před odesláním na EPO portál MFČR VŽDY ověř s účetní nebo daňovým poradcem. Aplikace nezaručuje regulatorní správnost — testováno na omezené sadě dat.
@@ -21,7 +22,7 @@ V **Nastavení → Daňové nastavení** vyplň:
 5. **DIČ** v Identifikaci firmy (povinné)
 6. Volitelně: CZ-NACE, datová schránka, sestavitel přiznání
 
-Detailní mapping všech polí v UI na XML atributy najdeš v sekci [Pole EPO / VetaP](#pole-epo--vetap) níže.
+Detailní mapping všech polí v UI na XML atributy najdeš v sekci [Pole EPO / VetaP](#pole-epo-vetap) níže.
 
 > [!NOTE]
 > **Kontrolní hlášení se podává VŽDY měsíčně**, i pro kvartální plátce DPH. Jen DPH přiznání může být kvartální.
@@ -45,7 +46,7 @@ odmítne nebo bude generovat formálně neúplný výkaz.
 | Pole v UI | XML atribut | Hodnoty | Kdy použít |
 |---|---|---|---|
 | **Typ poplatníka** | `typ_ds` ve VetaP | `F` (FO/OSVČ) / `P` (PO/s.r.o.) | Podle právní formy. |
-| **Typ plátce DPH** | `typ_platce` ve VetaD | `P` (plátce) / `I` (identifikovaná osoba) | `I` se nastaví automaticky, když je v dodavateli zaškrtnutá **Identifikovaná osoba** (viz [§ 6.1.1](06_Fakturujeme.md#611-identifikovaná-osoba--6g6l-zdph)). Perioda (měsíc/kvartál) jde zvlášť atributy `mesic`/`ctvrt` dle `vat_period`. |
+| **Typ plátce DPH** | `typ_platce` ve VetaD | `P` (plátce) / `I` (identifikovaná osoba) | `I` se nastaví automaticky, když je v dodavateli zaškrtnutá **Identifikovaná osoba** (viz [§ 26.1.1](26_Fakturujeme.md#2611-identifikovana-osoba-6g6l-zdph)). Perioda (měsíc/kvartál) jde zvlášť atributy `mesic`/`ctvrt` dle `vat_period`. |
 
 > 🛈 **Identifikovaná osoba**: přiznání obsahuje jen řádky samovyměření
 > z přeshraničních přijatých plnění (ř. 3–6, 12–13) **bez zrcadlového odpočtu
@@ -327,7 +328,7 @@ Hodnota se na DPHDP3 uvede:
 - **ř. 40** (nebo 41/42/43 podle klasifikace) — běžný odpočet
 - **ř. 47** (atribut `nar_maj`) — doplňující údaj o hodnotě majetku
 
-Daň se v součtech ř. 46 neduplikuje (ř. 47 je informativní). V Knize DPH
+Daň se v součtech ř. 46 neduplikuje (ř. 47 je informativní). V [Knize DPH](28_Kniha_DPH.md)
 je samostatná sekce **47.047** se sumací.
 
 ## Kontrolní hlášení (DPHKH1)
@@ -387,101 +388,6 @@ Aby v reálně podaném KH seděly sekce, řídí se zařazení dokladů těmito
 dokladu dodavatele), `dppd` (datum povinnosti přiznat daň), `zakl_dane1/dan1` (21 %),
 `zakl_dane2/dan2` (12 %). Daň se dopočítá ze základu × sazba/100, protože vendor
 fakturuje bez DPH.
-
-## Kniha DPH (měsíční VAT žurnál)
-
-### Cesta: `Daně → Kniha DPH`
-
-Interní reportingový výkaz — **není to EPO podání na finanční úřad**, slouží
-jen pro vnitřní přehled a archivaci. Žurnál seskupený podle řádků DPH přiznání:
-
-- `15.040` — Přijaté tuzemsko, sazba 21 % (ř.40 přiznání = nárok na odpočet)
-- `36.001` — Uskutečněná tuzemsko, základ daně 21 % (ř.1 přiznání)
-- `43.012` + `43.043` — Dovoz služby ze 3. země (ř.12 přiznání DPH +
-  ř.43 nárok na odpočet z téhož plnění)
-- `43.003` + `43.043` — RC pořízení zboží z EU (ř.3 výstup + ř.43 mirror
-  odpočet)
-- `47.047` — Hodnota pořízeného majetku (§ 4 odst. 4 písm. c).
-  Doplňující údaj k ř. 40-45 — informativní řádek, nepřičítá se do celkového
-  součtu odpočtu (jinak by se daň majetku duplikovala).
-- a další řádky podle klasifikací v `vat_classifications`
-
-Per řádek faktury sekce: **Datum plnění | Zaúčtování | Doklad (PF / VF +
-číslo) | Popis | Základ daně CZK | DPH CZK | Celkem CZK | Partner + DIČ |
-Orig. číslo dokladu | Orig. datum plnění | KH kód (A.4. / B.2. / B.3.)**.
-
-Měsíční selektor (rok + měsíc), tlačítko **Stáhnout PDF** (landscape A4).
-Zahrnuje i drafty (vizuálně označené) — užitečné pro pracovní přehled před
-uzavřením období. Storno faktury (status `cancelled`) se neukazují.
-
-## Měsíční export (ZIP)
-
-### Cesta: `Daně → Měsíční export`
-
-Stáhne **jeden ZIP** za zvolený měsíc se vším, co účetní pro daný měsíc potřebuje,
-roztříděné do pojmenovaných složek. Zaškrtnutím vyberete, co se zabalí:
-
-- **Vystavené faktury** — PDF a/nebo ISDOC
-- **Přijaté faktury** — PDF a/nebo ISDOC (u PDF má přednost originál od dodavatele;
-  pokud chybí, vloží se naše rekonstrukce s příponou `-rekonstrukce`)
-- **Výpisy z účtu** — PDF a/nebo GPC (originální soubory)
-- **Kniha DPH** — měsíční PDF žurnál
-
-U každé části se hned ukáže počet dostupných dokladů; prázdné části nejdou zaškrtnout.
-
-**Zařazení do období je daňově korektní a shodné s výkazy DPH** (přiznání, kontrolní
-hlášení, kniha DPH): vystavené dle DUZP, přijaté tuzemské dle pozdějšího z dat
-DUZP / vystavení, přijaté zahraniční reverse charge dle DUZP,
-výpisy dle data výpisu.
-
-#### Běh na pozadí
-
-Protože u většího počtu faktur může příprava PDF chvíli trvat, export běží jako
-**úloha na pozadí** — po spuštění vidíte průběh (stav, postup, krok) a po dokončení
-tlačítko **Stáhnout ZIP**. Hotové exporty zůstávají v seznamu **Poslední exporty** a
-jdou stáhnout opakovaně; soubor se stažením nemaže. Úklid proběhne automaticky po
-7 dnech (nebo ručně tlačítkem koš). Souběžně běží vždy jen jeden export.
-
-## Souhrnné hlášení (DPHSHV)
-
-### Cesta: `Daně → Souhrnné hlášení`
-
-Souhrnné hlášení (anglicky **Recapitulative Statement**) je výkaz **EU dodání zboží a služeb** v režimu B2B (vystavené faktury klientům — plátcům DPH v jiných členských státech EU). Podává se měsíčně.
-
-> [!IMPORTANT]
-> Souhrnné hlášení **podávají i identifikované osoby** (neplátci DPH), pokud poskytují B2B služby plátcům v EU, nebo nakupují zboží z EU nad limit.
-
-### Co se generuje
-
-Per VAT_ID protistrany + typ plnění:
-
-| Kód | Typ plnění | VAT klasifikační kód v MyInvoice |
-|---|---|---|
-| **0** | Dodání zboží do jiného členského státu EU | **20** |
-| **1** | Trojstranný obchod (prostředník) | **21** (pokud máte custom kód) |
-| **2** | Poskytnutí služby s místem plnění v EU | **22** |
-| **3** | Přemístění zboží | — |
-
-Hodnota plnění = suma `total_without_vat` (základ daně, BEZ DPH) v CZK.
-
-### Předpoklady
-
-1. Vystavené faktury klientům **z EU** (country_iso2 ≠ CZ AND countries.is_eu = 1)
-2. Klient má vyplněné **DIČ** (pro EU obvykle s prefixem země: SK1234567890, DE123456789, atd.)
-3. Faktury musí mít VAT klasifikační kód 20 (zboží) nebo 22 (služby) — auto-default je řeší, ale ověř manuálně
-
-### XML formát
-
-Generuje DPHSHV verze 06.01. Per řádek VetaA1:
-- `k_stat` = ISO2 kódu země (SK, DE, FR, …)
-- `vatid_pod` = VAT ID s prefixem
-- `kod_plneni` = 0/1/2/3
-- `pln_hodnota` = celé Kč (zaokrouhleno)
-- `pln_pocet` = počet faktur agregovaných pod tento řádek
-
-### Termín podání
-
-**Vždy 25. den následujícího měsíce** (stejně jako KH).
 
 ## Změna VAT sazby v budoucnu (např. 21% → 20% v 2027)
 
