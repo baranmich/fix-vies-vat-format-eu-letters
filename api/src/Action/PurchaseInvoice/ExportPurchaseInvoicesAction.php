@@ -10,6 +10,7 @@ use MyInvoice\Infrastructure\Config\Config;
 use MyInvoice\Infrastructure\Database\Connection;
 use MyInvoice\Middleware\AuthMiddleware;
 use MyInvoice\Service\ActivityLogger;
+use MyInvoice\Service\Export\ExportFilename;
 use MyInvoice\Service\Export\ExportPeriod;
 use MyInvoice\Service\Export\ExportPeriodResolver;
 use MyInvoice\Service\Export\PurchaseInvoiceExportService;
@@ -106,8 +107,9 @@ final class ExportPurchaseInvoicesAction
             $id = (int) $r['id'];
             $vs = (string) ($r['varsymbol'] ?? $r['vendor_invoice_number'] ?? ('id-' . $id));
             $vendor = (string) ($r['vendor_company_name'] ?? 'vendor');
-            // Sanitize filename pro ZIP entry (zip-slip via varsymbol/vendor name)
-            $entryBase = substr(preg_replace('/[^A-Za-z0-9._\\-]/u', '_', $vs . '-' . $vendor) ?: 'invoice', 0, 100);
+            // Sanitize filename pro ZIP entry (zip-slip via varsymbol/vendor name).
+            // Diakritiku v názvu firmy přepíšeme na ASCII (č→c, ě→e, …), ne na podtržítka.
+            $entryBase = substr(ExportFilename::sanitize($vs . '-' . $vendor, 'invoice'), 0, 100);
 
             // 1) Archivovaný originál od dodavatele má přednost. Resolve relativní path
             //    + path-traversal guard (zip-slip). Pokud byl originál očekáván
@@ -260,7 +262,7 @@ final class ExportPurchaseInvoicesAction
             }
             $vs = (string) ($r['varsymbol'] ?? ('id-' . $r['id']));
             $vendor = (string) ($r['vendor_company_name'] ?? 'vendor');
-            $base = preg_replace('/[^A-Za-z0-9._\\-]/u', '_', $vs . '-' . $vendor) ?: 'invoice';
+            $base = ExportFilename::sanitize($vs . '-' . $vendor, 'invoice');
             $zip->addFromString('Prijata-' . substr($base, 0, 100) . '.isdoc', $xml);
             $included++;
         }
@@ -353,7 +355,7 @@ final class ExportPurchaseInvoicesAction
         foreach ($items as $it) {
             // Pohoda XSD vyžaduje striktně alfanumerický id (varsymbol může obsahovat
             // libovolné znaky z user inputu — sanitize na [A-Za-z0-9._-] before embedding).
-            $safeVs = preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $it['vs']) ?: 'invoice';
+            $safeVs = ExportFilename::sanitize((string) $it['vs'], 'invoice');
             $dataPack .= '  <dat:dataPackItem version="2.0" id="' . $it['id'] . '_' . $safeVs . '">' . "\n";
             // Strip XML declaration z individual XML (jen content)
             $inner = preg_replace('/^<\?xml[^?]*\?>\s*/', '', $it['xml']) ?? $it['xml'];

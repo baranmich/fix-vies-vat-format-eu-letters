@@ -77,8 +77,8 @@ const isComingSoon = computed(() => false)
           <label
             v-for="opt in [
               { val: 'pdf-zip' as Format, label: t('purchase_invoice.export.fmt_pdf'),    hint: t('purchase_invoice.export.fmt_pdf_hint') },
-              { val: 'pohoda' as Format,  label: t('purchase_invoice.export.fmt_pohoda'), hint: t('purchase_invoice.export.fmt_pohoda_hint') },
               { val: 'isdoc' as Format,   label: t('purchase_invoice.export.fmt_isdoc'),  hint: t('purchase_invoice.export.fmt_isdoc_hint') },
+              { val: 'pohoda' as Format,  label: t('purchase_invoice.export.fmt_pohoda'), hint: t('purchase_invoice.export.fmt_pohoda_hint') },
             ]"
             :key="opt.val"
             class="cursor-pointer block p-3 border rounded-md transition"

@@ -485,7 +485,8 @@ final class MonthlyExportService
 
     private function sanitize(string $s): string
     {
-        return preg_replace('/[^A-Za-z0-9._\-]/u', '_', $s) ?? 'soubor';
+        // Diakritiku přepíšeme na ASCII (č→c, ě→e, …) místo nahrazení podtržítkem.
+        return ExportFilename::sanitize($s);
     }
 
     /** Název firmy dodavatele (pro README i název ZIPu). Prázdný string = nenalezeno. */
@@ -502,13 +503,7 @@ final class MonthlyExportService
      */
     private function asciiSlug(string $s): string
     {
-        $map = [
-            'á'=>'a','č'=>'c','ď'=>'d','é'=>'e','ě'=>'e','í'=>'i','ľ'=>'l','ĺ'=>'l','ň'=>'n','ó'=>'o',
-            'ô'=>'o','ŕ'=>'r','ř'=>'r','š'=>'s','ť'=>'t','ú'=>'u','ů'=>'u','ý'=>'y','ž'=>'z','ä'=>'a',
-            'Á'=>'A','Č'=>'C','Ď'=>'D','É'=>'E','Ě'=>'E','Í'=>'I','Ľ'=>'L','Ĺ'=>'L','Ň'=>'N','Ó'=>'O',
-            'Ô'=>'O','Ŕ'=>'R','Ř'=>'R','Š'=>'S','Ť'=>'T','Ú'=>'U','Ů'=>'U','Ý'=>'Y','Ž'=>'Z','Ä'=>'A',
-        ];
-        $s = strtr($s, $map);
+        $s = ExportFilename::transliterate($s);
         $s = preg_replace('/[^A-Za-z0-9]+/', '-', $s) ?? '';
         return mb_substr(trim($s, '-'), 0, 60);
     }
