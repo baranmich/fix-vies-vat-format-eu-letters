@@ -116,6 +116,9 @@ final class Bootstrap
             \MyInvoice\Service\Bank\StatementMatcher::class => fn (ContainerInterface $c) => new \MyInvoice\Service\Bank\StatementMatcher(
                 $c->get(Connection::class),
                 $c->get(\MyInvoice\Service\Invoice\FinalFromProformaCreator::class),
+                // #127 — automatické párování (GPC import, e-mailové avízo, cron) musí
+                // poslat děkovný e-mail za úhradu stejně jako ruční mark-paid/manualMatch.
+                $c->get(\MyInvoice\Service\Mail\PaymentThanksMailer::class),
             ),
 
             // IpMatcher má v konstruktoru volitelný `?Config $config = null`. Autowiring

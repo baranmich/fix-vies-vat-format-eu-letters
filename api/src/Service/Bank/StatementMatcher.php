@@ -6,6 +6,7 @@ namespace MyInvoice\Service\Bank;
 
 use MyInvoice\Infrastructure\Database\Connection;
 use MyInvoice\Service\Invoice\FinalFromProformaCreator;
+use MyInvoice\Service\Mail\PaymentThanksMailer;
 use PDO;
 
 /**
@@ -47,6 +48,11 @@ final class StatementMatcher
     public function __construct(
         private readonly Connection $db,
         private readonly FinalFromProformaCreator $finalCreator,
+        // Volitelný — automatické cesty (GPC import, e-mailové avízo, cron, rescan) jdou
+        // přes match() (ne přes MarkPaidAction/manualMatch), takže děkovný e-mail za úhradu
+        // se musí poslat odsud. Nullable kvůli izolovaným konstrukcím v testech/skriptech;
+        // produkční wiring (Bootstrap) ho vždy injektuje. Viz #127.
+        private readonly ?PaymentThanksMailer $paymentThanks = null,
     ) {}
 
     /**
@@ -222,6 +228,14 @@ final class StatementMatcher
             } catch (\Throwable $e) {
                 if ($pdo->inTransaction()) $pdo->rollBack();
                 throw $e;
+            }
+
+            // Děkovný e-mail za úhradu (#57/#127) — jen pro fakturu nově označenou jako
+            // paid (ne ručně paid, kterou jen navazujeme). Best-effort, mimo transakci:
+            // mailer si sám ohlídá enabled + auto_send (bank_match trigger) i idempotenci
+            // a nikdy nevyhazuje výjimku, takže selhání e-mailu nerozbije spárování.
+            if (!$alreadyPaid) {
+                $this->paymentThanks?->sendForInvoice((int) $inv['id'], 'bank_match', null, null, null, requireUnsent: true);
             }
 
             $result = ['status' => 'auto_exact', 'invoice_id' => (int) $inv['id'], 'varsymbol' => $vs];
