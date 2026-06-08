@@ -5,6 +5,17 @@ All notable changes to MyInvoice.cz are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.19.6] — 2026-06-08
+
+### Added
+
+- **Export vydaných faktur do Stereo XML ([#126](https://github.com/radekhulan/myinvoice/pull/126), díky @blondak).** Administrace exportů (Daně → Export vydaných faktur) nově nabízí formát **Stereo XML** — DocumentPack XML pro import vydaných faktur do účetního systému **Kastner Stereo** (přes „Import faktury (XML)"). Funguje za měsíc i celé čtvrtletí, stejně jako ostatní formáty. Mapování DPH klasifikace na Stereo `TypeOfVAT` řeší `StereoVatTypeResolver` (zdroj pravdy = klasifikace řádků dokladu). Součástí je i sdílený `InvoiceExportDataResolver` pro dohledání dodavatele/klienta/banky (snapshot vyhrává nad live daty) — refaktor sjednocuje logiku dříve duplikovanou v ISDOC a Pohoda exportérech, beze změny jejich chování.
+- **SMTP log analýza: klikací souhrnné karty.** Karty **Doručeno / Odloženo / Odmítnuto** nad tabulkou fungují jako rychlý přepínač filtru stavu dole (klik zapne/vypne, aktivní karta se zvýrazní). Karta „Odmítnuto" sčítá `rejected` i `error`, proto filtruje složeně přes obě hodnoty (volba „Odmítnuté + chyby" je i v rozbalovacím filtru).
+
+### Changed
+
+- **Stránka „Export vydaných faktur" je širší.** Po přidání čtvrtého formátu (Stereo) má výběr formátů (PDF / ISDOC / Pohoda / Stereo) v řadě víc místa.
+
 ## [4.19.5] — 2026-06-08
 
 ### Fixed
