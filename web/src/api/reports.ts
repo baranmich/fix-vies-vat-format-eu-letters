@@ -91,6 +91,8 @@ export interface DphBookPreview {
   period: {
     year: number
     month: number
+    period_type: 'monthly' | 'quarterly'
+    quarter: number | null
     start: string
     end: string
     label: string
@@ -234,12 +236,15 @@ export const reportsApi = {
   },
 
   // Kniha DPH (interní VAT žurnál — NE EPO podání)
-  dphBookPreview: (year: number, month: number) =>
-    api.get<DphBookPreview>('/reports/dph-book/preview', { params: { year, month } }).then(r => r.data),
+  dphBookPreview: (year: number, month: number, period?: 'monthly' | 'quarterly') =>
+    api.get<DphBookPreview>('/reports/dph-book/preview', {
+      params: period ? { year, month, period } : { year, month },
+    }).then(r => r.data),
 
-  dphBookPdfUrl: (year: number, month: number) => {
+  dphBookPdfUrl: (year: number, month: number, period?: 'monthly' | 'quarterly') => {
     const sid = localStorage.getItem('myinvoice.current_supplier_id')
     const params = new URLSearchParams({ year: String(year), month: String(month) })
+    if (period) params.set('period', period)
     if (sid && /^\d+$/.test(sid)) params.set('supplier_id', sid)
     return `/api/reports/dph-book?${params.toString()}`
   },

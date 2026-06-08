@@ -33,7 +33,8 @@ use MyInvoice\Repository\TaxConstantsRepository;
  * ř.12 + ř.43), pak builder generuje DVĚ sekce ze stejné faktury (data se
  * objeví ve dvou tabulkách na PDF — viz reference DPH_LIST_KH 42026.pdf).
  *
- * Periodicita: **pouze měsíční** (year + month, range 1.-poslední den).
+ * Periodicita: **měsíční nebo kvartální** (period 'monthly'/'quarterly'; u kvartálu
+ * nese $month libovolný měsíc kvartálu, rozsah se natáhne na celé čtvrtletí).
  */
 final class DphBookBuilder
 {
@@ -45,7 +46,7 @@ final class DphBookBuilder
 
     /**
      * @return array{
-     *   period: array{year:int, month:int, start:string, end:string, label:string},
+     *   period: array{year:int, month:int, period_type:string, quarter:int|null, start:string, end:string, label:string},
      *   supplier: array<string,mixed>,
      *   sections: list<array<string,mixed>>,
      *   totals: array{
@@ -55,11 +56,21 @@ final class DphBookBuilder
      *   }
      * }
      */
-    public function build(int $supplierId, int $year, int $month): array
+    public function build(int $supplierId, int $year, int $month, ?string $period = null): array
     {
         $supplier = $this->loadSupplier($supplierId);
-        $start = sprintf('%04d-%02d-01', $year, $month);
-        $end = (new \DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+        $period = in_array($period, ['monthly', 'quarterly'], true) ? $period : 'monthly';
+        // Kvartální období: $month nese (jako u DPH přiznání) libovolný měsíc kvartálu;
+        // kvartál odvodíme přes ceil($month/3) a rozsah natáhneme na celé čtvrtletí.
+        $quarter = $period === 'quarterly' ? (int) ceil($month / 3) : null;
+        if ($quarter !== null) {
+            $start = sprintf('%04d-%02d-01', $year, ($quarter - 1) * 3 + 1);
+            $end = (new \DateTimeImmutable(sprintf('%04d-%02d-01', $year, $quarter * 3)))
+                ->modify('last day of this month')->format('Y-m-d');
+        } else {
+            $start = sprintf('%04d-%02d-01', $year, $month);
+            $end = (new \DateTimeImmutable($start))->modify('last day of this month')->format('Y-m-d');
+        }
 
         // Konstanty pro rok období (číselník daňových konstant, admin override).
         $khItemThreshold = $this->taxConstants->khItemThreshold($year);
@@ -180,11 +191,13 @@ final class DphBookBuilder
 
         return [
             'period' => [
-                'year'  => $year,
-                'month' => $month,
-                'start' => $start,
-                'end'   => $end,
-                'label' => $label,
+                'year'        => $year,
+                'month'       => $month,
+                'period_type' => $period,
+                'quarter'     => $quarter,
+                'start'       => $start,
+                'end'         => $end,
+                'label'       => $label,
             ],
             'supplier' => $supplier,
             'sections' => $sectionList,

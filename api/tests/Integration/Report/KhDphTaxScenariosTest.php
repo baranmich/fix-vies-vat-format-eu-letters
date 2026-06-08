@@ -376,6 +376,46 @@ final class KhDphTaxScenariosTest extends TestCase
     }
 
     /**
+     * Kvartální Kniha DPH: období 'quarterly' natáhne rozsah na celé čtvrtletí
+     * (kvartál odvozen z měsíce přes ceil(month/3)) — sekce sumují všechny tři
+     * měsíce, na rozdíl od měsíčního pohledu. Period meta nese period_type + quarter.
+     */
+    public function testQuarterlyAggregatesWholeQuarter(): void
+    {
+        $cust = $this->client('Odběratel Q2', $this->czId, 'CZ65656561', customer: true);
+        $vend = $this->client('Dodavatel Q2', $this->czId, 'CZ65656562', vendor: true);
+
+        // Tři vystavené (duben/květen/červen = celé Q2), tuzemsko 21 % → ř.1.
+        $this->sale('2099049001', $cust, '1', false, sprintf('%04d-04-10', self::YEAR), sprintf('%04d-04-10', self::YEAR), [[1000, 210, 21]]);
+        $this->sale('2099059001', $cust, '1', false, sprintf('%04d-05-10', self::YEAR), sprintf('%04d-05-10', self::YEAR), [[2000, 420, 21]]);
+        $this->sale('2099069001', $cust, '1', false, sprintf('%04d-06-10', self::YEAR), sprintf('%04d-06-10', self::YEAR), [[4000, 840, 21]]);
+        // Jedna přijatá v květnu → ř.40.
+        $this->purchase('P-2099-Q2', $vend, '40', false, 'invoice', sprintf('%04d-05-15', self::YEAR), sprintf('%04d-05-15', self::YEAR), [[3000, 630, 21]]);
+
+        // Měsíční pohled (červen) = jen červnová VF.
+        $monthly = $this->book->build($this->supplierId, self::YEAR, 6);
+        $this->assertSame('monthly', $monthly['period']['period_type']);
+        $this->assertNull($monthly['period']['quarter']);
+        $this->assertEqualsWithDelta(840, $monthly['totals']['issued']['vat'], 0.01, 'měsíc 06 = jen červnová VF');
+
+        // Kvartální pohled (libovolný měsíc Q2 → kvartál 2) sečte duben+květen+červen.
+        $quarterly = $this->book->build($this->supplierId, self::YEAR, 6, 'quarterly');
+        $this->assertSame('quarterly', $quarterly['period']['period_type']);
+        $this->assertSame(2, $quarterly['period']['quarter']);
+        $this->assertSame(sprintf('%04d-04-01', self::YEAR), $quarterly['period']['start']);
+        $this->assertSame(sprintf('%04d-06-30', self::YEAR), $quarterly['period']['end']);
+
+        $sec = [];
+        foreach ($quarterly['sections'] as $s) $sec[$s['key']] = $s;
+        $this->assertEqualsWithDelta(7000, $sec['36.001']['subtotal_base'], 0.01, 'Q2 VF základ = 1000+2000+4000');
+        $this->assertEqualsWithDelta(1470, $sec['36.001']['subtotal_vat'], 0.01, 'Q2 VF daň = 210+420+840');
+        $this->assertEqualsWithDelta(3000, $sec['15.040']['subtotal_base'], 0.01, 'Q2 PF základ = 3000');
+        $this->assertEqualsWithDelta(1470, $quarterly['totals']['issued']['vat'], 0.01);
+        $this->assertEqualsWithDelta(630, $quarterly['totals']['received']['vat'], 0.01);
+        $this->assertEqualsWithDelta(840, $quarterly['totals']['vat_balance'], 0.01, 'výstup 1470 − odpočet 630');
+    }
+
+    /**
      * Issue #117 — pořízení zboží z JČS s pozdě vystavenou fakturou: povinnost přiznat
      * daň (ř. 3) vzniká k DUZP dle § 25 odst. 1 bez ohledu na držení dokladu a pozdní
      * doklad neblokuje ani odpočet ř. 43 (§ 73 odst. 1 písm. b). Zahraniční RC se proto
