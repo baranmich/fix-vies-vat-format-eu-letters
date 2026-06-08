@@ -897,13 +897,19 @@ final class CrmAggregationService
         // Load dismissals once
         $dismissals = $this->loadDismissals($supplierId, $userId);
 
-        // 1. Overdue vystavené faktury — pošli upomínku
+        // 1. Overdue vystavené faktury — pošli upomínku.
+        // Stejná pohledávková sémantika jako cílový seznam /invoices?overdue=1
+        // (InvoiceRepository): vč. nezaplacených NESPÁROVANÝCH proforem, vyřazení
+        // finálních dokladů k zaplacené proformě (amount_to_pay = 0). Drží count = seznam.
         $stmt = $pdo->prepare(
-            "SELECT id FROM invoices
-              WHERE supplier_id = ?
-                AND status IN ('issued', 'sent', 'reminded')
-                AND invoice_type != 'proforma'
-                AND due_date < ?"
+            "SELECT i.id FROM invoices i
+              WHERE i.supplier_id = ?
+                AND i.status IN ('issued', 'sent', 'reminded')
+                AND i.due_date <= ?
+                AND (i.invoice_type != 'proforma'
+                     OR NOT EXISTS (SELECT 1 FROM invoices ch
+                                     WHERE ch.parent_invoice_id = i.id AND ch.invoice_type = 'invoice'))
+                AND (i.invoice_type NOT IN ('invoice','proforma') OR i.amount_to_pay > 0)"
         );
         $stmt->execute([$supplierId, $today]);
         $overdueIds = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
@@ -1251,7 +1257,8 @@ final class CrmAggregationService
      */
     public function dismissActionItem(int $supplierId, int $userId, string $itemType, string $mode): void
     {
-        $validTypes = ['overdue_invoices', 'recurring_due', 'overdue_payables', 'tax_deadline', 'churn_risk'];
+        $validTypes = ['overdue_invoices', 'bank_unmatched', 'recurring_due', 'overdue_payables',
+            'purchase_drafts', 'tax_deadline', 'shv_deadline', 'churn_risk'];
         $validModes = ['day', 'week', 'forever', 'historical'];
         if (!in_array($itemType, $validTypes, true)) {
             throw new \InvalidArgumentException("Invalid item_type: {$itemType}");
@@ -1338,14 +1345,36 @@ final class CrmAggregationService
         $today = (new \DateTimeImmutable())->format('Y-m-d');
         switch ($itemType) {
             case 'overdue_invoices':
+                // Musí přesně zrcadlit dotaz v actionItems() (vč. nespárovaných proforem),
+                // jinak by se po „historická" dismiss vynořily proformy jako „nové".
                 $stmt = $pdo->prepare(
-                    "SELECT id FROM invoices
-                      WHERE supplier_id = ?
-                        AND status IN ('issued','sent','reminded')
-                        AND invoice_type != 'proforma'
-                        AND due_date < ?"
+                    "SELECT i.id FROM invoices i
+                      WHERE i.supplier_id = ?
+                        AND i.status IN ('issued','sent','reminded')
+                        AND i.due_date <= ?
+                        AND (i.invoice_type != 'proforma'
+                             OR NOT EXISTS (SELECT 1 FROM invoices ch
+                                             WHERE ch.parent_invoice_id = i.id AND ch.invoice_type = 'invoice'))
+                        AND (i.invoice_type NOT IN ('invoice','proforma') OR i.amount_to_pay > 0)"
                 );
                 $stmt->execute([$supplierId, $today]);
+                break;
+            case 'bank_unmatched':
+                $stmt = $pdo->prepare(
+                    "SELECT bt.id FROM bank_transactions bt
+                       JOIN bank_statements bs ON bs.id = bt.statement_id
+                      WHERE bt.match_status = 'unmatched'
+                        AND bt.amount > 0
+                        AND bt.posted_at >= DATE_SUB(?, INTERVAL 90 DAY)
+                        AND EXISTS (
+                            SELECT 1 FROM currencies cur
+                             WHERE cur.supplier_id = ?
+                               AND TRIM(LEADING '0' FROM REGEXP_REPLACE(IFNULL(cur.account_number, ''), '[^0-9]', ''))
+                                 = TRIM(LEADING '0' FROM REGEXP_REPLACE(IFNULL(bs.account_number, ''),  '[^0-9]', ''))
+                               AND (bs.bank_code IS NULL OR cur.bank_code IS NULL OR cur.bank_code = bs.bank_code)
+                        )"
+                );
+                $stmt->execute([$today, $supplierId]);
                 break;
             case 'recurring_due':
                 $stmt = $pdo->prepare(
@@ -1367,6 +1396,12 @@ final class CrmAggregationService
                 );
                 $stmt->execute([$supplierId, $today]);
                 break;
+            case 'purchase_drafts':
+                $stmt = $pdo->prepare(
+                    "SELECT id FROM purchase_invoices WHERE supplier_id = ? AND status = 'draft'"
+                );
+                $stmt->execute([$supplierId]);
+                break;
             case 'churn_risk':
                 $stmt = $pdo->prepare(
                     "WITH last_invoice AS (
@@ -1383,6 +1418,7 @@ final class CrmAggregationService
                 $stmt->execute([$supplierId, $today]);
                 break;
             case 'tax_deadline':
+            case 'shv_deadline':
                 return []; // date-based, žádné ID
             default:
                 return [];
